@@ -216,7 +216,7 @@ void ocf_core_stats_initialize(ocf_core_t core)
 
 #ifdef OCF_DEBUG_STATS
 	ocf_stats_debug_init(&exp_obj_stats->debug_stats);
-	ocf_stats_debug_init(&exp_obj_stats->debug_io_stats);
+	ocf_stats_debug_io_init(&exp_obj_stats->debug_io_stats);
 #endif
 }
 
