@@ -114,8 +114,8 @@ int metadata_io_read_i_atomic_step(struct ocf_request *req)
 	/* Allocate new IO */
 	io = ocf_new_cache_io(cache, req->io_queue,
 			cache->device->metadata_offset +
-			SECTORS_TO_BYTES(context->curr_offset),
-			SECTORS_TO_BYTES(context->curr_count), OCF_READ, 0, 0);
+			PAGES_TO_BYTES(context->curr_offset),
+			PAGES_TO_BYTES(context->curr_count), OCF_READ, 0, 0);
 
 	if (!io) {
 		metadata_io_read_i_atomic_complete(context, -OCF_ERR_NO_MEM);
