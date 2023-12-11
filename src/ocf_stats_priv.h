@@ -151,10 +151,10 @@ struct ocf_stats_core {
 	struct ocf_stats_req write_reqs;
 
 	/** Prefetch requests for DAS Algorithm */
-	struct ocf_stats_req prefetch_reqs;	
+	struct ocf_stats_req prefetch_reqs;
 
 	/** Prefetch requests for DAS Algorithm */
-	struct ocf_stats_block prefetch_blocks;	
+	struct ocf_stats_block prefetch_blocks;
 
 	/** Block requests for cache volume statistics */
 	struct ocf_stats_block cache_volume;
