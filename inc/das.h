@@ -15,7 +15,7 @@ enum DAS_RESULT {
     RETURN_DAS_REJECT = 3,
 };
 
-enum DasAlgType {
+enum DasAlgType
     DAS_ALG_SEQ = 0,
     DAS_ALG_REVERSE_SEQ,
     DAS_ALG_STRIDE,

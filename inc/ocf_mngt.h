@@ -434,7 +434,7 @@ static inline void ocf_mngt_cache_device_config_set_default(
 	cfg->open_cores = true;
 	cfg->force = false;
 	cfg->perform_test = true;
-	cfg->disable_cleaner = ture;
+	cfg->disable_cleaner = true;
 	cfg->discard_on_start = true;
 	cfg->volume_params = NULL;
 }

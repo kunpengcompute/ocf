@@ -95,13 +95,13 @@ struct ocf_core {
 	/* This bit means that core is added into cache */
 	uint32_t added : 1;
 
-	struct lead_bucket_limiter {
+	struct leak_bucket_limiter {
 		uint64_t last_out_time;
 		uint32_t leak_rate;
 		uint32_t capacity;
 		uint32_t cur_water;
 	}das_limiter;
-	
+
 	struct ocf_counters_core *counters;
 
 	void *priv;

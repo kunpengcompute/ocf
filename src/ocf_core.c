@@ -285,7 +285,7 @@ void ocf_core_volume_submit_io(struct ocf_io *io)
 	core = ocf_volume_to_core(ocf_io_get_volume(io));
 	cache = ocf_core_get_cache(core);
 
-	if (io-dir == OCF_READ && !is_prefetch_req(req))
+	if (io->dir == OCF_READ && !is_prefetch_req(req))
 		das_analyze_io(io);
 
 	ocf_trace_init_io(req);
@@ -392,7 +392,7 @@ void ocf_core_volume_submit_prefetch(struct ocf_io *io)
 
 	ret = ocf_engine_hndl_req(req);
 	if (ret) {
-		dev_counter_if_req_was_dirty(req);
+		dec_counter_if_req_was_dirty(req);
 		ocf_io_end(io, ret);
 		ocf_io_put(io);
 	}

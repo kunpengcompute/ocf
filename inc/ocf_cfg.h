@@ -29,8 +29,8 @@
 #endif
 
 /** Enabling debug statistics */
-#ifdef debug
-#define COF_CONFIG_DEBUG_STATS 1
+#ifdef DEBUG
+#define OCF_CONFIG_DEBUG_STATS 1
 #endif
 #ifndef OCF_CONFIG_DEBUG_STATS
 #define OCF_CONFIG_DEBUG_STATS 0

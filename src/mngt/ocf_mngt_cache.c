@@ -1325,7 +1325,7 @@ static void _ocf_mngt_load_superblock_complete(void *priv, int error)
 
 	if (loaded_clean_policy >= ocf_cleaning_max) {
 		ocf_cache_log(cache, log_err,
-				"ERROR: Invalid cleaning policy\n");
+				"ERROR: Invalid cleaning policy!\n");
 		OCF_PL_FINISH_RET(context->pipeline,
 				-OCF_ERR_START_CACHE_FAIL);
 	}

@@ -236,6 +236,7 @@ int ocf_mngt_core_init_front_volume(ocf_core_t core)
 		das_init(cache);
 		init_das_limiter(cache, core);
 	}
+	
 	return ret;
 }
 

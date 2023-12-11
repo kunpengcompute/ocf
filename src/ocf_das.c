@@ -29,7 +29,7 @@ bool das_get_status(void)
     return g_ocf_num >= DAS_INITED;
 }
 
-static void das_io_cmpl(strcut ocf_io *io, int error)
+static void das_io_cmpl(struct ocf_io *io, int error)
 {
     void *data = (void *)ocf_io_get_data(io);
 
@@ -53,7 +53,7 @@ void init_das_limiter(ocf_cache_t cache, ocf_core_t core)
             core->das_limiter.capacity, core->das_limiter.leak_rate);
 }
 
-void set_das_limiter(ocf_core_t core, uint32 capacity, uint32_t leak_rate)
+void set_das_limiter(ocf_core_t core, uint32_t capacity, uint32_t leak_rate)
 {
     core->das_limiter.capacity = capacity;
     core->das_limiter.leak_rate = OCF_MAX(leak_rate, MIN_LIMITER_LEAK_RATE);
@@ -85,7 +85,7 @@ static bool das_is_limit(ocf_core_t core)
         core->das_limiter.cur_water += 1;
         return false;
     } else {
-        return true.
+        return true;
     }
 }
 
@@ -111,14 +111,14 @@ static uint32_t get_pf_req_info(struct ocf_request *req, uint32_t len, int dir)
         req->core_line_last = ocf_bytes_2_lines(req->cache, dir ? addr : ((addr + 1) - req->byte_length));
         req->core_line_first = req->core_line_last;
 
-        ocf_req_has(req);
+        ocf_req_hash(req);
         ocf_engine_lookup(req);
         if (ocf_engine_is_hit(req)) {
             if (first_miss_addr || !dir)
                 break;
 
             /* FORWARD scan + enough HITs: scan backward from the end */
-            if (++hists > OCF_MIN(ocf_bytes_2_lines(req->cache, len) / 8, 32)) {
+            if (++hits > OCF_MIN(ocf_bytes_2_lines(req->cache, len) / 8, 32)) {
                 scanned = (addr + req->byte_length) - req->byte_position;
                 if (len > scanned) {
                     req->byte_position += scanned;
@@ -147,7 +147,7 @@ static uint32_t get_pf_req_info(struct ocf_request *req, uint32_t len, int dir)
             req->byte_position = first_miss_addr;
             return addr - first_miss_addr;
         } else {
-            req->byte_position = add + 1;
+            req->byte_position = addr + 1;
             return first_miss_addr - addr;
         }
     }
@@ -162,7 +162,7 @@ static int ocf_make_prefetch(struct DasKvParam *param)
     uint64_t last_addr, addr;
     uint32_t len = 0, total_len = 0;
     struct ocf_queue *queue = param->queue;
-    struct ocf_cache *cache = param->cache;
+    struct ocf_cache *cache = queue->cache;
     struct ocf_core_volume *core_volume = ocf_volume_get_priv(param->volume);
     struct ocf_core *core = core_volume->core;
     struct ocf_io_internal *ioi;
@@ -262,7 +262,7 @@ static void das_log(void *logger, enum DasLogLvl level, const char *format, ...)
 void das_init(ocf_cache_t cache)
 {
     if (g_ocf_num++ == 0) {
-        struct DasMoudleParam *initParam = (struct DasMoudleParam *)malloc(sizeof(struct DasMoudleParam));
+        struct DasModuleParam *initParam = (struct DasModuleParam *)malloc(sizeof(struct DasModuleParam));
         initParam->ops = (struct DasOPS *)malloc(sizeof(struct DasOPS));
         initParam->ops->SubmitDasPrefetch = ocf_make_prefetch;
         initParam->ops->logFunc = das_log;
