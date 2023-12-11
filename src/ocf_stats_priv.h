@@ -58,10 +58,10 @@ struct ocf_stats_error {
  * @brief OCF block statistics in bytes
  */
 struct ocf_stats_block {
-	/** Number of blocks read*/
+	/** Number of blocks read */
 	uint64_t read;
 
-	/** Number of blocks written*/
+	/** Number of blocks written */
 	uint64_t write;
 };
 
@@ -124,10 +124,10 @@ struct ocf_stats_core_debug {
  * @brief Core debug IO statistics
  */
 struct ocf_stats_core_debug_io {
-	/** I/O sizes being read */
+	/** I/O sizes being read*/
 	uint64_t read_reqs;
 
-	/** I/O sizes being writeen*/
+	/** I/O sizes being written*/
 	uint64_t write_reqs;
 };
 
@@ -151,10 +151,10 @@ struct ocf_stats_core {
 	struct ocf_stats_req write_reqs;
 
 	/** Prefetch requests for DAS Algorithm */
-	struct ocf_stats_req prefetch reqs;	
+	struct ocf_stats_req prefetch_reqs;	
 
 	/** Prefetch requests for DAS Algorithm */
-	struct ocf_stats_block prefetch blocks;	
+	struct ocf_stats_block prefetch_blocks;	
 
 	/** Block requests for cache volume statistics */
 	struct ocf_stats_block cache_volume;

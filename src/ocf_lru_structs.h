@@ -7,13 +7,13 @@
 #define __EVICTION_LRU_STRUCTS_H__
 
 /* For 4 kB cache lines: 29 bits are enough for up to 2TB cache devices */
-#define CACHE_LINE_BITS 29
+#define CACHE_LINE_BITS	29
 
 /* For 4 kB core lines: 34 bits are enough for up to 64TB core devices */
-#define CORE_LINE_BITS 34
+#define CORE_LINE_BITS	34
 
 /* Support 4095 core volumes */
-#define CORE_ID_BITS 12
+#define CORE_ID_BITS	12
 #if OCF_CONFIG_MAX_CORES >= (1 << CORE_ID_BITS)
 #error "OCF_CONFIG_MAX_CORES must be less than 1 << CORE_ID_BITS"
 #endif

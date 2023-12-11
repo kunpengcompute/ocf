@@ -76,7 +76,7 @@ static void _fill_req_part(struct ocf_stats_requests *req,
 	/* Pass-Through section */
 	_set(&req->rd_pt, s->read_reqs.pass_through, total);
 	_set(&req->wr_pt, s->write_reqs.pass_through, total);
-
+	
 	/* Prefetch section */
 	_set(&req->pf_partial_misses, s->prefetch_reqs.partial_miss, total);
 	_set(&req->pf_full_miss, s->prefetch_reqs.full_miss, total);
