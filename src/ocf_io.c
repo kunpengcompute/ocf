@@ -113,6 +113,7 @@ struct ocf_io *ocf_io_new(ocf_volume_t volume, ocf_queue_t queue,
 	ioi->io.dir = dir;
 	ioi->io.io_class = io_class;
 	ioi->io.flags = flags;
+	ioi->io.is_pf_io = false;
 
 	return &ioi->io;
 }

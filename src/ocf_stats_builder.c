@@ -38,6 +38,12 @@ static void _fill_req(struct ocf_stats_requests *req, struct ocf_stats_core *s)
 	_set(&req->rd_pt, s->read_reqs.pass_through, total);
 	_set(&req->wr_pt, s->write_reqs.pass_through, total);
 
+	/* Prefetch Section */
+	_set(&req->pf_partial_misss, s->prefetch_reqs.partial_miss, total);
+	_set(&req->pf_full_miss, s->prefetch_reqs.pf_full_miss, total);
+	_set(&req->pf_total, s->prefetch_reqs.total, total);
+	_set(&req->pf_pt, s->prefetch_reqs.pass_through, total);
+
 	/* Summary */
 	_set(&req->serviced, serviced, total);
 	_set(&req->total, total, total);
@@ -70,6 +76,12 @@ static void _fill_req_part(struct ocf_stats_requests *req,
 	/* Pass-Through section */
 	_set(&req->rd_pt, s->read_reqs.pass_through, total);
 	_set(&req->wr_pt, s->write_reqs.pass_through, total);
+
+	/* Prefetch Section */
+	_set(&req->pf_partial_misss, s->prefetch_reqs.partial_miss, total);
+	_set(&req->pf_full_miss, s->prefetch_reqs.pf_full_miss, total);
+	_set(&req->pf_total, s->prefetch_reqs.total, total);
+	_set(&req->pf_pt, s->prefetch_reqs.pass_through, total);
 
 	/* Summary */
 	_set(&req->serviced, serviced, total);
@@ -104,6 +116,18 @@ static void _fill_blocks(struct ocf_stats_blocks *blocks,
 	_set(&blocks->volume_rd, rd, total);
 	_set(&blocks->volume_wr, wr, total);
 	_set(&blocks->volume_total, total, total);
+
+	/* Prefetch blocks */
+	rd = _bytes4k(s->prefetch_blocks.read);
+	wr = _bytes4k(s->prefetch_blocks.write);
+	total = rd + wr;
+	_set(&blocks->prefetch_core_rd, rd, total);
+	_set(&blocks->prefetch_core_wr, wr, total);
+	_set(&blocks->prefetch_total, total, total);
+
+	/* Das */
+	total = _bytes4k(s->das_limit_io_total);
+	_set(&blocks->das_limit_io_total, total, total);
 }
 
 static void _fill_blocks_part(struct ocf_stats_blocks *blocks,
@@ -134,6 +158,26 @@ static void _fill_blocks_part(struct ocf_stats_blocks *blocks,
 	_set(&blocks->volume_rd, rd, total);
 	_set(&blocks->volume_wr, wr, total);
 	_set(&blocks->volume_total, total, total);
+
+	/* Prefetch blocks */
+	rd = _bytes4k(s->prefetch_blocks.read);
+	wr = _bytes4k(s->prefetch_blocks.write);
+	total = rd + wr;
+	_set(&blocks->prefetch_core_rd, rd, total);
+	_set(&blocks->prefetch_core_wr, wr, total);
+	_set(&blocks->prefetch_total, total, total);
+}
+
+static void _fill_debug_io(struct ocf_stats_debug_io *debug_io,
+		struct ocf_stats_core *s)
+{
+	uint64_t rd, wr, total;
+
+	rd = s->debug_io_stat.read_reqs;
+	wr = s->debug_io_stat.write_reqs;
+	total = rd + wr;
+	_set(&debug_io->entry_rd, rd, total);
+	_set(&debug_io->entry_wr, wr, total);
 }
 
 static void _fill_errors(struct ocf_stats_errors *errors,
@@ -207,10 +251,12 @@ static int _accumulate_io_class_stats(ocf_core_t core, void *cntx)
 
 	_accumulate_block(&total->cache_blocks, &stats.cache_blocks);
 	_accumulate_block(&total->core_blocks, &stats.core_blocks);
+	_accumulate_block(&total->prefetch_blocks, &stats.prefetch_blocks);
 	_accumulate_block(&total->blocks, &stats.blocks);
 
 	_accumulate_reqs(&total->read_reqs, &stats.read_reqs);
 	_accumulate_reqs(&total->write_reqs, &stats.write_reqs);
+	_accumulate_reqs(&total->prefetch_reqs, &stats.prefetch_reqs);
 
 	return 0;
 }
@@ -311,6 +357,7 @@ int ocf_stats_collect_core(ocf_core_t core,
 		struct ocf_stats_usage *usage,
 		struct ocf_stats_requests *req,
 		struct ocf_stats_blocks *blocks,
+		struct ocf_stats_debug_io *debug_io,
 		struct ocf_stats_errors *errors)
 {
 	ocf_cache_t cache;
@@ -358,6 +405,9 @@ int ocf_stats_collect_core(ocf_core_t core,
 	if (blocks)
 		_fill_blocks(blocks, &s);
 
+	if (debug_io)
+		_fill_debug_io(debug_io, &s);
+
 	if (errors)
 		_fill_errors(errors, &s);
 
@@ -375,10 +425,12 @@ static int _accumulate_stats(ocf_core_t core, void *cntx)
 
 	_accumulate_block(&total->cache_volume, &stats.cache_volume);
 	_accumulate_block(&total->core_volume, &stats.core_volume);
+	_accumulate_block(&total->prefetch_blocks, &stats.prefetch_blocks);
 	_accumulate_block(&total->core, &stats.core);
 
 	_accumulate_reqs(&total->read_reqs, &stats.read_reqs);
 	_accumulate_reqs(&total->write_reqs, &stats.write_reqs);
+	_accumulate_reqs(&total->prefetch_reqs, &stats.prefetch_reqs);
 
 	_accumulate_errors(&total->cache_errors, &stats.cache_errors);
 	_accumulate_errors(&total->core_errors, &stats.core_errors);

@@ -11,6 +11,14 @@
 #include "utils_io.h"
 #include "utils_cache_line.h"
 
+// SPDK struct spdk_bdev_io.__bdev_io_internal_fields.caller_ctx
+// represent io_stage in struct spdk_nvmf_request
+#define NVMF_REQUEST_OFFSET_IN_BDEVIO	688
+#define IO_STAGE_OFFSET_IN_NVMF_REQUEST	1008
+
+#define OCF_IO_CACHE_STAGE 0x5555555
+#define OCF_IO_CORE_STAGE (OCF_IO_CACHE_STAGE + 1)
+
 struct ocf_submit_volume_context {
 	env_atomic req_remaining;
 	int error;
@@ -264,6 +272,8 @@ void ocf_submit_cache_reqs(struct ocf_cache *cache,
 			return;
 		}
 
+		io->is_pf_io = req->ioi.io.is_pf_io;
+
 		ocf_core_stats_cache_block_update(req->core, io_class,
 				dir, bytes);
 
@@ -315,6 +325,9 @@ void ocf_submit_cache_reqs(struct ocf_cache *cache,
 				callback(req, err);
 			return;
 		}
+
+		io->is_pf_io = req->ioi.io.is_pf_io;
+
 		ocf_core_stats_cache_block_update(req->core, io_class,
 				dir, bytes);
 		ocf_volume_submit_io(io);
@@ -327,6 +340,15 @@ void ocf_submit_cache_reqs(struct ocf_cache *cache,
 void ocf_submit_volume_req(ocf_volume_t volume, struct ocf_request *req,
 		ocf_req_end_t callback)
 {
+	if (req->ioi.io.priv1) {
+		// set io to core stage
+		int32_t *io_stage = (int32_t *)(*(uint64_t *)(req->ioi.io.priv1 + NVMF_REQUEST_OFFSET_IN_BDEVIO)
+				+ IO_STAGE_OFFSET_IN_NVMF_REQUEST);
+		// sometimes this offset not equal address of io_stage, so do this if
+		if (*io_stage == OCF_IO_CACHE_STAGE) {
+			*io_stage = OCF_IO_CORE_STAGE;
+		}
+	}
 	uint64_t flags = req->ioi.io.flags;
 	uint32_t io_class = req->ioi.io.io_class;
 	int dir = req->rw;
@@ -334,7 +356,7 @@ void ocf_submit_volume_req(ocf_volume_t volume, struct ocf_request *req,
 	int err;
 
 	ocf_core_stats_core_block_update(req->core, io_class, dir,
-			req->byte_length);
+			req->byte_length, req->cache_mode);
 
 	io = ocf_volume_new_io(volume, req->io_queue, req->byte_position,
 			req->byte_length, dir, io_class, flags);
@@ -350,5 +372,6 @@ void ocf_submit_volume_req(ocf_volume_t volume, struct ocf_request *req,
 		callback(req, err);
 		return;
 	}
+	io->is_pf_io = req->ioi.io.is_pf_io;
 	ocf_volume_submit_io(io);
 }
