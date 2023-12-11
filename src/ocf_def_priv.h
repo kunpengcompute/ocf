@@ -14,6 +14,8 @@
 
 #define BYTES_TO_PAGES(x)	((((uint64_t)x) + (PAGE_SIZE - 1)) / PAGE_SIZE)
 #define PAGES_TO_BYTES(x)	(((uint64_t)x) * PAGE_SIZE)
+#define PAGE_SHIFT 12
+#define BYTES_TO_SHIFIT_ROUND_DOWN(x) ((x) >> PAGE_SHIFT)
 
 #define OCF_DIV_ROUND_UP(x, y)			\
 	({					\

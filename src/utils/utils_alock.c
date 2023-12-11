@@ -8,6 +8,50 @@
 #include "../ocf_request.h"
 #include "utils_alock.h"
 
+typedef struct {
+	volatile uint8_t counter;
+} env_atomic8;
+
+static inline uint8_t env_atomic8_read(const env_atomic8 *a)
+{
+	return a->counter; /* TODO */
+}
+
+static inline uint8_t env_atomic8_set(const env_atomic8 *a, uint8_t i)
+{
+	a->counter = i; /* TODO */
+}
+
+static inline uint8_t env_atomic8_sub(uint8_t i, const env_atomic8 *a)
+{
+	__sync_sub_add_fetch(&a->counter, i);
+}
+
+static inline void env_atomic8_dec(const env_atomic8 *a)
+{
+	env_atomic8_sub(1, a);
+}
+
+static inline uint8_t env_atomic8_cmpxchg(env_atomic8 *a, uint8_t old, uint8_t new_value)
+{
+	return __sync_val_compare_and_swap(&a->counter, old, new_value);
+}
+
+static inline uint8_t env_atomic8_add_unless(env_atomic8 *a, uint8_t i, uint8_t u)
+{
+	uint8_t c, old;
+	c = env_atomic_read(a);
+	for(;;) {
+		if (unlikely(c == (u)))
+			break;
+		old = env_atomic8_cmpxchg((a), c, c + (i));
+		if (likely(old == c))
+			break;
+		c = old;
+	}
+	return c != (u);
+}
+
 #define OCF_CACHE_CONCURRENCY_DEBUG 0
 
 #if 1 == OCF_CACHE_CONCURRENCY_DEBUG
@@ -31,7 +75,7 @@
 #define OCF_DEBUG_CACHE(cache, format, ...)
 #endif
 
-#define OCF_CACHE_LINE_ACCESS_WR	INT_MAX
+#define OCF_CACHE_LINE_ACCESS_WR	((unsigned char)(-1))
 #define OCF_CACHE_LINE_ACCESS_IDLE	0
 #define OCF_CACHE_LINE_ACCESS_ONE_RD	1
 
@@ -63,7 +107,7 @@ struct ocf_alock {
 	} __attribute__((__aligned__(64)));
 
 	ocf_cache_line_t num_entries;
-	env_atomic *access;
+	env_atomic8 *access;
 	env_allocator *allocator;
 	struct ocf_alock_lock_cbs *cbs;
 	struct ocf_alock_waiters_list waiters_lsts[_WAITERS_LIST_ENTRIES];
@@ -109,7 +153,8 @@ int ocf_alock_init_inplace(struct ocf_alock *self, unsigned num_entries,
 	}
 
 	self->access = env_vzalloc(num_entries * sizeof(self->access[0]));
-
+	ocf_cache_log(cache, log_info, "Metadata access size: %llu kiB\n",
+			(long long unsigned)(num_entries * sizeof(self->access[0]))/1024);
 	if (!self->access) {
 		error = __LINE__;
 		goto allocation_err;
@@ -161,6 +206,8 @@ int ocf_alock_init(struct ocf_alock **self, unsigned num_entries,
 	OCF_DEBUG_TRACE(cache);
 
 	alock = env_vzalloc(sizeof(*alock));
+	ocf_cache_log(cache, log_err, "Metadata alock size: %llu kiB\n",
+			(long long unsigned)(sizeof(*alock))/1024);
 	if (!alock)
 		return -OCF_ERR_NO_MEM;
 
@@ -205,7 +252,7 @@ size_t ocf_alock_size(unsigned num_entries)
 {
 	size_t size;
 
-	size = sizeof(env_atomic);
+	size = sizeof(env_atomic8);
 	size *= num_entries;
 
 	size += sizeof(struct ocf_alock);
@@ -266,8 +313,8 @@ static inline void ocf_alock_waitlist_add(struct ocf_alock *alock,
 bool ocf_alock_trylock_entry_wr(struct ocf_alock *alock,
 		ocf_cache_line_t entry)
 {
-	env_atomic *access = &alock->access[entry];
-	int prev = env_atomic_cmpxchg(access, OCF_CACHE_LINE_ACCESS_IDLE,
+	env_atomic8 *access = &alock->access[entry];
+	uint8_t prev = env_atomic8_cmpxchg(access, OCF_CACHE_LINE_ACCESS_IDLE,
 			OCF_CACHE_LINE_ACCESS_WR);
 
 	return prev == OCF_CACHE_LINE_ACCESS_IDLE;
@@ -276,8 +323,8 @@ bool ocf_alock_trylock_entry_wr(struct ocf_alock *alock,
 bool ocf_alock_trylock_entry_rd_idle(struct ocf_alock *alock,
 		ocf_cache_line_t entry)
 {
-	env_atomic *access = &alock->access[entry];
-	int prev = env_atomic_cmpxchg(access, OCF_CACHE_LINE_ACCESS_IDLE,
+	env_atomic8 *access = &alock->access[entry];
+	uint8_t prev = env_atomic8_cmpxchg(access, OCF_CACHE_LINE_ACCESS_IDLE,
 			OCF_CACHE_LINE_ACCESS_ONE_RD);
 
 	return (prev == OCF_CACHE_LINE_ACCESS_IDLE);
@@ -286,37 +333,37 @@ bool ocf_alock_trylock_entry_rd_idle(struct ocf_alock *alock,
 static inline bool ocf_alock_trylock_entry_rd(struct ocf_alock *alock,
 		ocf_cache_line_t entry)
 {
-	env_atomic *access = &alock->access[entry];
+	env_atomic8 *access = &alock->access[entry];
 
-	return !!env_atomic_add_unless(access, 1, OCF_CACHE_LINE_ACCESS_WR);
+	return !!env_atomic8_add_unless(access, 1, OCF_CACHE_LINE_ACCESS_WR);
 }
 
 static inline void ocf_alock_unlock_entry_wr(struct ocf_alock *alock,
 		ocf_cache_line_t entry)
 {
-	env_atomic *access = &alock->access[entry];
+	env_atomic8 *access = &alock->access[entry];
 
-	ENV_BUG_ON(env_atomic_read(access) != OCF_CACHE_LINE_ACCESS_WR);
-	env_atomic_set(access, OCF_CACHE_LINE_ACCESS_IDLE);
+	ENV_BUG_ON(env_atomic8_read(access) != OCF_CACHE_LINE_ACCESS_WR);
+	env_atomic8_set(access, OCF_CACHE_LINE_ACCESS_IDLE);
 }
 
 static inline void ocf_alock_unlock_entry_rd(struct ocf_alock *alock,
 		ocf_cache_line_t entry)
 {
-	env_atomic *access = &alock->access[entry];
+	env_atomic8 *access = &alock->access[entry];
 
-	int v = env_atomic_read(access);
+	uint8_t v = env_atomic8_read(access);
 
 	ENV_BUG_ON(v == 0);
 	ENV_BUG_ON(v == OCF_CACHE_LINE_ACCESS_WR);
-	env_atomic_dec(access);
+	env_atomic8_dec(access);
 }
 
 static inline bool ocf_alock_trylock_entry_wr2wr(struct ocf_alock *alock,
 		ocf_cache_line_t entry)
 {
-	env_atomic *access = &alock->access[entry];
-	int v = env_atomic_read(access);
+	env_atomic8 *access = &alock->access[entry];
+	uint8_t v = env_atomic8_read(access);
 
 	ENV_BUG_ON(v != OCF_CACHE_LINE_ACCESS_WR);
 	return true;
@@ -325,25 +372,25 @@ static inline bool ocf_alock_trylock_entry_wr2wr(struct ocf_alock *alock,
 static inline bool ocf_alock_trylock_entry_wr2rd(struct ocf_alock *alock,
 		ocf_cache_line_t entry)
 {
-	env_atomic *access = &alock->access[entry];
-	int v = env_atomic_read(access);
+	env_atomic8 *access = &alock->access[entry];
+	uint8_t v = env_atomic8_read(access);
 
 	ENV_BUG_ON(v != OCF_CACHE_LINE_ACCESS_WR);
-	env_atomic_set(access, OCF_CACHE_LINE_ACCESS_ONE_RD);
+	env_atomic8_set(access, OCF_CACHE_LINE_ACCESS_ONE_RD);
 	return true;
 }
 
 static inline bool ocf_alock_trylock_entry_rd2wr(struct ocf_alock *alock,
 		ocf_cache_line_t entry)
 {
-	env_atomic *access = &alock->access[entry];
+	env_atomic8 *access = &alock->access[entry];
 
-	int v = env_atomic_read(access);
+	uint8_t v = env_atomic8_read(access);
 
 	ENV_BUG_ON(v == OCF_CACHE_LINE_ACCESS_IDLE);
 	ENV_BUG_ON(v == OCF_CACHE_LINE_ACCESS_WR);
 
-	v = env_atomic_cmpxchg(access, OCF_CACHE_LINE_ACCESS_ONE_RD,
+	v = env_atomic8_cmpxchg(access, OCF_CACHE_LINE_ACCESS_ONE_RD,
 			OCF_CACHE_LINE_ACCESS_WR);
 
 	return (v == OCF_CACHE_LINE_ACCESS_ONE_RD);
@@ -352,9 +399,9 @@ static inline bool ocf_alock_trylock_entry_rd2wr(struct ocf_alock *alock,
 static inline bool ocf_alock_trylock_entry_rd2rd(struct ocf_alock *alock,
 		ocf_cache_line_t entry)
 {
-	env_atomic *access = &alock->access[entry];
+	env_atomic8 *access = &alock->access[entry];
 
-	int v = env_atomic_read(access);
+	int v = env_atomic8_read(access);
 
 	ENV_BUG_ON(v == OCF_CACHE_LINE_ACCESS_IDLE);
 	ENV_BUG_ON(v == OCF_CACHE_LINE_ACCESS_WR);
@@ -771,7 +818,7 @@ bool ocf_cache_line_is_used(struct ocf_alock *alock,
 {
 	ENV_BUG_ON(entry >= alock->num_entries);
 
-	if (env_atomic_read(&(alock->access[entry])))
+	if (env_atomic8_read(&(alock->access[entry])))
 		return true;
 
 	return !ocf_alock_waitlist_is_empty(alock, entry);

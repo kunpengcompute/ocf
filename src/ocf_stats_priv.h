@@ -84,6 +84,12 @@ struct ocf_stats_io_class {
 	/** Writes requests statistics */
 	struct ocf_stats_req write_reqs;
 
+	/** Prefetch requests for DAS Algorithm */
+	struct ocf_stats_req prefetch_reqs;
+
+	/** Prefetch requests for DAS Algorithm */
+	struct ocf_stats_block prefetch_blocks;
+
 	/** Block requests for ocf volume statistics */
 	struct ocf_stats_block blocks;
 
@@ -115,9 +121,23 @@ struct ocf_stats_core_debug {
 };
 
 /**
+ * @brief Core debug IO statistics
+ */
+struct ocf_stats_core_debug_io {
+	/** I/O sizes being read */
+	uint64_t read_reqs;
+
+	/** I/O sizes being writeen*/
+	uint64_t write_reqs;
+};
+
+/**
  * @brief OCF core statistics
  */
 struct ocf_stats_core {
+	/** Number of das Qos limit blocks */
+	uint64_t das_limit_io_total;
+
 	/** Number of cache lines allocated in the cache for this core */
 	uint32_t cache_occupancy;
 
@@ -129,6 +149,12 @@ struct ocf_stats_core {
 
 	/** Write requests statistics */
 	struct ocf_stats_req write_reqs;
+
+	/** Prefetch requests for DAS Algorithm */
+	struct ocf_stats_req prefetch reqs;	
+
+	/** Prefetch requests for DAS Algorithm */
+	struct ocf_stats_block prefetch blocks;	
 
 	/** Block requests for cache volume statistics */
 	struct ocf_stats_block cache_volume;
@@ -147,6 +173,9 @@ struct ocf_stats_core {
 
 	/** Debug statistics */
 	struct ocf_stats_core_debug debug_stat;
+
+	/** Debug IO statistics */
+	struct ocf_stats_core_debug_io debug_io_stat;
 };
 
 /**
@@ -155,7 +184,9 @@ struct ocf_stats_core {
 struct ocf_counters_part {
 	struct ocf_counters_req read_reqs;
 	struct ocf_counters_req write_reqs;
+	struct ocf_counters_req prefetch_reqs;
 
+	struct ocf_counters_block prefetch_blocks;
 	struct ocf_counters_block blocks;
 
 	struct ocf_counters_block core_blocks;
@@ -170,6 +201,11 @@ struct ocf_counters_debug {
 	env_atomic64 read_align[IO_ALIGN_NO];
 	env_atomic64 write_align[IO_ALIGN_NO];
 };
+
+struct ocf_counters_debug_io {
+	env_atomic64 entry_read_io_total;
+	env_atomic64 entry_write_io_total;
+}
 #endif
 
 struct ocf_counters_core {
@@ -179,18 +215,21 @@ struct ocf_counters_core {
 	struct ocf_counters_part part_counters[OCF_USER_IO_CLASS_MAX];
 #ifdef OCF_DEBUG_STATS
 	struct ocf_counters_debug debug_stats;
+	struct ocf_counters_debug_io debug_io_stats;
 #endif
+	env_atomic64 das_limit_io_total;
 };
 
 void ocf_core_stats_core_block_update(ocf_core_t core, ocf_part_id_t part_id,
-		int dir, uint64_t bytes);
+		int dir, uint64_t bytes, ocf_req_cache_mode_t cache_mode);
 void ocf_core_stats_cache_block_update(ocf_core_t core, ocf_part_id_t part_id,
 		int dir, uint64_t bytes);
 void ocf_core_stats_vol_block_update(ocf_core_t core, ocf_part_id_t part_id,
 		int dir, uint64_t bytes);
 
 void ocf_core_stats_request_update(ocf_core_t core, ocf_part_id_t part_id,
-		uint8_t dir, uint64_t hit_no, uint64_t core_line_count);
+		uint8_t dir, uint64_t hit_no, uint64_t core_line_count, 
+		ocf_req_cache_mode_t cache_mode);
 void ocf_core_stats_request_pt_update(ocf_core_t core, ocf_part_id_t part_id,
 		uint8_t dir, uint64_t hit_no, uint64_t core_line_count);
 
@@ -237,5 +276,17 @@ int ocf_core_get_stats(ocf_core_t core, struct ocf_stats_core *stats);
  * @param[in] io request for which stats are being updated
  */
 void ocf_core_update_stats(ocf_core_t core, struct ocf_io *io);
+
+/**
+ * @brief update DEBUG IO stats given IO request
+ *
+ * Function meant to update DEBUG IO stats for IO request.
+ *
+ * @note This function shall be invoked for each IO request processed
+ *
+ * @param[in] core to which request pertains
+ * @param[in] io request for which stats are being updated
+ */
+void ocf_core_debug_update_stats(ocf_core_t core, struct ocf_io *io);
 
 #endif
