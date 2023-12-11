@@ -15,6 +15,8 @@
 #include "../metadata/metadata.h"
 #include "../concurrency/ocf_concurrency.h"
 
+#define OCF_ENGINE_DEBUG 0
+
 #define OCF_ENGINE_DEBUG_IO_NAME "wt"
 #include "engine_debug.h"
 
@@ -129,6 +131,7 @@ static void _ocf_write_wt_req_complete(struct ocf_request *req)
 static void _ocf_write_wt_cache_complete(struct ocf_request *req, int error)
 {
 	if (error) {
+		OCF_DEBUG_RQ(req, "ERROR");
 		req->error = req->error ?: error;
 		ocf_core_stats_cache_error_update(req->core, OCF_WRITE);
 

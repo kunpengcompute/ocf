@@ -90,13 +90,13 @@ static int ocf_read_wo_cache_do(struct ocf_request *req)
 		if (entry->status == LOOKUP_MISS) {
 			/* all sectors invalid */
 			i = e + 1;
-			increment = SECTORS_TO_BYTES(e - s + 1);
+			increment = PAGES_TO_BYTES(e - s + 1);
 			valid = false;
 		}
 		else if (ocf_engine_map_all_sec_valid(req, line)) {
 			/* all sectors valid */
 			i = e + 1;
-			increment = SECTORS_TO_BYTES(e - s + 1);
+			increment = PAGES_TO_BYTES(e - s + 1);
 			valid = true;
 		} else {
 			/* need to iterate through CL sector by sector */
@@ -110,7 +110,7 @@ static int ocf_read_wo_cache_do(struct ocf_request *req)
 				 increment = 0;
 				 do {
 					++i;
-					increment += SECTORS_TO_BYTES(1);
+					increment += PAGES_TO_BYTES(1);
 				 } while (i <= e && metadata_test_valid_one(
 						cache, entry->coll_idx, i)
 						== valid);
@@ -168,8 +168,8 @@ static void _ocf_read_wo_core_complete(struct ocf_request *req, int error)
 	 * is valid and we can complete the request */
 	if (!req->info.dirty_any || req->error) {
 		OCF_DEBUG_RQ(req, "Completion");
-		req->complete(req, req->error);
 		ocf_req_unlock_rd(ocf_cache_line_concurrency(req->cache), req);
+		req->complete(req, req->error);
 		ocf_req_put(req);
 		return;
 	}

@@ -83,6 +83,10 @@ struct ocf_stats_requests {
 	struct ocf_stat rd_pt;
 	struct ocf_stat wr_pt;
 	struct ocf_stat serviced;
+	struct ocf_stat pf_partial_miss;
+	struct ocf_stat pf_full_miss;
+	struct ocf_stat pf_total;
+	struct ocf_stat pf_pt;
 	struct ocf_stat total;
 };
 
@@ -105,6 +109,8 @@ struct ocf_stats_requests {
  * ║ Reads from core(s)                 │   439 │ 100.0 │ 4KiB blocks ║
  * ║ Writes to core(s)                  │     0 │   0.0 │ 4KiB blocks ║
  * ║ Total to/from core(s)              │   439 │ 100.0 │ 4KiB blocks ║
+ * ╟────────────────────────────────────┼───────┼───────┼─────────────╢
+ * ║ Das limit io(s)                    │   123 │ 100.0 │ 4KiB blocks ║
  * ╚════════════════════════════════════╧═══════╧═══════╧═════════════╝
  * </pre>
  */
@@ -118,7 +124,30 @@ struct ocf_stats_blocks {
 	struct ocf_stat volume_rd;
 	struct ocf_stat volume_wr;
 	struct ocf_stat volume_total;
+	struct ocf_stat prefetch_core_rd;
+	struct ocf_stat prefetch_cache_wr;
+	struct ocf_stat prefetch_total;
+	struct ocf_stat das_limit_io_total;
 };
+
+/**
+ * @brief DEBUG IO statistics
+ * 
+ * An example of presenting statistics:
+ * <pre>
+ * ╔═════════════════════════════╤═══════╤═══════╤══════════╗
+ * ║ DEBUG IO statistics         │ Count │   %   │ Units    ║
+ * ╠═════════════════════════════╪═══════╪═══════╪══════════╣
+ * ║ Core entry Read IO          │   426 │ 100.0 │ Requests ║
+ * ║ Core entry Write IO         │     0 │   0.0 │ Requests ║
+ * ╚═════════════════════════════╧═══════╧═══════╧══════════╝
+ * </pre>
+ */
+struct ocf_stats_debug_io {
+	struct ocf_stat entry_rd;
+	struct ocf_stat entry_wr;
+};
+
 
 /**
  * @brief Errors statistics
@@ -184,6 +213,7 @@ int ocf_stats_collect_core(ocf_core_t core,
 		struct ocf_stats_usage *usage,
 		struct ocf_stats_requests *req,
 		struct ocf_stats_blocks *blocks,
+		struct ocf_stats_debug_io *debug_io,
 		struct ocf_stats_errors *errors);
 
 /**
