@@ -14,6 +14,8 @@
 #include "../utils/utils_io.h"
 #include "../concurrency/ocf_concurrency.h"
 
+#define OCF_ENGINE_DEBUG 0
+
 #define OCF_ENGINE_DEBUG_IO_NAME "bf"
 #include "engine_debug.h"
 
@@ -60,10 +62,24 @@ static void _ocf_backfill_complete(struct ocf_request *req, int error)
 	ctx_data_free(cache->owner, req->data);
 	req->data = NULL;
 
+	/* Unlock prefetch request anyway */
+	if (is_prefetch_req(req)) {
+		if (req->error) {
+			OCF_DEBUG_RQ(req, "prefetch backfill ERROR %d", req->error);
+		} else {
+			OCF_DEBUG_RQ(req, "prefetch backfill success");
+		}
+		ocf_req_unlock(ocf_cache_line_concurrency(cache), req);
+		ocf_req_put(req);
+		return;
+	}
+
 	if (req->error) {
+		OCF_DEBUG_RQ(req, "backfill ERROR %d", req->error);
 		ocf_core_stats_cache_error_update(req->core, OCF_WRITE);
 		ocf_engine_invalidate(req);
 	} else {
+		OCF_DEBUG_RQ(req, "backfill success");
 		ocf_req_unlock(ocf_cache_line_concurrency(cache), req);
 
 		/* put the request at the last point of the completion path */

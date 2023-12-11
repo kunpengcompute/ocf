@@ -249,7 +249,7 @@ static int _ocf_discard_step(struct ocf_request *req)
 			_ocf_discard_step_do(req);
 		} else {
 			/* WR lock was not acquired, need to wait for resume */
-			OCF_DEBUG_RQ(req, "NO LOCK")
+			OCF_DEBUG_RQ(req, "NO LOCK");
 		}
 	} else {
 		OCF_DEBUG_RQ(req, "LOCK ERROR %d", lock);

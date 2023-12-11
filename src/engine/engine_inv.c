@@ -13,12 +13,15 @@
 #include "../metadata/metadata.h"
 #include "../concurrency/ocf_concurrency.h"
 
+#define OCF_ENGINE_DEBUG 0
+
 #define OCF_ENGINE_DEBUG_IO_NAME "inv"
 #include "engine_debug.h"
 
 static void _ocf_invalidate_req(struct ocf_request *req, int error)
 {
 	if (error) {
+		OCF_DEBUG_RQ(req, "ERROR");
 		req->error = error;
 		ocf_core_stats_cache_error_update(req->core, OCF_WRITE);
 	}

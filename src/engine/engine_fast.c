@@ -110,6 +110,11 @@ int ocf_read_fast(struct ocf_request *req)
 	int lock = OCF_LOCK_NOT_ACQUIRED;
 	bool part_has_space;
 
+	/* Abort prefetch request */
+	if (is_prefetch_req(req)) {
+		return OCF_FAST_PATH_NO;
+	}
+
 	/* Get OCF request - increase reference counter */
 	ocf_req_get(req);
 

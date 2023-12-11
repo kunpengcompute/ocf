@@ -135,7 +135,7 @@ err:
 			continue;
 
 		entry = ocf_cl_lock_line_get_entry(alock, req, i);
-		ocf_alock_waitlist_remove_entry(alock, req, i, entry, rw);
+		ocf_alock_waitlist_remove_entry(alock, req, entry, i, rw);
 	}
 
 	return ret;
