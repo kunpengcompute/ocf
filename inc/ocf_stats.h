@@ -83,7 +83,7 @@ struct ocf_stats_requests {
 	struct ocf_stat rd_pt;
 	struct ocf_stat wr_pt;
 	struct ocf_stat serviced;
-	struct ocf_stat pf_partial_miss;
+	struct ocf_stat pf_partial_misses;
 	struct ocf_stat pf_full_miss;
 	struct ocf_stat pf_total;
 	struct ocf_stat pf_pt;

@@ -4,8 +4,8 @@
  * Create: 2023-11-28
  */
 
-#ifndef SPDK_NVMF_EXTERNAM_H
-#define SPDK_NVMF_EXTERNAM_H
+#ifndef SPDK_NVMF_EXTERNAL_H
+#define SPDK_NVMF_EXTERNAL_H
 
 #include <stdbool.h>
 

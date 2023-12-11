@@ -26,7 +26,7 @@ typedef enum {
 	/* internal modes */
 	ocf_req_cache_mode_fast,
 		/*!< Fast path */
-	ocf_req_cache_mode_fase_pf,
+	ocf_req_cache_mode_fast_pf,
 		/*!< prefetch fast path */
 	ocf_req_cache_mode_d2c,
 		/*!< Direct to Core - pass through to core without

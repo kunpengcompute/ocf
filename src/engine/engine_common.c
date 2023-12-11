@@ -8,8 +8,8 @@
 #include "../ocf_cache_priv.h"
 #include "../ocf_queue_priv.h"
 #include "engine_common.h"
-#define OCF_ENGINE_DEBUG_IO_NAME "common"
 #define OCF_ENGINE_DEBUG 0
+#define OCF_ENGINE_DEBUG_IO_NAME "common"
 #include "engine_debug.h"
 #include "../utils/utils_cache_line.h"
 #include "../ocf_request.h"
@@ -747,7 +747,7 @@ bool inline is_prefetch_req(struct ocf_request *req)
 }
 
 /* Return true if prefetch request should be aborted */
-bool prefetch req_should_abort(struct ocf_request *req)
+bool prefetch_req_should_abort(struct ocf_request *req)
 {
 	if (unlikely(req == NULL)) {
 		ENV_WARN(true, "NULL Request\n");
