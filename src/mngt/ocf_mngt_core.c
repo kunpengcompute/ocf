@@ -4,6 +4,7 @@
  */
 
 #include "ocf/ocf.h"
+#include "ocf/ocf_das.h"
 #include "ocf_mngt_common.h"
 #include "ocf_mngt_core_priv.h"
 #include "../ocf_priv.h"
@@ -231,7 +232,10 @@ int ocf_mngt_core_init_front_volume(ocf_core_t core)
 	ret = ocf_volume_open(&core->front_volume, NULL);
 	if (ret)
 		ocf_volume_deinit(&core->front_volume);
-
+	else {
+		das_init(cache);
+		init_das_limiter(cache, core);
+	}
 	return ret;
 }
 

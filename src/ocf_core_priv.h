@@ -19,6 +19,10 @@
 #define ocf_core_log(core, lvl, fmt, ...) \
 	ocf_core_log_prefix(core, lvl, ": ", fmt, ##__VA_ARGS__)
 
+struct ocf_core_volume {
+	ocf_core_t core;
+};
+
 struct ocf_metadata_uuid {
 	uint32_t size;
 	uint8_t data[OCF_VOLUME_UUID_MAX_SIZE];
@@ -91,6 +95,13 @@ struct ocf_core {
 	/* This bit means that core is added into cache */
 	uint32_t added : 1;
 
+	struct lead_bucket_limiter {
+		uint64_t last_out_time;
+		uint32_t leak_rate;
+		uint32_t capacity;
+		uint32_t cur_water;
+	}das_limiter;
+	
 	struct ocf_counters_core *counters;
 
 	void *priv;

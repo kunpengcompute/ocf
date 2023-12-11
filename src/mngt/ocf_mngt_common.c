@@ -4,6 +4,7 @@
  */
 
 #include "ocf/ocf.h"
+#include "ocf/ocf_das.h"
 #include "ocf_mngt_common.h"
 #include "ocf_mngt_core_priv.h"
 #include "../ocf_priv.h"
@@ -27,6 +28,8 @@ void cache_mngt_core_deinit(ocf_core_t core)
 
 	if (core->has_volume)
 		ocf_volume_deinit(&core->volume);
+
+	das_exit();
 
 	core->opened = false;
 }
@@ -149,6 +152,13 @@ void ocf_mngt_cache_put(ocf_cache_t cache)
 		env_vfree(cache);
 		ocf_ctx_put(ctx);
 	}
+}
+
+void __set_cleaning_policy(ocf_cache_t cache,
+		ocf_cleaning_t new_cleaning_policy)
+{
+	cache->conf_meta->cleaning_policy_type = new_cleaning_policy;
+	cache->cleaner.policy = new_cleaning_policy;	
 }
 
 int ocf_mngt_cache_get_by_name(ocf_ctx_t ctx, const char *name, size_t name_len,

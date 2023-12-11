@@ -16,7 +16,7 @@
  * Configure maximum numbers of cores in cache instance
  */
 #ifndef OCF_CONFIG_MAX_CORES
-#define OCF_CONFIG_MAX_CORES 4096
+#define OCF_CONFIG_MAX_CORES 4095
 #endif
 
 /** Maximum number of IO classes that can be configured */
@@ -29,6 +29,9 @@
 #endif
 
 /** Enabling debug statistics */
+#ifdef debug
+#define COF_CONFIG_DEBUG_STATS 1
+#endif
 #ifndef OCF_CONFIG_DEBUG_STATS
 #define OCF_CONFIG_DEBUG_STATS 0
 #endif

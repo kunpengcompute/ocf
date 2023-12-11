@@ -74,6 +74,11 @@ struct ocf_io {
 	uint32_t dir;
 
 	/**
+	 * @brief OCF prefetch IO flag
+	 */
+	uint32_t is_pf_io;
+
+	/**
 	 * @brief Queue handle
 	 */
 	ocf_queue_t io_queue;

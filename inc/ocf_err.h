@@ -131,7 +131,10 @@ typedef enum {
 	/** Core with the uuid already exists */
 	OCF_ERR_CORE_UUID_EXISTS,
 
-	OCF_ERR_MAX = OCF_ERR_CORE_UUID_EXISTS,
+	/* Operation not allowed when clearner is disable */
+	OCF_ERR_CLEANER_DISABLED,
+
+	OCF_ERR_MAX = OCF_ERR_CLEANER_DISABLED,
 } ocf_error_t;
 
 #endif /* __OCF_ERR_H__ */

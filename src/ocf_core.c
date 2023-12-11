@@ -4,6 +4,7 @@
  */
 
 #include "ocf/ocf.h"
+#include "ocf/ocf_das.h"
 #include "ocf_priv.h"
 #include "ocf_core_priv.h"
 #include "ocf_io_priv.h"
@@ -12,10 +13,6 @@
 #include "utils/utils_user_part.h"
 #include "ocf_request.h"
 #include "ocf_trace_priv.h"
-
-struct ocf_core_volume {
-	ocf_core_t core;
-};
 
 ocf_cache_t ocf_core_get_cache(ocf_core_t core)
 {
@@ -235,6 +232,7 @@ static int ocf_core_submit_io_fast(struct ocf_io *io, struct ocf_request *req,
 	original_cache_mode = req->cache_mode;
 
 	switch (req->cache_mode) {
+	case ocf_req_cache_mode_pf:
 	case ocf_req_cache_mode_pt:
 		return -OCF_ERR_IO;
 	case ocf_req_cache_mode_wb:
@@ -287,6 +285,9 @@ void ocf_core_volume_submit_io(struct ocf_io *io)
 	core = ocf_volume_to_core(ocf_io_get_volume(io));
 	cache = ocf_core_get_cache(core);
 
+	if (io-dir == OCF_READ && !is_prefetch_req(req))
+		das_analyze_io(io);
+
 	ocf_trace_init_io(req);
 
 	if (unlikely(!env_bit_test(ocf_cache_state_running,
@@ -308,6 +309,7 @@ void ocf_core_volume_submit_io(struct ocf_io *io)
 	ocf_resolve_effective_cache_mode(cache, core, req);
 
 	ocf_core_update_stats(core, io);
+	ocf_core_debug_update_stats(core, io);
 
 	ocf_io_get(io);
 	/* Prevent race condition */
@@ -331,6 +333,66 @@ void ocf_core_volume_submit_io(struct ocf_io *io)
 	ret = ocf_engine_hndl_req(req);
 	if (ret) {
 		dec_counter_if_req_was_dirty(req);
+		ocf_io_end(io, ret);
+		ocf_io_put(io);
+	}
+}
+
+void ocf_core_volume_submit_prefetch(struct ocf_io *io)
+{
+	struct ocf_request *req;
+	ocf_core_t core;
+	ocf_cache_t cache;
+	int ret;
+
+	OCF_CHECK_NULL(io);
+
+	ret = ocf_core_validate_io(io);
+	if (ret < 0) {
+		ocf_io_end(io, ret);
+		return;
+	}
+
+	req = ocf_io_to_req(io);
+	core = ocf_volume_to_core(ocf_io_get_volume(io));
+	cache = ocf_core_get_cache(core);
+	if (unlikely(!env_bit_test(ocf_cache_state_running,
+					&cache->cache_state))) {
+		ocf_io_end(io, -OCF_ERR_CACHE_NOT_AVAIL);
+		return;
+	}
+
+	ret = ocf_req_alloc_map(req);
+	if (ret) {
+		ocf_io_end(io, ret);
+		return;
+	}
+
+	req->part_id = ocf_user_part_class2id(cache, io->io_class);
+	req->core = core;
+	req->complete = ocf_req_complete;
+
+	req->cache_mode = ocf_req_cache_mode_pf;
+
+	ocf_core_update_stats(core, io);
+
+	ocf_io_get(io);
+	/* Prevent race condition */
+	ocf_req_get(req);
+
+	if (!ocf_core_submit_io_fast(io, req, core, cache)) {
+		ocf_core_seq_cutoff_update(core, req);
+		ocf_req_put(req);
+		return;
+	}
+
+	ocf_req_put(req);
+	ocf_req_clear_map(req);
+	ocf_core_seq_cutoff_update(core, req);
+
+	ret = ocf_engine_hndl_req(req);
+	if (ret) {
+		dev_counter_if_req_was_dirty(req);
 		ocf_io_end(io, ret);
 		ocf_io_put(io);
 	}

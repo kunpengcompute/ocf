@@ -141,6 +141,9 @@ struct ocf_cache_attach_context {
 
 		uint8_t dirty_flushed;
 		/*!< is dirty data fully flushed */
+
+		bool cleaner_disabled;
+		/*!< is cleaner disabled */
 	} metadata;
 
 	struct {
@@ -200,7 +203,6 @@ static void __populate_free(ocf_cache_t cache)
 
 static ocf_error_t __init_cleaning_policy(ocf_cache_t cache)
 {
-	ocf_cleaning_t cleaning_policy = ocf_cleaning_default;
 	int i;
 
 	OCF_ASSERT_PLUGGED(cache);
@@ -210,9 +212,7 @@ static ocf_error_t __init_cleaning_policy(ocf_cache_t cache)
 	for (i = 0; i < ocf_cleaning_max; i++)
 		ocf_cleaning_setup(cache, i);
 
-	cache->conf_meta->cleaning_policy_type = ocf_cleaning_default;
-
-	return ocf_cleaning_initialize(cache, cleaning_policy, 1);
+	return ocf_cleaning_initialize(cache, cache->cleaner.policy, 1);
 }
 
 static void __deinit_cleaning_policy(ocf_cache_t cache)
@@ -276,7 +276,7 @@ static void __reset_stats(ocf_cache_t cache)
 	}
 }
 
-static ocf_error_t init_attached_data_structures(ocf_cache_t cache)
+static ocf_error_t init_attached_data_structures(ocf_cache_t cache, struct ocf_cache_attach_context *context)
 {
 	ocf_error_t result;
 
@@ -286,6 +286,11 @@ static ocf_error_t init_attached_data_structures(ocf_cache_t cache)
 	ocf_metadata_init_collision(cache);
 	__init_parts_attached(cache);
 	__populate_free(cache);
+
+	if (context->metadata.cleaner_disabled) {
+		cache->conf_meta->cleaning_policy_type = ocf_cleaning_nop;
+		cache->cleaner.policy = ocf_cleaning_nop;
+	}
 
 	result = __init_cleaning_policy(cache);
 	if (result) {
@@ -910,6 +915,7 @@ static void _ocf_mngt_load_read_properties_end(void *priv, int error,
 	context->metadata.shutdown_status = properties->shutdown_status;
 	context->metadata.dirty_flushed = properties->dirty_flushed;
 	context->metadata.line_size = properties->line_size;
+	context->metadata.cleaner_disabled = properties->cleaner_disabled;
 	cache->conf_meta->metadata_layout = properties->layout;
 	cache->conf_meta->cache_mode = properties->cache_mode;
 
@@ -927,6 +933,7 @@ static void _ocf_mngt_init_properties(ocf_pipeline_t pipeline,
 	context->metadata.shutdown_status = ocf_metadata_clean_shutdown;
 	context->metadata.dirty_flushed = DIRTY_FLUSHED;
 	context->metadata.line_size = context->cfg.cache_line_size;
+	context->metadata.cleaner_disabled = context->cfg.disable_cleaner;
 
 	ocf_pipeline_next(pipeline);
 }
@@ -962,14 +969,15 @@ static void _ocf_mngt_attach_prepare_metadata(ocf_pipeline_t pipeline,
 	int ret;
 
 	context->metadata.line_size = context->metadata.line_size ?:
-			cache->metadata.settings.size;
+			cache->metadata.line_size;
 
 	/*
 	 * Initialize variable size metadata segments
 	 */
 	ret = ocf_metadata_init_variable_size(cache, context->volume_size,
 			context->metadata.line_size,
-			cache->conf_meta->metadata_layout);
+			cache->conf_meta->metadata_layout,
+			context->metadata.cleaner_disabled);
 	if (ret)
 		OCF_PL_FINISH_RET(pipeline, ret);
 
@@ -994,7 +1002,7 @@ static void _ocf_mngt_attach_init_instance(ocf_pipeline_t pipeline,
 	ocf_cache_t cache = context->cache;
 	ocf_error_t result;
 
-	result = init_attached_data_structures(cache);
+	result = init_attached_data_structures(cache, context);
 	if (result)
 		OCF_PL_FINISH_RET(pipeline, result);
 
@@ -1138,6 +1146,7 @@ static void _ocf_mngt_cache_init(ocf_cache_t cache,
 	cache->conf_meta->cache_mode = params->metadata.cache_mode;
 	cache->conf_meta->metadata_layout = params->metadata.layout;
 	cache->conf_meta->promotion_policy_type = params->metadata.promotion_policy;
+	__set_cleaning_policy(cache, ocf_cleaning_default);
 
 	INIT_LIST_HEAD(&cache->io_queues);
 
@@ -1304,6 +1313,7 @@ static void _ocf_mngt_load_superblock_complete(void *priv, int error)
 {
 	struct ocf_cache_attach_context *context = priv;
 	ocf_cache_t cache = context->cache;
+	ocf_cleaning_t loaded_clean_policy = cache->conf_meta->cleaning_policy_type;
 
 	if (cache->conf_meta->cachelines !=
 			ocf_metadata_get_cachelines_count(cache)) {
@@ -1312,6 +1322,15 @@ static void _ocf_mngt_load_superblock_complete(void *priv, int error)
 		OCF_PL_FINISH_RET(context->pipeline,
 				-OCF_ERR_START_CACHE_FAIL);
 	}
+
+	if (loaded_clean_policy >= ocf_cleaning_max) {
+		ocf_cache_log(cache, log_err,
+				"ERROR: Invalid cleaning policy\n");
+		OCF_PL_FINISH_RET(context->pipeline,
+				-OCF_ERR_START_CACHE_FAIL);
+	}
+
+	__set_cleaning_policy(cache, loaded_clean_policy);
 
 	if (error) {
 		ocf_cache_log(cache, log_err,
@@ -1909,6 +1928,8 @@ static const char *_ocf_cache_mode_get_name(ocf_cache_mode_t cache_mode)
 	return _ocf_cache_mode_names[cache_mode];
 }
 
+//ZCTODO
+
 int ocf_mngt_cache_start(ocf_ctx_t ctx, ocf_cache_t *cache,
 		struct ocf_mngt_cache_config *cfg, void *priv)
 {
@@ -2057,7 +2078,7 @@ static int _ocf_mngt_cache_load_core_log(ocf_core_t core, void *cntx)
 static void _ocf_mngt_cache_load_log(ocf_cache_t cache)
 {
 	ocf_cache_mode_t cache_mode = ocf_cache_get_mode(cache);
-	ocf_cleaning_t cleaning_type = cache->conf_meta->cleaning_policy_type;
+	ocf_cleaning_t cleaning_type = cache->cleaner.policy;
 	ocf_promotion_t promotion_type = cache->conf_meta->promotion_policy_type;
 
 	ocf_cache_log(cache, log_info, "Successfully loaded\n");

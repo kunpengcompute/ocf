@@ -963,6 +963,8 @@ static void _ocf_mngt_init_clean_policy(ocf_pipeline_t pipeline, void *priv,
 				ocf_cleaning_get_name(new_policy));
 	}
 
+	__set_cleaning_policy(cache, new_policy);
+
 	cache->conf_meta->cleaning_policy_type = new_policy;
 
 	ocf_refcnt_unfreeze(&cache->cleaner.refcnt);
@@ -1006,13 +1008,16 @@ void ocf_mngt_cache_cleaning_set_policy(ocf_cache_t cache,
 	if (new_policy < 0 || new_policy >= ocf_cleaning_max)
 		OCF_CMPL_RET(priv, -OCF_ERR_INVAL);
 
-	old_policy = cache->conf_meta->cleaning_policy_type;
+	old_policy = cache->cleaner.policy;
 
 	if (new_policy == old_policy) {
 		ocf_cache_log(cache, log_info, "Cleaning policy %s is already "
 				"set\n", ocf_cleaning_get_name(old_policy));
 		OCF_CMPL_RET(priv, 0);
 	}
+
+	if (cache->conf_meta->cleaner_disabled)
+		OCF_CMPL_RET(priv, -OCF_ERR_CLEANER_DISABLED);
 
 	ret = ocf_pipeline_create(&pipeline, cache,
 			&_ocf_mngt_cache_set_cleaning_policy);
@@ -1036,7 +1041,7 @@ int ocf_mngt_cache_cleaning_get_policy(ocf_cache_t cache, ocf_cleaning_t *type)
 	OCF_CHECK_NULL(cache);
 	OCF_CHECK_NULL(type);
 
-	*type = cache->conf_meta->cleaning_policy_type;
+	*type = cache->cleaner.policy;
 
 	return 0;
 }

@@ -309,7 +309,7 @@ static inline void ocf_mngt_cache_config_set_default(
 	cfg->backfill.max_queue_size = 65536;
 	cfg->backfill.queue_unblock_size = 60000;
 	cfg->locked = false;
-	cfg->pt_unaligned_io = false;
+	cfg->pt_unaligned_io = true;
 	cfg->use_submit_io_fast = false;
 }
 
@@ -416,6 +416,7 @@ struct ocf_mngt_cache_device_config {
 	 * open callback
 	 */
 	void *volume_params;
+	bool disable_cleaner;
 };
 
 /**
@@ -433,6 +434,7 @@ static inline void ocf_mngt_cache_device_config_set_default(
 	cfg->open_cores = true;
 	cfg->force = false;
 	cfg->perform_test = true;
+	cfg->disable_cleaner = ture;
 	cfg->discard_on_start = true;
 	cfg->volume_params = NULL;
 }

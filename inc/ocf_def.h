@@ -165,6 +165,9 @@ typedef enum {
 	ocf_cache_mode_wo,
 		/*!< Write-only cache mode */
 
+	ocf_cache_mode_pf,
+		/*!< Prefetch cache mode */
+
 	ocf_cache_mode_max,
 		/*!< Stopper of cache mode enumerator */
 
