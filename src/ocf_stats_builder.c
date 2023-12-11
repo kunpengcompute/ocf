@@ -38,9 +38,9 @@ static void _fill_req(struct ocf_stats_requests *req, struct ocf_stats_core *s)
 	_set(&req->rd_pt, s->read_reqs.pass_through, total);
 	_set(&req->wr_pt, s->write_reqs.pass_through, total);
 
-	/* Prefetch Section */
-	_set(&req->pf_partial_misss, s->prefetch_reqs.partial_miss, total);
-	_set(&req->pf_full_miss, s->prefetch_reqs.pf_full_miss, total);
+	/* Prefetch section */
+	_set(&req->pf_partial_misses, s->prefetch_reqs.partial_miss, total);
+	_set(&req->pf_full_miss, s->prefetch_reqs.full_miss, total);
 	_set(&req->pf_total, s->prefetch_reqs.total, total);
 	_set(&req->pf_pt, s->prefetch_reqs.pass_through, total);
 
@@ -77,9 +77,9 @@ static void _fill_req_part(struct ocf_stats_requests *req,
 	_set(&req->rd_pt, s->read_reqs.pass_through, total);
 	_set(&req->wr_pt, s->write_reqs.pass_through, total);
 
-	/* Prefetch Section */
-	_set(&req->pf_partial_misss, s->prefetch_reqs.partial_miss, total);
-	_set(&req->pf_full_miss, s->prefetch_reqs.pf_full_miss, total);
+	/* Prefetch section */
+	_set(&req->pf_partial_misses, s->prefetch_reqs.partial_miss, total);
+	_set(&req->pf_full_miss, s->prefetch_reqs.full_miss, total);
 	_set(&req->pf_total, s->prefetch_reqs.total, total);
 	_set(&req->pf_pt, s->prefetch_reqs.pass_through, total);
 
@@ -122,7 +122,7 @@ static void _fill_blocks(struct ocf_stats_blocks *blocks,
 	wr = _bytes4k(s->prefetch_blocks.write);
 	total = rd + wr;
 	_set(&blocks->prefetch_core_rd, rd, total);
-	_set(&blocks->prefetch_core_wr, wr, total);
+	_set(&blocks->prefetch_cache_wr, wr, total);
 	_set(&blocks->prefetch_total, total, total);
 
 	/* Das */
@@ -164,7 +164,7 @@ static void _fill_blocks_part(struct ocf_stats_blocks *blocks,
 	wr = _bytes4k(s->prefetch_blocks.write);
 	total = rd + wr;
 	_set(&blocks->prefetch_core_rd, rd, total);
-	_set(&blocks->prefetch_core_wr, wr, total);
+	_set(&blocks->prefetch_cache_wr, wr, total);
 	_set(&blocks->prefetch_total, total, total);
 }
 

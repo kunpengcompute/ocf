@@ -17,17 +17,17 @@ static inline uint8_t env_atomic8_read(const env_atomic8 *a)
 	return a->counter; /* TODO */
 }
 
-static inline uint8_t env_atomic8_set(const env_atomic8 *a, uint8_t i)
+static inline void env_atomic8_set(env_atomic8 *a, uint8_t i)
 {
 	a->counter = i; /* TODO */
 }
 
-static inline uint8_t env_atomic8_sub(uint8_t i, const env_atomic8 *a)
+static inline void env_atomic8_sub(uint8_t i, env_atomic8 *a)
 {
-	__sync_sub_add_fetch(&a->counter, i);
+	__sync_sub_and_fetch(&a->counter, i);
 }
 
-static inline void env_atomic8_dec(const env_atomic8 *a)
+static inline void env_atomic8_dec(env_atomic8 *a)
 {
 	env_atomic8_sub(1, a);
 }
@@ -40,8 +40,8 @@ static inline uint8_t env_atomic8_cmpxchg(env_atomic8 *a, uint8_t old, uint8_t n
 static inline uint8_t env_atomic8_add_unless(env_atomic8 *a, uint8_t i, uint8_t u)
 {
 	uint8_t c, old;
-	c = env_atomic_read(a);
-	for(;;) {
+	c = env_atomic8_read(a);
+	for (;;) {
 		if (unlikely(c == (u)))
 			break;
 		old = env_atomic8_cmpxchg((a), c, c + (i));
@@ -155,6 +155,7 @@ int ocf_alock_init_inplace(struct ocf_alock *self, unsigned num_entries,
 	self->access = env_vzalloc(num_entries * sizeof(self->access[0]));
 	ocf_cache_log(cache, log_info, "Metadata access size: %llu kiB\n",
 			(long long unsigned)(num_entries * sizeof(self->access[0]))/1024);
+
 	if (!self->access) {
 		error = __LINE__;
 		goto allocation_err;
@@ -206,11 +207,10 @@ int ocf_alock_init(struct ocf_alock **self, unsigned num_entries,
 	OCF_DEBUG_TRACE(cache);
 
 	alock = env_vzalloc(sizeof(*alock));
-	ocf_cache_log(cache, log_err, "Metadata alock size: %llu kiB\n",
+	ocf_cache_log(cache, log_info, "Metadata alock size: %llu kiB\n",
 			(long long unsigned)(sizeof(*alock))/1024);
 	if (!alock)
 		return -OCF_ERR_NO_MEM;
-
 	ret = ocf_alock_init_inplace(alock, num_entries,
 			name, cbs, cache);
 
@@ -401,7 +401,7 @@ static inline bool ocf_alock_trylock_entry_rd2rd(struct ocf_alock *alock,
 {
 	env_atomic8 *access = &alock->access[entry];
 
-	int v = env_atomic8_read(access);
+	uint8_t v = env_atomic8_read(access);
 
 	ENV_BUG_ON(v == OCF_CACHE_LINE_ACCESS_IDLE);
 	ENV_BUG_ON(v == OCF_CACHE_LINE_ACCESS_WR);

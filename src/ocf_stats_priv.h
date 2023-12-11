@@ -58,10 +58,10 @@ struct ocf_stats_error {
  * @brief OCF block statistics in bytes
  */
 struct ocf_stats_block {
-	/** Number of blocks read */
+	/** Number of blocks read*/
 	uint64_t read;
 
-	/** Number of blocks written */
+	/** Number of blocks written*/
 	uint64_t write;
 };
 
@@ -188,7 +188,6 @@ struct ocf_counters_part {
 
 	struct ocf_counters_block prefetch_blocks;
 	struct ocf_counters_block blocks;
-
 	struct ocf_counters_block core_blocks;
 	struct ocf_counters_block cache_blocks;
 };
@@ -205,7 +204,8 @@ struct ocf_counters_debug {
 struct ocf_counters_debug_io {
 	env_atomic64 entry_read_io_total;
 	env_atomic64 entry_write_io_total;
-}
+};
+
 #endif
 
 struct ocf_counters_core {
