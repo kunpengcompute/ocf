@@ -258,7 +258,7 @@ void ocf_metadata_remove_from_collision(struct ocf_cache *cache,
 	// get the next cacheline of curr_line
 	ocf_metadata_get_collision_info(cache, line, &next_line);
 	// set the next pointer of the prev cache line to next_line
-	if (prev_line != cache->devie->collision_table_entries) {
+	if (prev_line != cache->device->collision_table_entries) {
 		ocf_metadata_set_collision_next(cache, prev_line, next_line);
 	} else {
 		if (ocf_metadata_get_hash(cache, hash_father) == line) {

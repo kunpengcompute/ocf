@@ -732,7 +732,7 @@ int ocf_metadata_init_variable_size(struct ocf_cache *cache,
 		raw->flapping = ocf_metadata_is_flapped(i);
 	}
 
-	if (0 != ocf_metadata_calculate_metadata_size(cache, line_size)) {
+	if (0 != ocf_metadata_calculate_metadata_size(cache, ctrl, line_size)) {
 		return -1;
 	}
 
@@ -1591,7 +1591,7 @@ bool ocf_metadata_##what(struct ocf_cache *cache, \
 { \
 	switch (cache->metadata.line_size) { \
 		case ocf_cache_line_size_4: \
-			return _ocf_metadata_##what##(cache, line, start, stop, all); \
+			return _ocf_metadata_##what(cache, line, start, stop, all); \
 		case ocf_cache_line_size_8: \
 		case ocf_cache_line_size_16: \
 		case ocf_cache_line_size_32: \
@@ -1612,7 +1612,7 @@ bool ocf_metadata_##what(struct ocf_cache *cache, \
 { \
 	switch (cache->metadata.line_size) { \
 		case ocf_cache_line_size_4: \
-			return _ocf_metadata_##what##(cache, line, start, stop); \
+			return _ocf_metadata_##what(cache, line, start, stop); \
 		case ocf_cache_line_size_8: \
 		case ocf_cache_line_size_16: \
 		case ocf_cache_line_size_32: \
@@ -1659,20 +1659,20 @@ bool ocf_metadata_clear_valid_if_clean(struct ocf_cache *cache,
 	}
 }
 
-bool ocf_metadata_clear_dirty_if_clean(struct ocf_cache *cache,
+void ocf_metadata_clear_dirty_if_invalid(struct ocf_cache *cache,
 	ocf_cache_line_t line, uint8_t start, uint8_t stop)
 {
 	switch (cache->metadata.line_size) {
 		case ocf_cache_line_size_4:
-			return _ocf_metadata_clear_dirty_if_clean(cache,
+			return _ocf_metadata_clear_dirty_if_invalid(cache,
 					line, start, stop);
 		case ocf_cache_line_size_8:
 		case ocf_cache_line_size_16:
 		case ocf_cache_line_size_32:
-			return _ocf_metadata_clear_dirty_if_clean_u8(cache,
+			return _ocf_metadata_clear_dirty_if_invalid_u8(cache,
 					line, start, stop);
 		case ocf_cache_line_size_64:
-			return _ocf_metadata_clear_dirty_if_clean_u16(cache,
+			return _ocf_metadata_clear_dirty_if_invalid_u16(cache,
 					line, start, stop);
 		case ocf_cache_line_size_none:
 		default:

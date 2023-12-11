@@ -207,38 +207,38 @@ static bool _ocf_metadata_clear_valid_if_clean_##type(struct ocf_cache *cache, \
 		ocf_cache_line_t line, uint8_t start, uint8_t stop) \
 { \
 	type mask = _get_mask_##type(start, stop); \
-
+\
 	struct ocf_metadata_ctrl *ctrl = \
 		(struct ocf_metadata_ctrl *) cache->metadata.priv; \
 \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	const struct ocf_metadata_map_##type *map = raw->mem_pool; \
+	struct ocf_metadata_map_##type *map = raw->mem_pool; \
 \
 	_raw_bug_on(raw, line); \
 \
 	map[line].valid &= (mask & map[line].dirty) | (~mask); \
 \
-	if (map[line.valid]) { \
+	if (map[line].valid) { \
 		return true; \
 	} else { \
 		return false; \ 
 	} \
 } \
 \
-static bool _ocf_metadata_clear_dirty_if_invalid_##type(struct ocf_cache *cache, \
+static void _ocf_metadata_clear_dirty_if_invalid_##type(struct ocf_cache *cache, \
 		ocf_cache_line_t line, uint8_t start, uint8_t stop) \
 { \
 	type mask = _get_mask_##type(start, stop); \
-
+\
 	struct ocf_metadata_ctrl *ctrl = \
 		(struct ocf_metadata_ctrl *) cache->metadata.priv; \
 \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	const struct ocf_metadata_map_##type *map = raw->mem_pool; \
+	struct ocf_metadata_map_##type *map = raw->mem_pool; \
 \
 	_raw_bug_on(raw, line); \
 \
@@ -274,13 +274,13 @@ static bool _ocf_metadata_clear_valid_if_clean(struct ocf_cache *cache, \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	const struct ocf_metadata_map_##type *map = raw->mem_pool; \
+	struct ocf_metadata_map_##type *map = raw->mem_pool; \
 \
 	ENV_BUG_ON(start != stop); \
 \
 	_raw_bug_on(raw, line); \
 \
-	map[line]._valid &= (!map[line]._dirty)? 0 :  map[line]._valid; \
+	map[line]._valid = (!map[line]._dirty)? 0 :  map[line]._valid; \
 \
 	if (map[line]._valid) { \
 		return true; \
@@ -289,7 +289,7 @@ static bool _ocf_metadata_clear_valid_if_clean(struct ocf_cache *cache, \
 	} \
 } \
 \
-static bool _ocf_metadata_clear_dirty_if_invalid(struct ocf_cache *cache, \
+static void _ocf_metadata_clear_dirty_if_invalid(struct ocf_cache *cache, \
 		ocf_cache_line_t line, uint8_t start, uint8_t stop) \
 { \
 	struct ocf_metadata_ctrl *ctrl = \
@@ -298,16 +298,16 @@ static bool _ocf_metadata_clear_dirty_if_invalid(struct ocf_cache *cache, \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	const struct ocf_metadata_map *map = raw->mem_pool; \
+	struct ocf_metadata_map *map = raw->mem_pool; \
 \
 	ENV_BUG_ON(start != stop); \
 \
 	_raw_bug_on(raw, line); \
 \
-	return map[line]._dirty = (!map[line]._valid)? 0 : map[line]._dirty;\
+	map[line]._dirty = (!map[line]._valid)? 0 : map[line]._dirty;\
 } \
 \
-/* true if no incorrect combination of status bits */
+/* true if no incorrect combination of status bits */ \
 static bool _ocf_metadata_check(struct ocf_cache *cache, \
 		ocf_cache_line_t line) \
 { \
@@ -317,7 +317,7 @@ static bool _ocf_metadata_check(struct ocf_cache *cache, \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	const struct ocf_metadata_map *map = raw->mem_pool; \
+	struct ocf_metadata_map *map = raw->mem_pool; \
 \
 	_raw_bug_on(raw, line); \
 \
@@ -362,7 +362,7 @@ static bool _ocf_metadata_clear_##what(struct ocf_cache *cache, \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	const struct ocf_metadata_map *map = raw->mem_pool; \
+	struct ocf_metadata_map *map = raw->mem_pool; \
 \
 	ENV_BUG_ON(start != stop); \
 \
@@ -384,7 +384,7 @@ static bool _ocf_metadata_set_##what(struct ocf_cache *cache, \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	const struct ocf_metadata_map *map = raw->mem_pool; \
+	struct ocf_metadata_map *map = raw->mem_pool; \
 \
 	ENV_BUG_ON(start != stop); \
 	_raw_bug_on(raw, line); \
@@ -407,7 +407,7 @@ static bool _ocf_metadata_test_and_set_##what( \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	const struct ocf_metadata_map *map = raw->mem_pool; \
+	struct ocf_metadata_map *map = raw->mem_pool; \
 \
 	ENV_BUG_ON(start != stop); \
 \
@@ -416,7 +416,7 @@ static bool _ocf_metadata_test_and_set_##what( \
 	if (map[line]._##what) { \
 		test = true; \
 	} else { \
-		test = false;
+		test = false; \
 	} \
 \
 	map[line]._##what = 1; \
@@ -434,7 +434,7 @@ static bool _ocf_metadata_test_and_clear_##what( \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	const struct ocf_metadata_map *map = raw->mem_pool; \
+	struct ocf_metadata_map *map = raw->mem_pool; \
 \
 	ENV_BUG_ON(start != stop); \
 \
@@ -443,7 +443,7 @@ static bool _ocf_metadata_test_and_clear_##what( \
 	if (map[line]._##what) { \
 		test = true; \
 	} else { \
-		test = false;
+		test = false; \
 	} \
 \
 	map[line]._##what = 0; \
@@ -457,9 +457,9 @@ ocf_metadata_bit_func(valid, type); \
 ocf_metadata_bit_func_basic(type); \
 
 #define ocf_metadata_bit_no_struct() \
-ocf_metadata_bit_no_type(dirty); \
-ocf_metadata_bit_no_type(valid); \
-ocf_metadata_bit_func_basic_no_type(type); \
+ocf_metadata_bit_func_no_type(dirty); \
+ocf_metadata_bit_func_no_type(valid); \
+ocf_metadata_bit_func_basic_no_type(); \
 
 ocf_metadata_bit_no_struct();
 
