@@ -15,7 +15,7 @@
 
 #if 1 == OCF_METADATA_RAW_DEBUG
 #define OCF_DEBUG_TRACE(cache) \
-	ocf_cache_log(log_info, "[Metadata][Raw] %s\n", __func__)
+	ocf_cache_log(cache, log_info, "[Metadata][Raw] %s\n", __func__)
 
 #define OCF_DEBUG_MSG(cache, msg) \
 	ocf_cache_log(cache, log_info, "[Metadata][Raw] %s - %s\n", \
@@ -109,8 +109,6 @@ static int _raw_ram_init(ocf_cache_t cache,
 {
 	size_t mem_pool_size;
 	int ret;
-
-	OCF_DEBUG_TRACE(cache);
 
 	/* TODO: caller should specify explicitly whether to init mio conc? */
 	if (lock_page_pfn) {
@@ -295,8 +293,6 @@ static int _raw_ram_flush_all_fill(ocf_cache_t cache,
 
 	raw_page = page - context->ssd_pages_offset;
 	line = raw_page * raw->entries_in_page;
-
-	OCF_DEBUG_PARAM(cache, "Line = %u, Page = %u", line, raw_page);
 
 	if (raw->lock_page)
 		raw->lock_page(cache, raw, raw_page);

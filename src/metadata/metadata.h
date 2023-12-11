@@ -40,11 +40,12 @@ int ocf_metadata_init(struct ocf_cache *cache,
  * @param cache - Cache instance
  * @param device_size - Device size in bytes
  * @param cache_line_size Cache line size
+ * @param cleaner_disabled Cleaner is disabled
  * @return 0 - Operation success otherwise failure
  */
 int ocf_metadata_init_variable_size(struct ocf_cache *cache,
 		uint64_t device_size, ocf_cache_line_size_t cache_line_size,
-		ocf_metadata_layout_t layout);
+		ocf_metadata_layout_t layout, bool cleaner_disable);
 
 /**
  * @brief Initialize collision table
@@ -188,7 +189,9 @@ uint64_t ocf_metadata_get_reserved_lba(ocf_cache_t cache);
  * At the moment there is no high level metadata interface because of that
  * temporary defined in this file.
  */
-
+#define HASH_LOCK_BIT     (13)
+ocf_cache_line_t*
+ocf_metadata_get_hash_p(struct ocf_cache *cache, ocf_cache_line_t index);
 ocf_cache_line_t
 ocf_metadata_get_hash(struct ocf_cache *cache, ocf_cache_line_t index);
 
@@ -202,6 +205,7 @@ struct ocf_metadata_load_properties {
 	ocf_cache_mode_t cache_mode;
 	ocf_cache_line_size_t line_size;
 	char *cache_name;
+	bool cleaner_disabled;
 };
 
 typedef void (*ocf_metadata_load_properties_end_t)(void *priv, int error,

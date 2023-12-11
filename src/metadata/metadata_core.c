@@ -43,6 +43,7 @@ void ocf_metadata_set_core_info(struct ocf_cache *cache,
 	if (collision) {
 		collision->core_id = core_id;
 		collision->core_line = core_sector;
+		ENV_BUG_ON(core_sector != ULLONG_MAX && core_sector >> CORE_LINE_BITS);
 	} else {
 		ocf_metadata_error(cache);
 	}

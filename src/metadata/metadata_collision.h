@@ -11,11 +11,10 @@
  */
 
 struct ocf_metadata_list_info {
-	ocf_cache_line_t prev_col;
 		/*!<  Previous cache line in collision list */
-	ocf_cache_line_t next_col;
+	ocf_cache_line_t next_col : CACHE_LINE_BITS;
 		/*!<  Next cache line in collision list*/
-	ocf_part_id_t partition_id : 8;
+	ocf_part_id_t partition_id : 6;
 		/*!<  ID of partition where is assigned this cache line*/
 } __attribute__((packed));
 
@@ -24,14 +23,17 @@ struct ocf_metadata_list_info {
  */
 
 struct ocf_metadata_map {
-	uint64_t core_line;
-		/*!<  Core line addres on cache mapped by this strcture */
+	/* Core line is aligned to PAGE_SIZE in the worst case, so we don't keep
+	 * the least significant bits (12) that are all zeros.
+	 * Largest supported volume is 64 TB. */
+	uint64_t core_line : CORE_LINE_BITS;
 
-	uint16_t core_id;
+	uint16_t core_id : CORE_LINE_BITS;
 		/*!<  ID of core where is assigned this cache line*/
-
-	uint8_t status[];
-		/*!<  Entry status structure e.g. valid, dirty...*/
+	uint16_t _valid : 1;
+		/*!<  valid bit for 4K cache line */
+	uint16_t _dirty : 1;
+		/*!<  dirty bit for 4K cache line */
 } __attribute__((packed));
 
 ocf_cache_line_t ocf_metadata_map_lg2phy(
@@ -42,36 +44,23 @@ ocf_cache_line_t ocf_metadata_map_phy2lg(
 
 void ocf_metadata_set_collision_info(
 		struct ocf_cache *cache, ocf_cache_line_t line,
-		ocf_cache_line_t next, ocf_cache_line_t prev);
+		ocf_cache_line_t next);
 
 void ocf_metadata_set_collision_next(
 		struct ocf_cache *cache, ocf_cache_line_t line,
 		ocf_cache_line_t next);
 
-void ocf_metadata_set_collision_prev(
-		struct ocf_cache *cache, ocf_cache_line_t line,
-		ocf_cache_line_t prev);
-
 void ocf_metadata_get_collision_info(
 		struct ocf_cache *cache, ocf_cache_line_t line,
-		ocf_cache_line_t *next, ocf_cache_line_t *prev);
+		ocf_cache_line_t *next);
 
 static inline ocf_cache_line_t ocf_metadata_get_collision_next(
 		struct ocf_cache *cache, ocf_cache_line_t line)
 {
 	ocf_cache_line_t next;
 
-	ocf_metadata_get_collision_info(cache, line, &next, NULL);
+	ocf_metadata_get_collision_info(cache, line, &next);
 	return next;
-}
-
-static inline ocf_cache_line_t ocf_metadata_get_collision_prev(
-		struct ocf_cache *cache, ocf_cache_line_t line)
-{
-	ocf_cache_line_t prev;
-
-	ocf_metadata_get_collision_info(cache, line, NULL, &prev);
-	return prev;
 }
 
 void ocf_metadata_add_to_collision(struct ocf_cache *cache,
