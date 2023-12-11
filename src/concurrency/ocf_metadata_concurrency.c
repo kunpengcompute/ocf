@@ -65,7 +65,7 @@ static inline int hash_lock_do_lock(struct ocf_cache *cache, int index, int try)
 {
 	uint32_t step = 0;
 	while (1) {
-		uint32_t lint = ocf_metadata_get_hash(cache, index);
+		uint32_t line = ocf_metadata_get_hash(cache, index);
 
 		if (env_atomic_cmpxchg((env_atomic*)ocf_metadata_get_hash_p(cache, index), line, (line | 1<<HASH_LOCK_BIT)) == line)
 			return 0;
@@ -87,7 +87,7 @@ static inline int hash_lock_trylock(struct ocf_cache *cache, int index)
 	return hash_lock_do_lock(cache, index, 1);
 }
 
-static inline int hash_lock_unlock(struct ocf_cache *cache, int index)
+static inline void hash_lock_unlock(struct ocf_cache *cache, int index)
 {
 	*ocf_metadata_get_hash_p(cache, index) = ocf_metadata_get_hash(cache, index);
 }
