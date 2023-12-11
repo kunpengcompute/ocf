@@ -189,7 +189,7 @@ uint64_t ocf_metadata_get_reserved_lba(ocf_cache_t cache);
  * At the moment there is no high level metadata interface because of that
  * temporary defined in this file.
  */
-#define HASH_LOCK_BIT     (13)
+#define HASH_LOCK_BIT	(31)
 ocf_cache_line_t*
 ocf_metadata_get_hash_p(struct ocf_cache *cache, ocf_cache_line_t index);
 ocf_cache_line_t

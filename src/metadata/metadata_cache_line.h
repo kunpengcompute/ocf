@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
- #ifndef __METADATA_CACAH_LINE_H__
- #define __METADATA_CACHE_LINE_H__
+#ifndef __METADATA_CACHE_LINE_H__
+#define __METADATA_CACHE_LINE_H__
 
 static inline ocf_cache_line_size_t ocf_line_size(struct ocf_cache *cache)
 {
