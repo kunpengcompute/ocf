@@ -274,7 +274,7 @@ static bool _ocf_metadata_clear_valid_if_clean(struct ocf_cache *cache, \
 	struct ocf_metadata_raw *raw = \
 			&ctrl->raw_desc[metadata_segment_collision]; \
 \
-	struct ocf_metadata_map_##type *map = raw->mem_pool; \
+	struct ocf_metadata_map *map = raw->mem_pool; \
 \
 	ENV_BUG_ON(start != stop); \
 \
