@@ -28,7 +28,7 @@ struct ocf_metadata_map {
 	 * Largest supported volume is 64 TB. */
 	uint64_t core_line : CORE_LINE_BITS;
 
-	uint16_t core_id : CORE_ID_BITS;
+	uint64_t core_id : CORE_ID_BITS;
 		/*!<  ID of core where is assigned this cache line*/
 	uint16_t _valid : 1;
 		/*!<  valid bit for 4K cache line */
