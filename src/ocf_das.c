@@ -1,9 +1,3 @@
-
-
-
-
-
-
 #include "ocf/ocf_das.h"
 #include "ocf/das.h"
 #include "ocf_cache_priv.h"
@@ -14,7 +8,6 @@
 #include "engine/engine_common.h"
 #include "engine/engine_debug.h"
 #include "engine/engine_pf.h"
-#include "ocf/ocf_status.h"
 
 #define OCF_DAS_SEC_TO_NSEC 1000000000
 #define MAX_SINGLE_PF (512 * KiB)
@@ -88,9 +81,6 @@ static bool das_is_limit(ocf_core_t core)
 		return true;
 	}
 }
-
-
-
 
 #define SCAN_CACHE_LINES 1
 #define MAX_PF_MB (16)
@@ -169,11 +159,6 @@ static int ocf_make_prefetch(struct DasKvParam *param)
 	struct ocf_request *req;
 	bool reject_flag = false;
 	void *data;
-
-	if (!spdk_nvmf_get_ocf_status()) {
-		ENV_WARN(true, "ocf is invalid, intercept this prefetch\n");
-		return;
-	}
 
 	/* round address down to whole line size */
 	param->offset = ocf_lines_2_bytes(cache, ocf_bytes_2_lines_round_down(cache, param->offset));
