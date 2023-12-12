@@ -327,7 +327,7 @@ void ocf_submit_cache_reqs(struct ocf_cache *cache,
 		}
 
 		io->is_pf_io = req->ioi.io.is_pf_io;
-
+		
 		ocf_core_stats_cache_block_update(req->core, io_class,
 				dir, bytes);
 		ocf_volume_submit_io(io);
@@ -340,7 +340,7 @@ void ocf_submit_cache_reqs(struct ocf_cache *cache,
 void ocf_submit_volume_req(ocf_volume_t volume, struct ocf_request *req,
 		ocf_req_end_t callback)
 {
-	if (req->ioi.io.priv1) {
+    if (req->ioi.io.priv1) {
 		// set io to core stage
 		int32_t *io_stage = (int32_t *)(*(uint64_t *)(req->ioi.io.priv1 + NVMF_REQUEST_OFFSET_IN_BDEVIO)
 				+ IO_STAGE_OFFSET_IN_NVMF_REQUEST);
@@ -348,7 +348,7 @@ void ocf_submit_volume_req(ocf_volume_t volume, struct ocf_request *req,
 		if (*io_stage == OCF_IO_CACHE_STAGE) {
 			*io_stage = OCF_IO_CORE_STAGE;
 		}
-	}
+    }
 	uint64_t flags = req->ioi.io.flags;
 	uint32_t io_class = req->ioi.io.io_class;
 	int dir = req->rw;

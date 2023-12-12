@@ -19,6 +19,8 @@
 #include "../metadata/metadata.h"
 #include "../ocf_def_priv.h"
 
+#define OCF_ENGINE_DEBUG 0
+
 #define OCF_ENGINE_DEBUG_IO_NAME "rd"
 #include "engine_debug.h"
 
@@ -41,6 +43,7 @@ static void _ocf_read_generic_hit_complete(struct ocf_request *req, int error)
 		OCF_DEBUG_RQ(req, "HIT completion");
 
 		if (req->error) {
+			OCF_DEBUG_RQ(req, "ERROR");
 			ocf_core_stats_cache_error_update(req->core, OCF_READ);
 			ocf_engine_push_req_front_pt(req);
 		} else {
@@ -253,6 +256,7 @@ int ocf_read_generic(struct ocf_request *req)
 			ocf_req_put(req);
 		}
 	} else {
+		OCF_DEBUG_RQ(req, "MAP ERROR");
 		ocf_req_clear(req);
 		req->force_pt = true;
 		ocf_get_io_if(ocf_cache_mode_pt)->read(req);

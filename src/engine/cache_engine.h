@@ -21,10 +21,13 @@ typedef enum {
 	ocf_req_cache_mode_pt = ocf_cache_mode_pt,
 	ocf_req_cache_mode_wi = ocf_cache_mode_wi,
 	ocf_req_cache_mode_wo = ocf_cache_mode_wo,
+	ocf_req_cache_mode_pf = ocf_cache_mode_pf,
 
 	/* internal modes */
 	ocf_req_cache_mode_fast,
 		/*!< Fast path */
+	ocf_req_cache_mode_fast_pf,
+		/*!< prefetch fast path */
 	ocf_req_cache_mode_d2c,
 		/*!< Direct to Core - pass through to core without
 				touching cacheline metadata */

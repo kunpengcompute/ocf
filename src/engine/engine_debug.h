@@ -31,7 +31,7 @@
 			##__VA_ARGS__)
 
 #define OCF_DEBUG_RQ(req, format, ...) \
-	ocf_cache_log(req->cache, log_info, "[Engine][%s][%s, %llu, %u] %s - " \
+	ocf_cache_log(req->cache, log_info, "[Engine][%s][%s, 0x%x, 0x%x] %s - " \
 		format"\n", OCF_ENGINE_DEBUG_IO_NAME, \
 		OCF_READ == (req)->rw ? "RD" : "WR", req->byte_position, \
 		req->byte_length, __func__, ##__VA_ARGS__)

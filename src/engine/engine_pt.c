@@ -13,6 +13,8 @@
 #include "../metadata/metadata.h"
 #include "../concurrency/ocf_concurrency.h"
 
+#define OCF_ENGINE_DEBUG 0
+
 #define OCF_ENGINE_DEBUG_IO_NAME "pt"
 #include "engine_debug.h"
 
@@ -31,10 +33,10 @@ static void _ocf_read_pt_complete(struct ocf_request *req, int error)
 		ocf_core_stats_core_error_update(req->core, OCF_READ);
 	}
 
+	ocf_req_unlock(ocf_cache_line_concurrency(req->cache), req);
+
 	/* Complete request */
 	req->complete(req, req->error);
-
-	ocf_req_unlock_rd(ocf_cache_line_concurrency(req->cache), req);
 
 	/* Release OCF request */
 	ocf_req_put(req);

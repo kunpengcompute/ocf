@@ -12,7 +12,7 @@ bool spdk_nvmf_get_ocf_status(void)
     return __atomic_load_n(&g_ocf_status, __ATOMIC_RELAXED);
 }
 
-bool spdk_nvmf_set_ocf_status(bool status)
+void spdk_nvmf_set_ocf_status(bool status)
 {
-    return __atomic_store_n(&g_ocf_status, status, __ATOMIC_RELAXED);
+    __atomic_store_n(&g_ocf_status, status, __ATOMIC_RELEASE);
 }

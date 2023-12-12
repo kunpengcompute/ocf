@@ -10,6 +10,8 @@
 #include "../ocf_request.h"
 #include "../utils/utils_io.h"
 
+#define OCF_ENGINE_DEBUG 0
+
 #define OCF_ENGINE_DEBUG_IO_NAME "ops"
 #include "engine_debug.h"
 

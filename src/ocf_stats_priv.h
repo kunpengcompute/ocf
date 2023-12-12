@@ -124,10 +124,10 @@ struct ocf_stats_core_debug {
  * @brief Core debug IO statistics
  */
 struct ocf_stats_core_debug_io {
-	/** I/O sizes being read */
+	/** I/O sizes being read*/
 	uint64_t read_reqs;
 
-	/** I/O sizes being writeen*/
+	/** I/O sizes being written*/
 	uint64_t write_reqs;
 };
 
@@ -151,10 +151,10 @@ struct ocf_stats_core {
 	struct ocf_stats_req write_reqs;
 
 	/** Prefetch requests for DAS Algorithm */
-	struct ocf_stats_req prefetch reqs;	
+	struct ocf_stats_req prefetch_reqs;
 
 	/** Prefetch requests for DAS Algorithm */
-	struct ocf_stats_block prefetch blocks;	
+	struct ocf_stats_block prefetch_blocks;
 
 	/** Block requests for cache volume statistics */
 	struct ocf_stats_block cache_volume;
@@ -188,7 +188,6 @@ struct ocf_counters_part {
 
 	struct ocf_counters_block prefetch_blocks;
 	struct ocf_counters_block blocks;
-
 	struct ocf_counters_block core_blocks;
 	struct ocf_counters_block cache_blocks;
 };
@@ -205,7 +204,8 @@ struct ocf_counters_debug {
 struct ocf_counters_debug_io {
 	env_atomic64 entry_read_io_total;
 	env_atomic64 entry_write_io_total;
-}
+};
+
 #endif
 
 struct ocf_counters_core {

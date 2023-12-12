@@ -8,6 +8,7 @@
 #include "../ocf_cache_priv.h"
 #include "../ocf_queue_priv.h"
 #include "engine_common.h"
+#define OCF_ENGINE_DEBUG 0
 #define OCF_ENGINE_DEBUG_IO_NAME "common"
 #include "engine_debug.h"
 #include "../utils/utils_cache_line.h"
@@ -207,7 +208,7 @@ static void ocf_engine_set_hot(struct ocf_request *req)
 	}
 }
 
-static void ocf_engine_lookup(struct ocf_request *req)
+void ocf_engine_lookup(struct ocf_request *req)
 {
 	uint32_t i;
 	uint64_t core_line;
@@ -468,6 +469,12 @@ int ocf_engine_prepare_clines(struct ocf_request *req)
 	/* check CL status */
 	ocf_engine_lookup(req);
 
+	/* Abort prefetch if cache-hit */
+	if (prefetch_req_should_abort(req)) {
+		ocf_hb_req_prot_unlock_rd(req);
+		return -OCF_ERR_NO_LOCK;
+	}
+
 	mapped = ocf_engine_is_mapped(req);
 	if (mapped) {
 		lock = lock_clines(req);
@@ -581,7 +588,7 @@ void ocf_engine_update_block_stats(struct ocf_request *req)
 void ocf_engine_update_request_stats(struct ocf_request *req)
 {
 	ocf_core_stats_request_update(req->core, req->part_id, req->rw,
-			req->info.hit_no, req->core_line_count);
+			req->info.hit_no, req->core_line_count, req->cache_mode);
 }
 
 void ocf_engine_push_req_back(struct ocf_request *req, bool allow_sync)
@@ -678,6 +685,14 @@ static int _ocf_engine_refresh(struct ocf_request *req)
 
 	ocf_hb_req_prot_unlock_rd(req);
 
+	/* Abort prefetch request which is hit after resume */
+	if (prefetch_req_should_abort(req)) {
+		ocf_req_unlock(ocf_cache_line_concurrency(req->cache), req);
+		req->complete(req, 0);
+		ocf_req_put(req);
+		return 0;
+	}
+
 	if (result == 0) {
 
 		/* Refresh successful, can process with original IO interface */
@@ -695,11 +710,11 @@ static int _ocf_engine_refresh(struct ocf_request *req)
 		ENV_WARN(true, "Inconsistent request");
 		req->error = -OCF_ERR_INVAL;
 
-		/* Complete request */
-		req->complete(req, req->error);
-
 		/* Release WRITE lock of request */
 		ocf_req_unlock(ocf_cache_line_concurrency(req->cache), req);
+
+		/* Complete request */
+		req->complete(req, req->error);
 
 		/* Release OCF request */
 		ocf_req_put(req);
@@ -724,4 +739,23 @@ void ocf_engine_on_resume(struct ocf_request *req)
 	OCF_DEBUG_RQ(req, "On resume");
 
 	ocf_engine_push_req_front_if(req, &_io_if_refresh, false);
+}
+
+bool inline is_prefetch_req(struct ocf_request *req)
+{
+	return req->ioi.io.is_pf_io;
+}
+
+/* Return true if prefetch request should be aborted */
+bool prefetch_req_should_abort(struct ocf_request *req)
+{
+	if (unlikely(req == NULL)) {
+		ENV_WARN(true, "NULL Request\n");
+		return false;
+	}
+
+	if (is_prefetch_req(req) && ocf_engine_is_hit(req))
+		return true;
+
+	return false;
 }
