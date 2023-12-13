@@ -46,15 +46,6 @@ void init_das_limiter(ocf_cache_t cache, ocf_core_t core)
 			core->das_limiter.capacity, core->das_limiter.leak_rate);
 }
 
-void set_das_limiter(ocf_core_t core, uint32_t capacity, uint32_t leak_rate)
-{
-	core->das_limiter.capacity = capacity;
-	core->das_limiter.leak_rate = OCF_MAX(leak_rate, MIN_LIMITER_LEAK_RATE);
-	core->das_limiter.cur_water = 0;
-	ocf_core_log(core, log_info, "das limiter: capacity = %u, leak_rate = %u\n",
-			core->das_limiter.capacity, core->das_limiter.leak_rate);
-}
-
 static bool das_is_limit(ocf_core_t core)
 {
 	uint32_t water_leaked;
