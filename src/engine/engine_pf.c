@@ -74,42 +74,6 @@ static void _ocf_prefetch_miss_complete(struct ocf_request *req, int error)
 	}
 }
 
-static void _ocf_prefetch_hit_complete(struct ocf_request *req, int error)
-{
-	struct ocf_alock *c = ocf_cache_line_concurrency(
-		req->cache);
-	
-	if (error)
-		req->error |= error;
-	
-	if (req->error)
-		inc_fallback_pt_error_counter(req->cache);
-
-	/* Handle callback-caller race to let only one of the two complete the
-	 * request. Also, complete original request only if this is the last
-	 * sub-request to complete
-	 */
-	if (env_atomic_dec_return(&req->req_remaining) == 0) {
-		OCF_DEBUG_RQ(req, "HIT completion");
-
-		if (req->error) {
-			OCF_DEBUG_RQ(req, "ERROR");
-			ocf_core_stats_cache_error_update(req->core, OCF_READ);
-			ocf_engine_push_req_front_pt(req);
-		} else {
-			ocf_req_unlock(c, req);
-
-			/* Complete request */
-			req->complete(req, req->error);
-
-			/* Free the request at the last point
-			 * of the completion path
-			 */
-			ocf_req_put(req);
-		}
-	}
-}
-
 static void _ocf_prefetch_submit(struct ocf_request *req)
 {
 	struct ocf_cache *cache = req->cache;
