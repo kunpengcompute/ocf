@@ -31,6 +31,20 @@ sync:
 	@$(MAKE) -C ${OCFDIR} src O=$(PWD)
 	@$(MAKE) -C ${OCFDIR} env O=$(PWD) OCF_ENV=posix
 
+install:
+ifeq ($(strip $(DESTDIR)),)
+	$(error No target directory specified for installation)
+endif
+	install -Dp $(PWD)/include/lava_adaptor.h $(DESTDIR)/usr/include/lava_adaptor.h
+	install -Dp $(PWD)/include/ocf_cache* $(DESTDIR)/usr/include
+	install -Dp $(PWD)/$(LIB) $(DESTDIR)/usr/lib64/$(LIB)
+
+uninstall:
+ifeq ($(strip $(DESTDIR)),)
+	$(error No target directory specified for uninstallation)
+endif
+	rm -rf $(DESTDIR)/usr
+
 clean:
 	@rm -rf $(LIB) $(OBJS) $(OBJS_CPP)
 
@@ -39,5 +53,5 @@ distclean:
 	@rm -rf src/ocf
 	@rm -rf include/ocf
 
-.PHONY: all clean
+.PHONY: all clean install uninstall
 
