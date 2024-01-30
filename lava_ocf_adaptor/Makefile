@@ -35,8 +35,8 @@ install:
 ifeq ($(strip $(DESTDIR)),)
 	$(error No target directory specified for installation)
 endif
-	install -Dp $(PWD)/include/lava_adaptor.h $(DESTDIR)/usr/include/lava_adaptor.h
-	install -Dp $(PWD)/include/ocf_cache* $(DESTDIR)/usr/include
+	install -d $(DESTDIR)/usr/include
+	install -Dp $(PWD)/include/ocf_adaptor* $(DESTDIR)/usr/include
 	install -Dp $(PWD)/$(LIB) $(DESTDIR)/usr/lib64/$(LIB)
 
 uninstall:

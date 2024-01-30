@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __OCF_CACHE_QUEUE_H__
-#define __OCF_CACHE_QUEUE_H__
+#ifndef __OCF_ADAPTOR_QUEUE_H__
+#define __OCF_ADAPTOR_QUEUE_H__
 
 #include <stdint.h>
 

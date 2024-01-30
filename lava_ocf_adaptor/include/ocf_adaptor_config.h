@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __OCF_CACHE_CONFIG_H__
-#define __OCF_CACHE_CONFIG_H__
+#ifndef __OCF_ADAPTOR_CONFIG_H__
+#define __OCF_ADAPTOR_CONFIG_H__
 
 #include <stdint.h>
 
@@ -31,6 +31,9 @@ struct ocf_config {
 
 	uint128_t core_mask;
 	/*!< set of cores allocated to ocf */
+
+	log_print_func log_print;
+	/*!< if log_print is NULL, the log is printed to /var/log/message */
 };
 
 #ifdef __cplusplus
