@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __LAVA_ADAPTOR_H__
-#define __LAVA_ADAPTOR_H__
+#ifndef __OCF_ADAPTOR_H__
+#define __OCF_ADAPTOR_H__
 
-#include "ocf_cache_err.h"
-#include "ocf_cache_config.h"
-#include "ocf_cache_queue.h"
+#include "ocf_adaptor_config.h"
+#include "ocf_adaptor_err.h"
+#include "ocf_adaptor_log.h"
+#include "ocf_adaptor_queue.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,7 +112,6 @@ int32_t ocf_put(struct req_context *ctx);
  *         othewise STATE_SUCCESS
  */
 int32_t ocf_poll(uint32_t io_worker_id, uint32_t max_num);
-
 #ifdef __cplusplus
 }
 #endif
