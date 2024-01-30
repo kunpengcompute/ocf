@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __OCF_CACHE_ERR_H__
-#define __OCF_CACHE_ERR_H__
+#ifndef __OCF_ADAPTOR_ERR_H__
+#define __OCF_ADAPTOR_ERR_H__
 
 #define STATE_SUCCESS 0
 

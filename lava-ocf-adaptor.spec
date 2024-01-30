@@ -1,4 +1,4 @@
-Name:       lava-adaptor-ocf
+Name:       lava-ocf-adaptor
 Version:    1.0.0
 Release:    1%{?dist}
 Summary:    adaptation to lava based on open cas framework
@@ -17,7 +17,7 @@ Based on the open cas framework, only the logic of the cache device is retained 
 %setup -a 0 -c -q
 
 %build
-cd ocf/lava_adaptor
+cd ocf/lava_ocf_adaptor
 make distclean
 make -j16
 
@@ -25,7 +25,7 @@ make -j16
 if [-d %{buildroot}]; then
 	rm -rf %{buildroot}
 fi
-cd ocf/lava_adaptor
+cd ocf/lava_ocf_adaptor
 make install DESTDIR=%{buildroot}
 
 %pre
