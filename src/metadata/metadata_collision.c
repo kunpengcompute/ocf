@@ -9,8 +9,7 @@
 #include "../utils/utils_cache_line.h"
 
 void ocf_metadata_set_collision_info(struct ocf_cache *cache,
-		ocf_cache_line_t line, ocf_cache_line_t next,
-		ocf_cache_line_t prev)
+		ocf_cache_line_t line, ocf_cache_line_t next)
 {
 	struct ocf_metadata_list_info *info;
 	struct ocf_metadata_ctrl *ctrl =
@@ -21,7 +20,6 @@ void ocf_metadata_set_collision_info(struct ocf_cache *cache,
 
 	if (info) {
 		info->next_col = next;
-		info->prev_col = prev;
 	} else {
 		ocf_metadata_error(cache);
 	}
@@ -43,46 +41,25 @@ void ocf_metadata_set_collision_next(struct ocf_cache *cache,
 		ocf_metadata_error(cache);
 }
 
-void ocf_metadata_set_collision_prev(struct ocf_cache *cache,
-		ocf_cache_line_t line, ocf_cache_line_t prev)
-{
-	struct ocf_metadata_list_info *info;
-	struct ocf_metadata_ctrl *ctrl =
-		(struct ocf_metadata_ctrl *) cache->metadata.priv;
-
-	info = ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_list_info]), line);
-
-	if (info)
-		info->prev_col = prev;
-	else
-		ocf_metadata_error(cache);
-}
-
 void ocf_metadata_get_collision_info(struct ocf_cache *cache,
-		ocf_cache_line_t line, ocf_cache_line_t *next,
-		ocf_cache_line_t *prev)
+		ocf_cache_line_t line, ocf_cache_line_t *next)
 {
 	const struct ocf_metadata_list_info *info;
 	struct ocf_metadata_ctrl *ctrl =
 		(struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	ENV_BUG_ON(NULL == next && NULL == prev);
+	ENV_BUG_ON(NULL == next);
 
 	info = ocf_metadata_raw_rd_access(cache,
 			&(ctrl->raw_desc[metadata_segment_list_info]), line);
 	if (info) {
 		if (next)
 			*next = info->next_col;
-		if (prev)
-			*prev = info->prev_col;
 	} else {
 		ocf_metadata_error(cache);
 
 		if (next)
 			*next = cache->device->collision_table_entries;
-		if (prev)
-			*prev = cache->device->collision_table_entries;
 	}
 }
 
@@ -109,14 +86,7 @@ void ocf_metadata_add_to_collision(struct ocf_cache *cache,
 	 * - next is set to value from hash table;
 	 * - previous is set to collision table entries value
 	 */
-	ocf_metadata_set_collision_info(cache, cache_line, prev_cache_line,
-			line_entries);
-
-	/* Update previous head */
-	if (prev_cache_line != line_entries) {
-		ocf_metadata_set_collision_prev(cache, prev_cache_line,
-				cache_line);
-	}
+	ocf_metadata_set_collision_info(cache, cache_line, prev_cache_line);
 
 	/* Update hash Table: hash table contains pointer to
 	 * collision table so it contains indexes in collision table
@@ -133,21 +103,11 @@ void ocf_metadata_remove_from_collision(struct ocf_cache *cache,
 	ocf_core_id_t core_id;
 	uint64_t core_sector;
 	ocf_cache_line_t hash_father;
-	ocf_cache_line_t prev_line, next_line;
+	ocf_cache_line_t prev_line, curr_line, next_line;
 	ocf_cache_line_t line_entries = cache->device->collision_table_entries;
 	ocf_cache_line_t hash_entries = cache->device->hash_table_entries;
 
 	ENV_BUG_ON(!(line < line_entries));
-
-	ocf_metadata_get_collision_info(cache, line, &next_line, &prev_line);
-
-	/* Update previous node if any. */
-	if (prev_line != line_entries)
-		ocf_metadata_set_collision_next(cache, prev_line, next_line);
-
-	/* Update next node if any. */
-	if (next_line != line_entries)
-		ocf_metadata_set_collision_prev(cache, next_line, prev_line);
 
 	ocf_metadata_get_core_info(cache, line, &core_id, &core_sector);
 
@@ -157,11 +117,24 @@ void ocf_metadata_remove_from_collision(struct ocf_cache *cache,
 	hash_father = ocf_metadata_hash_func(cache, core_sector, core_id);
 	ENV_BUG_ON(!(hash_father < hash_entries));
 
-	if (ocf_metadata_get_hash(cache, hash_father) == line)
-		ocf_metadata_set_hash(cache, hash_father, next_line);
+	prev_line = cache->device->collision_table_entries;
+	curr_line = ocf_metadata_get_hash(cache, hash_father);
 
-	ocf_metadata_set_collision_info(cache, line,
-			line_entries, line_entries);
+	while (line != curr_line) {
+		prev_line = curr_line;
+		curr_line = ocf_metadata_get_collision_next(cache, curr_line);
+	}
+
+	ocf_metadata_get_collision_info(cache, line, &next_line);
+	if (prev_line != cache->device->collision_table_entries) {
+		ocf_metadata_set_collision_next(cache, prev_line, next_line);
+	} else {
+		if (ocf_metadata_get_hash(cache, hash_father) == line) {
+			ocf_metadata_set_hash(cache, hash_father, next_line);
+		}
+	}
+
+	ocf_metadata_set_collision_next(cache, line, line_entries);
 
 	ocf_metadata_set_core_info(cache, line,
 			OCF_CORE_MAX, ULLONG_MAX);

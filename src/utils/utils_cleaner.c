@@ -503,12 +503,12 @@ static void _ocf_cleaner_core_io_for_dirty_range(struct ocf_request *req,
 			iter->coll_idx);
 
 	addr = (ocf_line_size(cache) * iter->core_line)
-			+ SECTORS_TO_BYTES(begin);
+			+ PAGES_TO_BYTES(begin);
 	offset = (ocf_line_size(cache) * iter->hash)
-			+ SECTORS_TO_BYTES(begin);
+			+ PAGES_TO_BYTES(begin);
 
 	io = ocf_new_core_io(core, req->io_queue, addr,
-			SECTORS_TO_BYTES(end - begin), OCF_WRITE, part_id, 0);
+			PAGES_TO_BYTES(end - begin), OCF_WRITE, part_id, 0);
 	if (!io)
 		goto error;
 
@@ -521,7 +521,7 @@ static void _ocf_cleaner_core_io_for_dirty_range(struct ocf_request *req,
 	ocf_io_set_cmpl(io, iter, req, _ocf_cleaner_core_io_cmpl);
 
 	ocf_core_stats_core_block_update(core, part_id, OCF_WRITE,
-			SECTORS_TO_BYTES(end - begin));
+			PAGES_TO_BYTES(end - begin));
 
 	OCF_DEBUG_PARAM(req->cache, "Core write, line = %llu, "
 			"sector = %llu, count = %llu", iter->core_line, begin,

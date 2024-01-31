@@ -83,13 +83,13 @@ static inline void ocf_zero_map_info(struct ocf_request *req)
 
 		if (map_idx == 0) {
 			/* First */
-			start_bit = BYTES_TO_SECTORS(req->byte_position)
+			start_bit = BYTES_TO_PAGES_ROUND_DOWN(req->byte_position)
 					% ocf_line_sectors(cache);
 		}
 
 		if (map_idx == (count - 1)) {
 			/* Last */
-			end_bit = BYTES_TO_SECTORS(req->byte_position +
+			end_bit = BYTES_TO_PAGES_ROUND_DOWN(req->byte_position +
 					req->byte_length - 1) %
 					ocf_line_sectors(cache);
 		}
