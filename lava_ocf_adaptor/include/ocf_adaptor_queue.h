@@ -29,8 +29,11 @@ struct req_context {
 
 	char *buffer;
 
-	int (*cb)(int32_t ret, void *ctx);
-	/*!< request completion callback; ctx pointer to req_context */
+	int (*cb)(int32_t ret, struct req_context *ctx);
+	/*!< request completion callback;*/
+
+	char internal[24];
+	/*!< internal use of ocf, no need to set */
 };
 
 #ifdef __cplusplus

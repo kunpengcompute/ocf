@@ -325,6 +325,9 @@ typedef enum {
  */
 #define OCF_READ		0
 #define OCF_WRITE		1
+#define OCF_INVALID		2
+#define OCF_LOOKUP		3
+
 /**
  * @}
  */
