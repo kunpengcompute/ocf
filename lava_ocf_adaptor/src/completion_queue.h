@@ -26,6 +26,10 @@ typedef struct cq_entry *cq_entry_t;
 
 int completion_queue_create(completion_queue_t *cpl_queue);
 
+void completion_queue_get(completion_queue_t q);
+
+void completion_queue_put(completion_queue_t q, int i);
+
 void completion_queue_push(completion_queue_t q, cq_entry_t entry);
 
 int completion_queue_pop_batch(completion_queue_t q, cq_entry_t *entrys, int num);

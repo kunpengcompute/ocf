@@ -26,6 +26,11 @@ extern "C" {
 int ocf_init(struct ocf_config *cfg);
 
 /**
+ * @brief ocf resource release
+ */
+void ocf_exit();
+
+/**
  * @brief adding a core device corresponding to a slot
  *
  * @param[in] slot_id: unique id of a slot
@@ -112,6 +117,7 @@ int ocf_put(struct req_context *ctx);
  *         othewise STATE_SUCCESS
  */
 int ocf_poll(uint32_t io_worker_id, int max_num);
+
 #ifdef __cplusplus
 }
 #endif

@@ -21,6 +21,10 @@
 
 #define STATE_TIMEOUT 6
 
+#define STATE_PRRAM_INVALID 7
+
+#define STATE_MULTI_INIT 8
+
 #define STATE_CACHE_UNAVAILABLE 10000
 
 #endif
