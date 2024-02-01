@@ -7,7 +7,9 @@
 #define __EVICTION_LRU_STRUCTS_H__
 
 #define CACHE_SUPPORT_IN_TB 4
-#define CORE_SUPPORT_IN_TB 128
+
+/* 16384 means 2^14 */
+#define CORE_SUPPORT_IN_TB 16384
 
 #define CACHE_LINE_BITS (28 + __builtin_ctz(CACHE_SUPPORT_IN_TB))
 #define CORE_LINE_BITS (28 + __builtin_ctz(CORE_SUPPORT_IN_TB))
