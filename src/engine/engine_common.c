@@ -207,7 +207,7 @@ static void ocf_engine_set_hot(struct ocf_request *req)
 	}
 }
 
-static void ocf_engine_lookup(struct ocf_request *req)
+void ocf_engine_lookup(struct ocf_request *req)
 {
 	uint32_t i;
 	uint64_t core_line;

@@ -168,10 +168,13 @@ typedef enum {
 	ocf_cache_mode_wo,
 		/*!< Write-only cache mode */
 
+	ocf_cache_mode_uc,
+		/*!< UCache cache mode */
+
 	ocf_cache_mode_max,
 		/*!< Stopper of cache mode enumerator */
 
-	ocf_cache_mode_default = ocf_cache_mode_wt,
+	ocf_cache_mode_default = ocf_cache_mode_uc,
 		/*!< Default cache mode */
 
 	ocf_cache_mode_none = -1,
@@ -198,7 +201,7 @@ typedef enum {
 	ocf_seq_cutoff_policy_max,
 		/*!< Stopper of sequential cutoff policy enumerator */
 
-	ocf_seq_cutoff_policy_default = ocf_seq_cutoff_policy_full,
+	ocf_seq_cutoff_policy_default = ocf_seq_cutoff_policy_never,
 		/*!< Default sequential cutoff policy*/
 } ocf_seq_cutoff_policy;
 
@@ -339,5 +342,8 @@ typedef enum {
  */
 
 #define MAX_TRIM_RQ_SIZE	(512 * KiB)
+
+#define OCF_LOOKUP 101
+#define OCF_INVALID 102
 
 #endif /* __OCF_DEF_H__ */

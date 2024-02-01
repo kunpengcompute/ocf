@@ -199,8 +199,11 @@ static inline int ocf_core_validate_io(struct ocf_io *io)
 	if (io->io_class >= OCF_USER_IO_CLASS_MAX)
 		return -OCF_ERR_INVAL;
 
-	if (io->dir != OCF_READ && io->dir != OCF_WRITE)
-		return -OCF_ERR_INVAL;
+	if (io->dir != OCF_READ && io->dir != OCF_WRITE) {
+		if (io->dir != OCF_LOOKUP && io->dir != OCF_INVALID) {
+			return -OCF_ERR_INVAL;
+		}
+	}
 
 	if (!io->io_queue)
 		return -OCF_ERR_INVAL;
@@ -265,6 +268,63 @@ static int ocf_core_submit_io_fast(struct ocf_io *io, struct ocf_request *req,
 	return -OCF_ERR_IO;
 }
 
+static bool ocf_ucache_req_info_valid(ocf_cache_t cache,
+		struct ocf_request *req)
+{
+	if (cache->pt_unaligned_io && !ocf_req_is_4k(req->byte_position,
+						     req->byte_length)) {
+		return false;
+	}
+
+	if (req->core_line_count > cache->conf_meta->cachelines) {
+		return false;
+	}
+
+	return true;
+}
+
+static bool ocf_core_submit_ucache_io(ocf_cache_t cache,
+		struct ocf_io *io, struct ocf_request *req)
+{
+	ocf_req_cache_mode_t tmp_mode = ocf_user_part_get_cache_mode(cache,
+				ocf_user_part_class2id(cache, req->part_id));
+
+	if (tmp_mode != ocf_req_cache_mode_uc) {
+		if (io->dir != OCF_READ && io->dir != OCF_WRITE) {
+			ocf_io_end(io, -OCF_ERR_REQ_INFO);
+			return true;
+		}
+		return false;
+	}
+
+	req->cache_mode = tmp_mode;
+
+	if (!ocf_ucache_req_info_valid(cache, req)) {
+		ocf_io_end(io, -OCF_ERR_REQ_INFO);
+		return true;
+	}
+
+	if (io->dir == OCF_LOOKUP) {
+		io->flags = OCF_LOOKUP;
+		io->dir = OCF_READ;
+	} else if (io->dir == OCF_INVALID) {
+		io->flags = OCF_INVALID;
+		io->dir = OCF_WRITE;
+	}
+
+	int ret;
+
+	ocf_io_get(io);
+
+	ret = ocf_hndl_ucache_engine(req);
+	if (ret) {
+		ocf_io_end(io, ret);
+		ocf_io_put(io);
+	}
+
+	return true;
+}
+
 void ocf_core_volume_submit_io(struct ocf_io *io)
 {
 	struct ocf_request *req;
@@ -304,6 +364,10 @@ void ocf_core_volume_submit_io(struct ocf_io *io)
 	req->part_id = ocf_user_part_class2id(cache, io->io_class);
 	req->core = core;
 	req->complete = ocf_req_complete;
+
+	if (ocf_core_submit_ucache_io(cache, io, req)) {
+		return;
+	}
 
 	ocf_resolve_effective_cache_mode(cache, core, req);
 
