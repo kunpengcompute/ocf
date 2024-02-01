@@ -23,7 +23,7 @@ extern "C" {
  *
  * @retval STATE_SUCCESS when success, othewise STATE_FAIL
  */
-int32_t ocf_init(struct ocf_config *cfg);
+int ocf_init(struct ocf_config *cfg);
 
 /**
  * @brief adding a core device corresponding to a slot
@@ -34,7 +34,7 @@ int32_t ocf_init(struct ocf_config *cfg);
  *         STATE_CORE_EXIST when the core device corresponding to the slot already exists
  *         othewise STATE_FAIL
  */
-int32_t ocf_add_core(uint32_t slot_id);
+int ocf_add_core(uint32_t slot_id);
 
 /**
  * @brief removing a core device corresponding to a slot
@@ -45,7 +45,7 @@ int32_t ocf_add_core(uint32_t slot_id);
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
  *         othewise STATE_FAIL
  */
-int32_t ocf_remove_core(uint32_t slot_id);
+int ocf_remove_core(uint32_t slot_id);
 
 /**
  * @brief clear the entire region data in the cache
@@ -56,7 +56,7 @@ int32_t ocf_remove_core(uint32_t slot_id);
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
  *         othewise STATE_FAIL
  */
-int32_t ocf_region_invalid(struct req_context *ctx);
+int ocf_region_invalid(struct req_context *ctx);
 
 /**
  * @brief clear the specified region segment data in the cache
@@ -67,7 +67,7 @@ int32_t ocf_region_invalid(struct req_context *ctx);
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
  *         othewise STATE_FAIL
  */
-int32_t ocf_range_invalid(struct req_context *ctx);
+int ocf_range_invalid(struct req_context *ctx);
 
 /**
  * @brief check whether the specified segment data is hit in the cache
@@ -78,7 +78,7 @@ int32_t ocf_range_invalid(struct req_context *ctx);
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
  *         othewise STATE_FAIL
  */
-int32_t ocf_lookup(struct req_context *ctx);
+int ocf_lookup(struct req_context *ctx);
 
 /**
  * @brief read the specified segment data from the cache
@@ -89,7 +89,7 @@ int32_t ocf_lookup(struct req_context *ctx);
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
  *         othewise STATE_FAIL
  */
-int32_t ocf_get(struct req_context *ctx);
+int ocf_get(struct req_context *ctx);
 
 /**
  * @brief write the specified segment data to the cache
@@ -100,7 +100,7 @@ int32_t ocf_get(struct req_context *ctx);
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
  *         othewise STATE_FAIL
  */
-int32_t ocf_put(struct req_context *ctx);
+int ocf_put(struct req_context *ctx);
 
 /**
  * @brief triggers processing of completion queue entries
@@ -111,7 +111,7 @@ int32_t ocf_put(struct req_context *ctx);
  * @retval STATE_FAIL when the cq of the io worker doesn't exist
  *         othewise STATE_SUCCESS
  */
-int32_t ocf_poll(uint32_t io_worker_id, uint32_t max_num);
+int ocf_poll(uint32_t io_worker_id, int max_num);
 #ifdef __cplusplus
 }
 #endif
