@@ -34,6 +34,8 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 
 		if (req->error) {
 			ocf_core_stats_cache_error_update(req->core, OCF_READ);
+			OCF_DEBUG_RQ(req, "read cache error: %d", req->error);
+			req->error = -OCF_ERR_UCACHE_IO;
 		}
 
 		ocf_req_unlock(c, req);
@@ -183,9 +185,10 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 
 	if (req->error) {
 		/* An error occured */
+		OCF_DEBUG_RQ(req, "write cache error: %d", req->error);
 
 		/* Complete request */
-		req->complete(req, req->error);
+		req->complete(req, -OCF_ERR_UCACHE_IO);
 
 		ocf_engine_invalidate(req);
 
