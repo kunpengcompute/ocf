@@ -818,6 +818,9 @@ finalize:
 	ocf_cache_log(cache, log_info, "Cache line size: %llu kiB\n",
 			line_size / KiB);
 
+	ocf_cache_log(cache, log_info, "Metadata alock size: %llu MiB\n",
+			(uint64_t)ocf_cache_line_concurrency_size_of(cache) / MiB);
+
 	ocf_cache_log(cache, log_info, "Metadata capacity: %llu MiB\n",
 			(uint64_t)ocf_metadata_size_of(cache) / MiB);
 

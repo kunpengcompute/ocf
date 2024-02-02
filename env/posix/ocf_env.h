@@ -372,6 +372,10 @@ typedef struct {
 } env_atomic;
 
 typedef struct {
+	volatile uint8_t counter;
+} env_atomic8;
+
+typedef struct {
 	volatile long counter;
 } env_atomic64;
 
@@ -443,6 +447,46 @@ static inline int env_atomic_add_unless(env_atomic *a, int i, int u)
 		if (unlikely(c == (u)))
 			break;
 		old = env_atomic_cmpxchg((a), c, c + (i));
+		if (likely(old == c))
+			break;
+		c = old;
+	}
+	return c != (u);
+}
+
+static inline uint8_t env_atomic8_read(const env_atomic8 *a)
+{
+	return a->counter;
+}
+
+static inline void env_atomic8_set(env_atomic8 *a, uint8_t i)
+{
+	a->counter = i;
+}
+
+static inline void env_atomic8_sub(uint8_t i, env_atomic8 *a)
+{
+	__sync_sub_and_fetch(&a->counter, i);
+}
+
+static inline void env_atomic8_dec(env_atomic8 *a)
+{
+	env_atomic8_sub(1, a);
+}
+
+static inline uint8_t env_atomic8_cmpxchg(env_atomic8 *a, uint8_t old, uint8_t new_value)
+{
+	return __sync_val_compare_and_swap(&a->counter, old, new_value);
+}
+
+static inline uint8_t env_atomic8_add_unless(env_atomic *a, uint8_t i, uint8_t u)
+{
+	uint8_t c, old;
+	c = env_atomic8_read(a);
+	for (;;) {
+		if (unlikely(c == (u)))
+			break;
+		old = env_atomic8_cmpxchg((a), c, c + (i));
 		if (likely(old == c))
 			break;
 		c = old;
