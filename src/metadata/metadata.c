@@ -1461,14 +1461,20 @@ void ocf_metadata_get_core_and_part_id(struct ocf_cache *cache,
 /*
  * Hash Table - Get
  */
-ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
+ocf_cache_line_t *ocf_metadata_get_hash_p(struct ocf_cache *cache,
 		ocf_cache_line_t index)
 {
 	struct ocf_metadata_ctrl *ctrl
 		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	return *(ocf_cache_line_t *)ocf_metadata_raw_rd_access(cache,
+	return (ocf_cache_line_t *)ocf_metadata_raw_rd_access(cache,
 			&(ctrl->raw_desc[metadata_segment_hash]), index);
+}
+
+ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
+		ocf_cache_line_t index)
+{
+	return *ocf_metadata_get_hash_p(cache, index) & ~(1 << HASH_LOCK_BIT);
 }
 
 /*
@@ -1480,6 +1486,7 @@ void ocf_metadata_set_hash(struct ocf_cache *cache, ocf_cache_line_t index,
 	struct ocf_metadata_ctrl *ctrl
 		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
 
+	line |= (*ocf_metadata_get_hash_p(cache, index) & (1 << HASH_LOCK_BIT));
 	*(ocf_cache_line_t *)ocf_metadata_raw_wr_access(cache,
 			&(ctrl->raw_desc[metadata_segment_hash]), index) = line;
 }
