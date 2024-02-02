@@ -19,11 +19,15 @@
 
 #define STATE_CORE_NOT_EXIST 5
 
-#define STATE_TIMEOUT 6
+#define STATE_CORE_CREATING  6  // core is creaing, can not remove
 
-#define STATE_PRRAM_INVALID 7
+#define STATE_TIMEOUT 7
 
-#define STATE_MULTI_INIT 8
+#define STATE_PRRAM_INVALID 8
+
+#define STATE_MEM_ALLOC_ERR 9
+
+#define STATE_TOO_MANY_REGION 10
 
 #define STATE_CACHE_UNAVAILABLE 10000
 

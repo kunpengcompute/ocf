@@ -18,6 +18,7 @@ struct completion_queue {
 
 struct cq_entry {
 	int ret;
+	int op;
 	struct list_head node;
 };
 

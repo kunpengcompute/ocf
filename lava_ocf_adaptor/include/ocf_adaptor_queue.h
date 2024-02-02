@@ -21,16 +21,18 @@ struct req_context {
 
 	uint32_t slot_id;
 
-	uint64_t region_id;
+	uint32_t region_id;
 
 	uint64_t offset;
+	/*!< region offset, need 4k align*/
 
 	uint64_t len;
+	/*!< data len, need 4k align*/
 
 	char *buffer;
 
 	int (*cb)(int32_t ret, struct req_context *ctx);
-	/*!< request completion callback;*/
+	/*!< request completion callback*/
 
 	char internal[24];
 	/*!< internal use of ocf, no need to set */

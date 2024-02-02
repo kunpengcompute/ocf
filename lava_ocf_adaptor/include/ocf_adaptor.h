@@ -26,7 +26,7 @@ extern "C" {
 int ocf_init(struct ocf_config *cfg);
 
 /**
- * @brief ocf resource release
+ * @brief ocf module exit process
  */
 void ocf_exit();
 
@@ -55,7 +55,7 @@ int ocf_remove_core(uint32_t slot_id);
 /**
  * @brief clear the entire region data in the cache
  *
- * @param[in] ctx: user request context
+ * @param[in] ctx: user request context, this interface does not require setting offset and len
  *
  * @retval STATE_SUCCESS when the invalid request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists

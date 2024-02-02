@@ -7,6 +7,7 @@
 #include "ocf_adaptor_queue.h"
 #include "completion_queue.h"
 
+
 int completion_queue_create(completion_queue_t *cpl_queue)
 {
 	completion_queue_t tmp_queue;
@@ -74,7 +75,7 @@ int completion_queue_pop_batch(completion_queue_t q, cq_entry_t *entrys, int num
 	}
 	env_atomic_sub(cnt, &q->io_no);
 	env_spinlock_unlock(&q->io_list_lock);
-	env_atomic_put(q, cnt);
+	completion_queue_put(q, cnt);
 	return cnt;
 }
 
