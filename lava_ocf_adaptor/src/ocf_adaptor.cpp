@@ -32,7 +32,7 @@ struct ocf_adaptor_context {
 
 	env_rwlock table_lock = { PTHREAD_RWLOCK_INITIALIZER };
 	unordered_map<uint32_t, slot_info_t> slot_info_table;
-	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
+	unordered_map<uint32_t, unordered_map<uint32_t, int>> region_remap_table;
 } g_adaptor;
 
 struct cache_priv {
@@ -118,9 +118,20 @@ static void complete(struct ocf_io *io, int error)
 	struct cache_priv *priv = (struct cache_priv *)ocf_cache_get_priv(cache);
 	completion_queue_t cq = priv->completion_queues[ctx->io_worker_id];
 
-	cq_entry_t entry = (cq_entry_t)ctx->internal; 
-	entry->ret = (error == 0) ? STATE_SUCCESS : STATE_FAIL;
-	entry->op = io->dir;
+	cq_entry_t entry = (cq_entry_t)ctx->internal;
+	int ret;
+	int op = io->dir;
+	switch (error) {
+		case 0:
+			ret = STATE_SUCCESS;
+			break;
+		// case OCF_ERR_NOT_UNAVAILABLE ret = STATE_OCF_UNAVAILABLE
+		default:
+			ret = ((op == OCF_LOOKUP || op == OCF_READ) ? STATE_MISS : STATE_FAIL);
+			break;
+	}
+
+	entry->ret = ret;
 	completion_queue_push(cq, entry);
 
 	ocf_io_put(io);
@@ -135,7 +146,7 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 	if (ctx->io_worker_id >= priv->queue_num) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io_work_id(%u) is not within the range of [0, %u)\n",
 			ctx->io_worker_id, priv->queue_num);
-		return STATE_FAIL;
+		return STATE_PRRAM_INVALID;
 	}
 
 	ocf_queue_t q = priv->io_queues[ctx->io_worker_id];
@@ -143,7 +154,7 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 	struct ocf_io *io = ocf_volume_new_io(core_vol, q, addr, len, dir, 0, 0);
 	if (!io) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io memory request fail\n");
-		return STATE_FAIL;
+		return STATE_MEM_ALLOC_ERR;
 	}
 
 	/* assign data to io, used when read/write, unused when lookup/invalid */
@@ -205,7 +216,7 @@ void ocf_exit()
 	ctx.ret = &ret;
 	sem_init(&ctx.sem, 0, 0);
 	unordered_map<uint32_t, slot_info_t> slot_info_table;
-	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
+	unordered_map<uint32_t, unordered_map<uint32_t, int>> region_remap_table;
 
 	/* clear slot hash table */
 	env_rwlock_write_lock(&g_adaptor.table_lock);
@@ -294,7 +305,7 @@ int ocf_add_core(uint32_t slot_id)
 	
 	env_rwlock_write_lock(&table_lock);
 	info->core = core;
-	region_remap_table[slot_id] = unordered_map<uint32_t, uint32_t>();
+	region_remap_table[slot_id] = unordered_map<uint32_t, int>();
 	env_rwlock_write_unlock(&table_lock);
 	ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core(%u) add success\n", slot_id, ocf_core_get_id(core));
 	return STATE_SUCCESS;
@@ -311,6 +322,8 @@ int ocf_remove_core(uint32_t slot_id)
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	auto &table_lock = g_adaptor.table_lock;
 	slot_info_t info;
+	ocf_core_t core;
+	ocf_core_id_t core_id;
 	env_rwlock_write_lock(&table_lock);
 	if (slot_info_table.find(slot_id) == slot_info_table.end()) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "slot(%u) core is not exists\n", slot_id);
@@ -319,18 +332,19 @@ int ocf_remove_core(uint32_t slot_id)
 	}
 	info = slot_info_table[slot_id];
 	if (!info->core) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "slot(%u) core is creating, can not\n", slot_id);
+		ocf_adaptor_log(OCF_LOG_ERROR, "slot(%u) core is creating, can not remove\n", slot_id);
 		env_rwlock_write_unlock(&table_lock);
 		return STATE_CORE_CREATING;
 	}
+	core = info->core;
+	core_id = ocf_core_get_id(core);
 	slot_info_table.erase(slot_id);
 	region_remap_table.erase(slot_id);
+	ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core(%u) remove success\n", slot_id, core_id);
 	env_rwlock_write_unlock(&table_lock);
 
 	/* remove core from cache */
 	int ret = STATE_SUCCESS;
-	ocf_core_t core = info->core;
-	uint32_t core_id = ocf_core_get_id(core);
 	simple_context ctx;
 	ctx.ret = &ret;
 	sem_init(&ctx.sem, 0, 0);
@@ -338,9 +352,7 @@ int ocf_remove_core(uint32_t slot_id)
 	sem_wait(&ctx.sem);
 	if (ret) {
 		/* default deletion will not fail */
-		ocf_adaptor_log(OCF_LOG_WARN, "slot(%u) core(%u) remove fail\n", slot_id, core_id);
-	} else {
-		ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core(%u) remove success\n", slot_id, core_id);
+		ocf_adaptor_log(OCF_LOG_WARN, "cache remove core(%u) fail\n", core_id);
 	}
 	env_free(info);
 
@@ -382,6 +394,8 @@ int ocf_region_invalid(struct req_context *ctx)
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
 	uint64_t core_offset = remap_id * REGION_SIZE;
+	cq_entry_t entry = (cq_entry_t)ctx->internal;
+	entry->is_region_invalid = 1;
 	return submit_io(ctx, core, core_offset, REGION_SIZE, OCF_INVALID, complete);
 }
 
@@ -398,8 +412,11 @@ int ocf_range_invalid(struct req_context *ctx)
 	}
 
 	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "the access interval is not 4k aligned\n");
-		return STATE_FAIL;
+		ocf_adaptor_log(OCF_LOG_WARN, "ocf_range_invalid is not 4k aligned\n");
+		if (ctx->cb) {
+			ctx->cb(STATE_SUCCESS, ctx);
+		}
+		return STATE_SUCCESS;
 	}
 
 	auto &slot_info_table = g_adaptor.slot_info_table;
@@ -425,6 +442,8 @@ int ocf_range_invalid(struct req_context *ctx)
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
+	cq_entry_t entry = (cq_entry_t)ctx->internal;
+	entry->is_region_invalid = 0;
 	return submit_io(ctx, core, core_offset, ctx->len, OCF_INVALID, complete);
 }
 
@@ -441,8 +460,11 @@ int ocf_lookup(struct req_context *ctx)
 	}
 
 	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "the access interval is not 4k aligned\n");
-		return STATE_PRRAM_INVALID;
+		ocf_adaptor_log(OCF_LOG_ERROR, "ock_lookup is not 4k aligned\n");
+		if (ctx->cb) {
+			ctx->cb(STATE_MISS, ctx);
+		}
+		return STATE_SUCCESS;
 	}
 
 	auto &slot_info_table = g_adaptor.slot_info_table;
@@ -468,6 +490,8 @@ int ocf_lookup(struct req_context *ctx)
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
+	cq_entry_t entry = (cq_entry_t)ctx->internal;
+	entry->is_region_invalid = 0;
 	return submit_io(ctx, core, core_offset, ctx->len, OCF_LOOKUP, complete);
 }
 
@@ -484,8 +508,11 @@ int ocf_get(struct req_context *ctx)
 	}
 
 	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "the access interval is not 4k aligned\n");
-		return STATE_PRRAM_INVALID;
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_get is not 4k aligned\n");
+		if (ctx->cb) {
+			ctx->cb(STATE_MISS, ctx);
+		}
+		return STATE_SUCCESS;
 	}
 
 	auto &slot_info_table = g_adaptor.slot_info_table;
@@ -511,6 +538,8 @@ int ocf_get(struct req_context *ctx)
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
+	cq_entry_t entry = (cq_entry_t)ctx->internal;
+	entry->is_region_invalid = 0;
 	return submit_io(ctx, core, core_offset, ctx->len, OCF_READ, complete);
 }
 
@@ -527,8 +556,11 @@ int ocf_put(struct req_context *ctx)
 	}
 
 	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "the access interval is not 4k aligned\n");
-		return STATE_PRRAM_INVALID;
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_put is not 4k aligned\n");
+		if (ctx->cb) {
+			ctx->cb(STATE_SUCCESS, ctx);
+		}
+		return STATE_SUCCESS;
 	}
 
 	auto &slot_info_table = g_adaptor.slot_info_table;
@@ -556,10 +588,14 @@ int ocf_put(struct req_context *ctx)
 			return STATE_SUCCESS;
 		}
 		region_map[ctx->region_id] = remap_id;
+		ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) add region_id(%u)-remap_id(%d)\n",
+			ctx->slot_id, ctx->region_id, remap_id);
 	}
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
+	cq_entry_t entry = (cq_entry_t)ctx->internal;
+	entry->is_region_invalid = 0;
 	return submit_io(ctx, core, core_offset, ctx->len, OCF_WRITE, complete);
 }
 
@@ -586,7 +622,20 @@ int ocf_poll(uint32_t io_worker_id, int max_num)
 	for (int i = 0; i < num; ++i) {
 		entry = entrys[i];
 		ctx = (struct req_context *)get_req_context(entry);
-		// region invalid的回调特殊处理，region_remap_table中删除remap_id
+
+		/* if region invalid success, delete region remapping key-value in the request sending thread */
+		if (unlikely(entry->is_region_invalid && entry->ret == STATE_SUCCESS)) {
+			auto &region_remap_table = g_adaptor.region_remap_table;
+			env_rwlock_read_lock(&g_adaptor.table_lock);
+			if (region_remap_table.find(ctx->slot_id) != region_remap_table.end()) {
+				auto &region_remap = region_remap_table[ctx->slot_id];
+				region_remap.erase(ctx->region_id);
+				ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) remove region_id(%u) remap\n",
+					ctx->slot_id, ctx->region_id);
+			}
+			env_rwlock_read_unlock(&g_adaptor.table_lock);
+		}
+
 		ctx->cb(entry->ret, ctx);
 	}
 	return STATE_SUCCESS;

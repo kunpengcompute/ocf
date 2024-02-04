@@ -10,14 +10,13 @@ int get_remap_id(slot_info_t info)
 {
 	int now = info->now;
 	uint8_t *isUsed = info->isUsed;
-	int remap_id = -1;
 	for (int i = 0; i < REGION_NUM_LIMIT; ++i) {
 		if (!isUsed[now]) {
-			remap_id = now;
-			now = ((now + 1) & REGION_REMAP_MASK);
-			break;
+			isUsed[now] = 1;
+			info->now = ((now + 1) & REGION_REMAP_MASK);
+			return now;
 		}
 		now = ((now + 1) & REGION_REMAP_MASK);
 	}
-	return remap_id;
+	return -1;
 }

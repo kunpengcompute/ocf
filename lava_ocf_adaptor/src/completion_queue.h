@@ -18,7 +18,7 @@ struct completion_queue {
 
 struct cq_entry {
 	int ret;
-	int op;
+	int is_region_invalid;
 	struct list_head node;
 };
 
