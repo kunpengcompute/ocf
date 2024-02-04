@@ -9,18 +9,26 @@
 
 #define STATE_SUCCESS 0
 
-#define STATE_FAIL 1
+/***error code for ocf processing result after request submission***/
+#define STATE_FAIL -1
 
-#define STATE_HIT 2
+#define STATE_MISS -2
 
-#define STATE_MISS 3
+#define STATE_TIMEOUT -3
 
-#define STATE_CORE_EXIST 4
+#define STATE_OCF_UNAVAILABLE -4
 
-#define STATE_CORE_NOT_EXIST 5
+/***error code when submitting request***/
+#define STATE_CORE_EXIST -1000
 
-#define STATE_TIMEOUT 6
+#define STATE_CORE_NOT_EXIST -1001
 
-#define STATE_CACHE_UNAVAILABLE 10000
+#define STATE_CORE_CREATING  -1002  // core is creaing, can not remove
+
+#define STATE_PRRAM_INVALID -1003
+
+#define STATE_MEM_ALLOC_ERR -1004
+
+#define STATE_TOO_MANY_REGION -1005
 
 #endif
