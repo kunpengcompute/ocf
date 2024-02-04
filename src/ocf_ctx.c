@@ -288,3 +288,65 @@ void ocf_ctx_put(ocf_ctx_t ctx)
 	ocf_logger_close(&ctx->logger);
 	env_free(ctx);
 }
+
+static int dump_visitor(ocf_cache_t cache, void *cntx)
+{
+	struct strbuf *buf = cntx;
+	struct ocf_cache_info info;
+	ocf_core_t core;
+	ocf_core_id_t core_id;
+	
+	if(ocf_cache_get_info(cache, &info)) {
+		return -1;
+	}
+
+	strbuf_write_format_str(buf, "Cache Name\t %.*s\n",
+								OCF_CACHE_NAME_SIZE, ocf_cache_get_name(cache));
+
+	strbuf_write_format_str(buf, "Cache Size\t %lu cacheline, %.2lf GiB\n",
+								info.size, (float) info.size * info.cache_line_size / GiB);
+
+	strbuf_write_format_str(buf, "Core Devices\t %lu\n",
+								info.core_count);
+
+	strbuf_write_format_str(buf, "Cache line size\t %d KiB\n",
+								info.cache_line_size / KiB);
+	strbuf_write_str(buf, "+--------------+----------------------------------+\n");
+
+	for_each_core(cache, core, core_id) {
+		strbuf_write_format_str(buf, "| core name    | %-*.*s |\n",
+								OCF_CORE_NAME_SIZE, OCF_CORE_NAME_SIZE, ocf_core_get_name(core));
+		strbuf_write_str(buf, "+--------------+----------------------------------+\n");
+	}
+	strbuf_write_char(buf, '\n');
+
+	return 0;
+}
+
+struct strbuf* ocf_ctx_dump_cache_core_info(ocf_ctx_t ctx, const char *cache_name)
+{
+	struct strbuf *b;
+	ocf_cache_t cache;
+
+	b = new_strbuf();
+
+	if(!cache_name) {
+		/* dump all cache info */
+		ocf_mngt_cache_visit(ctx, dump_visitor, b);
+	} else {
+		if(ocf_mngt_cache_get_by_name(ctx, cache_name, OCF_CACHE_NAME_SIZE, &cache)) {
+			/* no cache found */
+			strbuf_write_format_str(b, "cache named %.*s not exist\n",
+										OCF_CACHE_NAME_SIZE, cache_name);
+			goto end;
+		}
+
+		dump_visitor(cache, b);
+		ocf_mngt_cache_put(cache);
+	}
+
+end:
+	strbuf_write_end(b);
+
+	return b;
+}
