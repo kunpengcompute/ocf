@@ -6,10 +6,23 @@
 
 #define __EVICTION_LRU_STRUCTS_H__
 
+#define CACHE_SUPPORT_IN_TB 4
+
+/* 16384 means 2^14 */
+#define CORE_SUPPORT_IN_TB 16384
+
+#define CACHE_LINE_BITS (28 + __builtin_ctz(CACHE_SUPPORT_IN_TB))
+#define CORE_LINE_BITS (28 + __builtin_ctz(CORE_SUPPORT_IN_TB))
+
+#define CORE_ID_BITS 12
+#if OCF_CONFIG_MAX_CORES >= (1 << CORE_ID_BITS)
+#error "OCF_CONFIG_MAX_CORES must be less than 1 << CORE_ID_BITS"
+#endif
+
 struct ocf_lru_meta {
-	uint32_t prev;
-	uint32_t next;
-	uint8_t hot;
+	uint32_t prev : CACHE_LINE_BITS;
+	uint32_t next : CACHE_LINE_BITS;
+	uint8_t hot : 1;
 } __attribute__((packed));
 
 struct ocf_lru_list {
