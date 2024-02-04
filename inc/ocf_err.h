@@ -161,6 +161,9 @@ typedef enum {
 	/** UCache error req info **/
 	OCF_ERR_REQ_INFO,
 
+	/** UCache IO error **/
+	OCF_ERR_UCACHE_IO,
+
 	/** Operation not allowed when cleaner is disabled **/
 	OCF_ERR_CLEANER_DISABLED,
 
