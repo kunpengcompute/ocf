@@ -307,7 +307,11 @@ static inline void ocf_mngt_cache_config_set_default(
 	cfg->backfill.max_queue_size = 65536;
 	cfg->backfill.queue_unblock_size = 60000;
 	cfg->locked = false;
-	cfg->pt_unaligned_io = false;
+	/**
+	 * Only 4 KB aligned IO will be proccessed.
+	 * Currently, the sector unit is 4 KB PAGE. 
+	*/
+	cfg->pt_unaligned_io = true;
 	cfg->use_submit_io_fast = false;
 }
 
@@ -459,7 +463,7 @@ static inline void ocf_mngt_cache_attach_config_set_default(
 	cfg->open_cores = true;
 	cfg->force = false;
 	cfg->discard_on_start = true;
-	cfg->disable_cleaner = false;
+	cfg->disable_cleaner = true;
 	cfg->device.perform_test = true;
 	cfg->device.volume_params = NULL;
 }

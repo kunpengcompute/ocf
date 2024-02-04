@@ -16,7 +16,7 @@
 #include "ocf_request.h"
 #include "engine/engine_common.h"
 
-static const ocf_cache_line_t end_marker = (ocf_cache_line_t)-1;
+static const ocf_cache_line_t end_marker = (ocf_cache_line_t)((1ULL << CACHE_LINE_BITS) - 1);
 
 /* update list last_hot index. returns pivot element (the one for which hot
  * status effectively changes during balancing). */

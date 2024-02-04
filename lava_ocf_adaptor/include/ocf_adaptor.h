@@ -26,6 +26,11 @@ extern "C" {
 int ocf_init(struct ocf_config *cfg);
 
 /**
+ * @brief ocf module exit process
+ */
+void ocf_exit();
+
+/**
  * @brief adding a core device corresponding to a slot
  *
  * @param[in] slot_id: unique id of a slot
@@ -50,7 +55,7 @@ int ocf_remove_core(uint32_t slot_id);
 /**
  * @brief clear the entire region data in the cache
  *
- * @param[in] ctx: user request context
+ * @param[in] ctx: user request context, this interface does not require setting offset and len
  *
  * @retval STATE_SUCCESS when the invalid request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
@@ -112,6 +117,7 @@ int ocf_put(struct req_context *ctx);
  *         othewise STATE_SUCCESS
  */
 int ocf_poll(uint32_t io_worker_id, int max_num);
+
 #ifdef __cplusplus
 }
 #endif

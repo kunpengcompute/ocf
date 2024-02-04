@@ -18,6 +18,7 @@ struct completion_queue {
 
 struct cq_entry {
 	int ret;
+	int is_region_invalid;
 	struct list_head node;
 };
 
@@ -25,6 +26,10 @@ typedef struct completion_queue *completion_queue_t;
 typedef struct cq_entry *cq_entry_t;
 
 int completion_queue_create(completion_queue_t *cpl_queue);
+
+void completion_queue_get(completion_queue_t q);
+
+void completion_queue_put(completion_queue_t q, int i);
 
 void completion_queue_push(completion_queue_t q, cq_entry_t entry);
 

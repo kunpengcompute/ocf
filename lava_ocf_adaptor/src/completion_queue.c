@@ -7,6 +7,7 @@
 #include "ocf_adaptor_queue.h"
 #include "completion_queue.h"
 
+
 int completion_queue_create(completion_queue_t *cpl_queue)
 {
 	completion_queue_t tmp_queue;
@@ -32,9 +33,24 @@ int completion_queue_create(completion_queue_t *cpl_queue)
 	return 0;
 }
 
+
+void completion_queue_get(completion_queue_t q)
+{
+	env_atomic_inc(&q->ref_count);
+}
+
+void completion_queue_put(completion_queue_t q, int i)
+{
+	if (!env_atomic_sub_return(i, &q->ref_count)) {
+		env_spinlock_destroy(&q->io_list_lock);
+		env_free(q);
+	}
+}
+
 void completion_queue_push(completion_queue_t q, cq_entry_t entry)
 {
 	INIT_LIST_HEAD(&entry->node);
+	completion_queue_get(q);
 	env_spinlock_lock(&q->io_list_lock);
 	list_add_tail(&entry->node, &q->io_list);
 	env_atomic_inc(&q->io_no);
@@ -59,6 +75,7 @@ int completion_queue_pop_batch(completion_queue_t q, cq_entry_t *entrys, int num
 	}
 	env_atomic_sub(cnt, &q->io_no);
 	env_spinlock_unlock(&q->io_list_lock);
+	completion_queue_put(q, cnt);
 	return cnt;
 }
 
