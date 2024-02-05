@@ -21,6 +21,7 @@
 #include "engine_discard.h"
 #include "engine_d2c.h"
 #include "engine_ops.h"
+#include "engine_uc.h"
 #include "../utils/utils_user_part.h"
 #include "../utils/utils_refcnt.h"
 #include "../ocf_request.h"
@@ -35,6 +36,7 @@ enum ocf_io_if_type {
 	OCF_IO_WI_IF,
 	OCF_IO_PT_IF,
 	OCF_IO_WO_IF,
+	OCF_IO_UC_IF,
 	OCF_IO_MAX_IF,
 
 	/* Private OCF interfaces */
@@ -96,6 +98,11 @@ static const struct ocf_io_if IO_IFS[OCF_IO_PRIV_MAX_IF] = {
 		.write = ocf_engine_ops,
 		.name = "Ops engine",
 	},
+	[OCF_IO_UC_IF] = {
+		.read = ocf_read_ucache,
+		.write = ocf_write_ucache,
+		.name = "UCache engine"
+	},
 };
 
 static const struct ocf_io_if *cache_mode_io_if_map[ocf_req_cache_mode_max] = {
@@ -107,6 +114,7 @@ static const struct ocf_io_if *cache_mode_io_if_map[ocf_req_cache_mode_max] = {
 	[ocf_req_cache_mode_pt] = &IO_IFS[OCF_IO_PT_IF],
 	[ocf_req_cache_mode_fast] = &IO_IFS[OCF_IO_FAST_IF],
 	[ocf_req_cache_mode_d2c] = &IO_IFS[OCF_IO_D2C_IF],
+	[ocf_req_cache_mode_uc] = &IO_IFS[OCF_IO_UC_IF],
 };
 
 const struct ocf_io_if *ocf_get_io_if(ocf_req_cache_mode_t req_cache_mode)
@@ -293,3 +301,25 @@ bool ocf_req_cache_mode_has_lazy_write(ocf_req_cache_mode_t mode)
 			ocf_mngt_cache_mode_has_lazy_write(
 					(ocf_cache_mode_t)mode);
 }
+
+int ocf_hndl_ucache_engine(struct ocf_request *req)
+{
+	ocf_cache_t cache = req->cache;
+
+	OCF_CHECK_NULL(cache);
+	
+	req->io_if = ocf_get_io_if(req->cache_mode);
+	if (!req->io_if)
+		return -OCF_ERR_INVAL;
+
+	ocf_req_get(req);
+
+	/* Till OCF engine is not synchronous fully need to push OCF request
+	 * to into OCF workers
+	 */
+
+	ocf_engine_push_req_back(req, true);
+
+	return 0;
+}
+

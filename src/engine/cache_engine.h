@@ -21,6 +21,7 @@ typedef enum {
 	ocf_req_cache_mode_pt = ocf_cache_mode_pt,
 	ocf_req_cache_mode_wi = ocf_cache_mode_wi,
 	ocf_req_cache_mode_wo = ocf_cache_mode_wo,
+	ocf_req_cache_mode_uc = ocf_cache_mode_uc,
 
 	/* internal modes */
 	ocf_req_cache_mode_fast,
@@ -68,5 +69,7 @@ int ocf_engine_hndl_fast_req(struct ocf_request *req);
 void ocf_engine_hndl_discard_req(struct ocf_request *req);
 
 void ocf_engine_hndl_ops_req(struct ocf_request *req);
+
+int ocf_hndl_ucache_engine(struct ocf_request *req);
 
 #endif

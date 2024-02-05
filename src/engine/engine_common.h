@@ -316,4 +316,6 @@ void inc_fallback_pt_error_counter(ocf_cache_t cache);
 
 void ocf_engine_on_resume(struct ocf_request *req);
 
+void ocf_engine_lookup(struct ocf_request *req);
+
 #endif /* ENGINE_COMMON_H_ */
