@@ -66,6 +66,10 @@ typedef uint64_t sector_t;
 #define ENV_MEM_NOIO	0
 #define ENV_MEM_ATOMIC	0
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* DEBUGING */
 void env_stack_trace(void);
 
@@ -646,4 +650,7 @@ unsigned env_get_execution_context(void);
 void env_put_execution_context(unsigned ctx);
 unsigned env_get_execution_context_count(void);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* __OCF_ENV_H__ */

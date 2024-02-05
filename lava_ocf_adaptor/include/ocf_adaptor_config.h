@@ -8,6 +8,7 @@
 #define __OCF_ADAPTOR_CONFIG_H__
 
 #include <stdint.h>
+#include "ocf_adaptor_log.h"
 
 #ifdef __cplusplus
 extern "C" {

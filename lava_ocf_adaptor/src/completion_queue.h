@@ -9,6 +9,10 @@
 
 #include "ocf_env.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct completion_queue {
 	struct list_head io_list;
 	env_atomic io_no;
@@ -33,7 +37,11 @@ void completion_queue_put(completion_queue_t q, int i);
 
 void completion_queue_push(completion_queue_t q, cq_entry_t entry);
 
-int completion_queue_pop_batch(completion_queue_t q, cq_entry_t *entrys, int num);
+int completion_queue_pop(completion_queue_t q, cq_entry_t *entrys, int num);
 
 void *get_req_context(cq_entry_t entry);
+
+#ifdef __cplusplus
+}
+#endif
 #endif

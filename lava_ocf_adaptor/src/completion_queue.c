@@ -57,7 +57,7 @@ void completion_queue_push(completion_queue_t q, cq_entry_t entry)
 	env_spinlock_unlock(&q->io_list_lock);
 }
 
-int completion_queue_pop_batch(completion_queue_t q, cq_entry_t *entrys, int num)
+int completion_queue_pop(completion_queue_t q, cq_entry_t *entrys, int num)
 {
 	if (!entrys) {
 		return 0;
