@@ -12,11 +12,11 @@
 
 struct strbuf
 {
-    size_t len;
-    size_t cur;
-    size_t format_buf_len;
-    char *buf;
-    char *format_buf;
+	size_t len;
+	size_t cur;
+	size_t format_buf_len;
+	char *buf;
+	char *format_buf;
 };
 
 struct strbuf* new_strbuf();
