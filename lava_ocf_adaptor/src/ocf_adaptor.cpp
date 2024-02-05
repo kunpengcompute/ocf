@@ -617,7 +617,7 @@ int ocf_poll(uint32_t io_worker_id, int max_num)
 	completion_queue_t q = priv->completion_queues[io_worker_id];
 	cq_entry_t entrys[MAX_CQ_ENTRYS];
 	cq_entry_t entry;
-	int num = completion_queue_pop_batch(q, entrys, limit);
+	int num = completion_queue_pop(q, entrys, limit);
 	struct req_context *ctx;
 	for (int i = 0; i < num; ++i) {
 		entry = entrys[i];

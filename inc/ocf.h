@@ -13,6 +13,9 @@
  * It's simply collective include file to allow OCF user include
  * everything at once.
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "ocf_def.h"
 #include "ocf_types.h"
@@ -33,4 +36,7 @@
 #include "ocf_ctx.h"
 #include "ocf_err.h"
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* __OCF_H__ */

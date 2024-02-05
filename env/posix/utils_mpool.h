@@ -9,6 +9,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MPOOL_ALLOCATOR_NAME_MAX 128
 
 enum {
@@ -88,4 +92,7 @@ void *env_mpool_new_f(struct env_mpool *mpool, uint32_t count, int flags);
  */
 bool env_mpool_del(struct env_mpool *mpool, void *items, uint32_t count);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* UTILS_MPOOL_H_ */
