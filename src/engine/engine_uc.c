@@ -101,8 +101,9 @@ static int _ocf_read_ucache_do(struct ocf_request *req)
 static void _ocf_lookup_ucache(struct ocf_request *req)
 {
 	ocf_req_hash(req);
-	/* Not lock, state may be changed after lookup */
+	ocf_hb_req_prot_lock_rd(req);
 	ocf_engine_lookup(req);
+	ocf_hb_req_prot_unlock_rd(req);
 	if (ocf_engine_is_hit(req)) {
 		req->complete(req, 0);
 	} else {
@@ -125,7 +126,6 @@ static const struct ocf_engine_callbacks _uc_read_engine_callbacks =
 int ocf_read_ucache(struct ocf_request *req)
 {
 	int lock = OCF_LOCK_NOT_ACQUIRED;
-	struct ocf_cache *cache = req->cache;
 
 	/* LOOKUP */
 	if (req->ioi.io.flags == OCF_LOOKUP) {
@@ -243,22 +243,60 @@ static void _ocf_write_uc_update_bits(struct ocf_request *req)
 	ocf_hb_req_prot_unlock_wr(req);
 }
 
-static void _ocf_invalid_write_ucache(struct ocf_request *req)
+static int _ocf_invalid_write_do(struct ocf_request *req)
 {
-	/* Complete request */
 	req->complete(req, 0);
-
 	ocf_engine_invalidate(req);
+	return 0;
+}
+
+static const struct ocf_io_if _io_if_invalid_uc_resume = {
+	.read = _ocf_invalid_write_do,
+	.write = _ocf_invalid_write_do,
+};
+
+static const struct ocf_engine_callbacks _uc_invalid_engine_callbacks =
+{
+	.resume = ocf_engine_on_resume,
+};
+
+static int _ocf_invalid_write_ucache(struct ocf_request *req)
+{
+	int lock = OCF_LOCK_NOT_ACQUIRED;
+
+	ocf_io_start(&req->ioi.io);
+
+	/* Get OCF request - increase reference counter */
+	ocf_req_get(req);
+
+	/* Set resume io_if */
+	req->io_if = &_io_if_invalid_uc_resume;
+	req->engine_cbs = &_uc_invalid_engine_callbacks;
+
+	/* only get lock already mapped */
+	lock = ocf_engine_get_mapped_lock(req);
+
+	if (lock >= 0) {
+		if (lock != OCF_LOCK_ACQUIRED) {
+			/* WR lock was not acquired, need to wait for resume */
+			OCF_DEBUG_RQ(req, "NO LOCK");
+		} else {
+			_ocf_invalid_write_do(req);
+		}
+	} else {
+		OCF_DEBUG_RQ(req, "LOCK ERROR %d\n", lock);
+		req->complete(req, lock);
+		ocf_req_put(req);
+	}
+
+	/* Put OCF request - decrease reference counter */
+	ocf_req_put(req);
+
+	return 0;
 }
 
 static int _ocf_write_uc_do(struct ocf_request *req)
 {
-	/* INVALID write */
-	if (req->ioi.io.flags == OCF_INVALID) {
-		_ocf_invalid_write_ucache(req);
-		return 0;
-	}
-
 	/* Get OCF request - increase reference counter */
 	ocf_req_get(req);
 
@@ -289,6 +327,12 @@ static const struct ocf_engine_callbacks _uc_write_engine_callbacks =
 
 int ocf_write_ucache(struct ocf_request *req)
 {
+	/* INVALID write */
+	if (req->ioi.io.flags == OCF_INVALID) {
+		_ocf_invalid_write_ucache(req);
+		return 0;
+	}
+
 	int lock = OCF_LOCK_NOT_ACQUIRED;
 
 	ocf_io_start(&req->ioi.io);

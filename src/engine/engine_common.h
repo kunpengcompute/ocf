@@ -234,6 +234,18 @@ struct ocf_engine_callbacks
 int ocf_engine_prepare_clines(struct ocf_request *req);
 
 /**
+ * @brief lock cachelines already mapped
+ *
+ * @param req OCF request
+ *
+ * @returns cacheline lock status
+ * @retval OCF_LOCK_ACQUIRED in case of success and CLs locked
+ * @retval OCF_LOCK_NOT_ACQUIRED in case of success and waiting for CL lock
+ * @retval <0 other error code
+ */
+int ocf_engine_get_mapped_lock(struct ocf_request *req);
+
+/**
  * @brief Traverse OCF request (lookup cache)
  *
  * @note This function does not evict cachelines. Only lookup in metadata is
