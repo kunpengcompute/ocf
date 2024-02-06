@@ -14,6 +14,7 @@
 #include "ocf_composite_volume_priv.h"
 #include "mngt/ocf_mngt_core_pool_priv.h"
 #include "metadata/metadata_io.h"
+#include "utils/utils_strbuf.h"
 
 /*
  *
@@ -354,7 +355,7 @@ struct strbuf* ocf_ctx_dump_cache_core_info(ocf_ctx_t ctx, const char *cache_nam
 		ret = dump_visitor(cache, b);
 		ocf_mngt_cache_put(cache);
 		if(ret) {
-			ocf_log(ctx, log_err, "Dump cache %.*s info error\n"
+			ocf_log(ctx, log_err, "Dump cache %.*s info error\n",
 				OCF_CACHE_NAME_SIZE, ocf_cache_get_name(cache));
 			delete_strbuf(b);
 			return NULL;

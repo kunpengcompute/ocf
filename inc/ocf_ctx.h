@@ -13,7 +13,6 @@
 
 #include "ocf_volume.h"
 #include "ocf_logger.h"
-#include "utils/utils_strbuf.h"
 
 /**
  * @brief Seeking start position in environment data buffer

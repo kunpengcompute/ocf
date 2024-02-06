@@ -24,7 +24,7 @@ struct strbuf* new_strbuf()
 
 	OCF_REALLOC_INIT(&(ret->format_buf), &(ret->format_buf_len));
 	if(OCF_REALLOC(&(ret->format_buf), DEFAULT_PRINT_BUF_SIZE, 1, &(ret->format_buf_len))) {
-		OCF_REALLOC_DEINIT(&(b->buf), &(b->len));
+		OCF_REALLOC_DEINIT(&(ret->buf), &(ret->len));
 		return NULL;
 	}
 	return ret;
