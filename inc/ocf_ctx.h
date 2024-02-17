@@ -269,4 +269,16 @@ void ocf_ctx_get(ocf_ctx_t ctx);
  */
 void ocf_ctx_put(ocf_ctx_t ctx);
 
+/**
+ * @brief Dump cache info and core info
+ * 
+ * @note caller must call delete_strbuf to free memory after use return value
+ * 
+ * @param[in] ctx OCF context
+ * @param[in] cache_name dump all cache info if set NULL
+ * 
+ * @return dump info is stored in the buf field, return NULL when an error occurs
+ */
+struct strbuf* ocf_ctx_dump_cache_core_info(ocf_ctx_t ctx, const char *cache_name);
+
 #endif /* __OCF_CTX_H__ */
