@@ -524,6 +524,37 @@ int ocf_engine_prepare_clines(struct ocf_request *req)
 	return lock;
 }
 
+int ocf_engine_get_mapped_lock(struct ocf_request *req)
+{
+	struct ocf_user_part *user_part = &req->cache->user_parts[req->part_id];
+	int lock = -OCF_ERR_NO_LOCK;
+
+	/* requests to disabled partitions go in pass-through */
+	if (!ocf_user_part_is_enabled(user_part)) {
+		ocf_req_set_mapping_error(req);
+		return -OCF_ERR_NO_LOCK;
+	}
+
+	/* Calculate hashes for hash-bucket locking */
+	ocf_req_hash(req);
+
+	/* Read-lock hash buckets associated with request target core & LBAs
+	 * (core lines) to assure that cache mapping for these core lines does
+	 * not change during traversation */
+	ocf_hb_req_prot_lock_rd(req);
+
+	/* check CL status */
+	ocf_engine_lookup(req);
+
+	lock = lock_clines(req);
+	if (lock >= 0)
+		ocf_engine_set_hot(req);
+
+	ocf_hb_req_prot_unlock_rd(req);
+
+	return lock;
+}
+
 static int _ocf_engine_clean_getter(struct ocf_cache *cache,
 		void *getter_context, uint32_t item, ocf_cache_line_t *line)
 {
