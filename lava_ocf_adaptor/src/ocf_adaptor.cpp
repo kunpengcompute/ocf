@@ -658,7 +658,7 @@ struct ocf_dump_info *ocf_dump_cache_core_info()
 	}
 
 	info->buf = b->buf;
-	info->len = b->len;
+	info->len = b->cur;
 	struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
 	*tail = b;
 
