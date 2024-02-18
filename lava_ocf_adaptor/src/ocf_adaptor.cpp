@@ -10,6 +10,7 @@
 #include "ctx.h"
 #include "slot_info.h"
 #include "log.h"
+#include "utils_strbuf.h"
 #include "ocf_adaptor.h"
 
 using namespace std;
@@ -641,3 +642,32 @@ int ocf_poll(uint32_t io_worker_id, int max_num)
 	return STATE_SUCCESS;
 }
 
+struct ocf_dump_info *ocf_dump_cache_core_info()
+{
+	struct ocf_dump_info *info = (struct ocf_dump_info *)env_zalloc(sizeof(struct ocf_dump_info) + sizeof(void *), 0);
+	if (!info) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "dump info memory malloc fail\n");
+		return NULL;
+	}
+
+	struct strbuf *b = ocf_ctx_dump_cache_core_info(g_adaptor.ctx, ocf_cache_get_name(g_adaptor.cache));
+	if (!b) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "dump info get fail\n");
+		ocf_release_dump_info(info);
+		return NULL;
+	}
+
+	info->buf = b->buf;
+	info->len = b->len;
+	struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
+	*tail = b;
+
+	return info;
+}
+
+void ocf_release_dump_info(struct ocf_dump_info *info)
+{
+	struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
+	delete_strbuf(*tail);
+	env_free(info);
+}

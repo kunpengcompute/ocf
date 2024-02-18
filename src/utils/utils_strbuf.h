@@ -10,6 +10,10 @@
 #define DEFAULT_BUF_SIZE 4096
 #define DEFAULT_PRINT_BUF_SIZE 128
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct strbuf
 {
 	size_t len;
@@ -25,5 +29,9 @@ int strbuf_write_format_str(struct strbuf *b, const char *format, ...);
 int strbuf_write_str(struct strbuf *b, const char *str);
 int strbuf_write_char(struct strbuf *b, char c);
 int strbuf_write_end(struct strbuf *b);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __UTILS_STRBUF_H__ */

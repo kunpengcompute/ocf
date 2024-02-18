@@ -7,6 +7,7 @@
 #ifndef __OCF_ADAPTOR_H__
 #define __OCF_ADAPTOR_H__
 
+#include "ocf_adaptor_cli.h"
 #include "ocf_adaptor_config.h"
 #include "ocf_adaptor_err.h"
 #include "ocf_adaptor_log.h"
@@ -117,6 +118,10 @@ int ocf_put(struct req_context *ctx);
  *         othewise STATE_SUCCESS
  */
 int ocf_poll(uint32_t io_worker_id, int max_num);
+
+struct ocf_dump_info *ocf_dump_cache_core_info();
+
+void ocf_release_dump_info(struct ocf_dump_info *info);
 
 #ifdef __cplusplus
 }

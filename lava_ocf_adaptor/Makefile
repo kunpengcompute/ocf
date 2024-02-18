@@ -17,7 +17,7 @@ OBJS_CPP = $(patsubst %.cpp, %.o, $(SRC_CPP))
 LIB=liblava_cache.so
 
 CC = gcc
-CPPFLAGS = -fPIC -g -Wall -I${INCDIR} -I${SRCDIR}/ocf/env/
+CPPFLAGS = -fPIC -g -Wall -I${INCDIR} -I${SRCDIR}/ocf/env/ -I${SRCDIR}/ocf/utils/
 LDFLAGS = -lm -lz -pthread
 
 all: sync
