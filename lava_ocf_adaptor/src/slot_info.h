@@ -19,12 +19,14 @@ extern "C" {
 struct slot_info {
 	ocf_core_t core;
 	int now;
-	uint8_t isUsed[REGION_NUM_LIMIT];
+	uint8_t isUsed[REGION_NUM_LIMIT + 1];
 };
 
 typedef struct slot_info *slot_info_t;
 
-int get_remap_id(slot_info_t info);
+/* does'nt support concurrency, concurrent locking is implemented by the upper layer */
+int get_remap_id(slot_info_t info); // return value range [1, REGION_NUM_LIMIT]
+void put_remap_id(slot_info_t info, int remap_id);
 
 #ifdef __cplusplus
 }
