@@ -239,4 +239,15 @@ void ocf_core_stats_initialize(ocf_core_t core);
  */
 int ocf_core_stats_initialize_all(ocf_cache_t cache);
 
+/**
+ * @brief Dump stats info of cache
+ * 
+ * @note caller must call delete_strbuf to free memory after use return value
+ * 
+ * @param[in] cache_name name of cache needs to be dumped
+ * 
+ * @return dump info is stored in the buf field, return NULL when an error occurs
+ */
+struct strbuf* ocf_stats_dump_cache(ocf_ctx_t ctx, const char *cache_name);
+
 #endif /* __OCF_STATS_H__ */
