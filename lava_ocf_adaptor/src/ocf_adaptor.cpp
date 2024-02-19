@@ -32,6 +32,10 @@ struct ocf_adaptor_context {
 	ocf_cache_t cache;
 
 	env_rwlock table_lock = { PTHREAD_RWLOCK_INITIALIZER };
+	/* By default, same region or regions in the same slot don't support multi-thread concurrent 
+	 * operations(that is, multi-thread concurrent operations such as get/put/invalid/lookup)
+	 * if it exists, it needs to be locked at the slot granularity
+	 */
 	unordered_map<uint32_t, slot_info_t> slot_info_table;
 	unordered_map<uint32_t, unordered_map<uint32_t, int>> region_remap_table;
 } g_adaptor;
@@ -372,6 +376,7 @@ int ocf_region_invalid(struct req_context *ctx)
 		return STATE_PRRAM_INVALID;
 	}
 
+	/* find the remap id for the region */
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	env_rwlock_read_lock(&g_adaptor.table_lock);
@@ -380,7 +385,6 @@ int ocf_region_invalid(struct req_context *ctx)
 		return STATE_CORE_NOT_EXIST;
 	}
 
-	/* no concurrent requests for a slot from multiple threads */
 	slot_info_t info = slot_info_table[ctx->slot_id];
 	auto &region_map = region_remap_table[ctx->slot_id];
 	ocf_core_t core = info->core;
@@ -394,6 +398,7 @@ int ocf_region_invalid(struct req_context *ctx)
 	uint64_t remap_id = region_map[ctx->region_id];
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
+	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
 	entry->is_region_invalid = 1;
@@ -420,6 +425,7 @@ int ocf_range_invalid(struct req_context *ctx)
 		return STATE_SUCCESS;
 	}
 
+	/* find the remap id for the region */
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	env_rwlock_read_lock(&g_adaptor.table_lock);
@@ -428,7 +434,6 @@ int ocf_range_invalid(struct req_context *ctx)
 		return STATE_CORE_NOT_EXIST;
 	}
 
-	/* no concurrent requests for a slot from multiple threads */
 	slot_info_t info = slot_info_table[ctx->slot_id];
 	auto &region_map = region_remap_table[ctx->slot_id];
 	ocf_core_t core = info->core;
@@ -442,6 +447,7 @@ int ocf_range_invalid(struct req_context *ctx)
 	uint64_t remap_id = region_map[ctx->region_id];
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
+	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
 	entry->is_region_invalid = 0;
@@ -468,6 +474,7 @@ int ocf_lookup(struct req_context *ctx)
 		return STATE_SUCCESS;
 	}
 
+	/* find the remap id for the region */
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	env_rwlock_read_lock(&g_adaptor.table_lock);
@@ -476,7 +483,6 @@ int ocf_lookup(struct req_context *ctx)
 		return STATE_CORE_NOT_EXIST;
 	}
 
-	/* no concurrent requests for a slot from multiple threads */
 	slot_info_t info = slot_info_table[ctx->slot_id];
 	auto &region_map = region_remap_table[ctx->slot_id];
 	ocf_core_t core = info->core;
@@ -516,6 +522,7 @@ int ocf_get(struct req_context *ctx)
 		return STATE_SUCCESS;
 	}
 
+	/* find the remap id for the region */
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	env_rwlock_read_lock(&g_adaptor.table_lock);
@@ -524,7 +531,6 @@ int ocf_get(struct req_context *ctx)
 		return STATE_CORE_NOT_EXIST;
 	}
 
-	/* no concurrent requests for a slot from multiple threads */
 	slot_info_t info = slot_info_table[ctx->slot_id];
 	auto &region_map = region_remap_table[ctx->slot_id];
 	ocf_core_t core = info->core;
@@ -538,6 +544,7 @@ int ocf_get(struct req_context *ctx)
 	uint64_t remap_id = region_map[ctx->region_id];
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
+	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
 	entry->is_region_invalid = 0;
@@ -564,6 +571,7 @@ int ocf_put(struct req_context *ctx)
 		return STATE_SUCCESS;
 	}
 
+	/* find the remap id for the region */
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	env_rwlock_read_lock(&g_adaptor.table_lock);
@@ -572,7 +580,6 @@ int ocf_put(struct req_context *ctx)
 		return STATE_CORE_NOT_EXIST;
 	}
 
-	/* no concurrent requests for a slot from multiple threads */
 	slot_info_t info = slot_info_table[ctx->slot_id];
 	ocf_core_t core = info->core;
 	auto &region_map = region_remap_table[ctx->slot_id];
@@ -594,6 +601,7 @@ int ocf_put(struct req_context *ctx)
 	}
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
+	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
 	entry->is_region_invalid = 0;
@@ -630,6 +638,8 @@ int ocf_poll(uint32_t io_worker_id, int max_num)
 			env_rwlock_read_lock(&g_adaptor.table_lock);
 			if (region_remap_table.find(ctx->slot_id) != region_remap_table.end()) {
 				auto &region_remap = region_remap_table[ctx->slot_id];
+				slot_info_t info = g_adaptor.slot_info_table[ctx->slot_id];
+				put_remap_id(info, region_remap[ctx->region_id]);
 				region_remap.erase(ctx->region_id);
 				ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) remove region_id(%u) remap\n",
 					ctx->slot_id, ctx->region_id);
