@@ -119,8 +119,23 @@ int ocf_put(struct req_context *ctx);
  */
 int ocf_poll(uint32_t io_worker_id, int max_num);
 
+/**
+ * @brief dump basic cache information and the mapping between caches and cores device
+ *
+ * @retval NULL when ocf_dump_info malloc fail, otherwise ocf_dump_info pointer
+ */
 struct ocf_dump_info *ocf_dump_cache_core_info();
 
+/**
+ * @brief dump cache statistic information
+ *
+ * @retval NULL when ocf_dump_info memory malloc fail, otherwise ocf_dump_info pointer
+ */
+struct ocf_dump_info *ocf_dump_cache_stats();
+
+/**
+ * @brief release the memory for storing dump information
+ */
 void ocf_release_dump_info(struct ocf_dump_info *info);
 
 #ifdef __cplusplus
