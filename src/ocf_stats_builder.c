@@ -514,15 +514,15 @@ static void _stats_dump_cache_cb(ocf_cache_t cache, void *priv, int error)
 	strbuf_write_str(buf, "| Block statistics             |         Count        |    %   |    Units    |\n");
 	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
 	STATS_DUMP_FIELD(buf, "| Reads from core volume(s)    |", blocks, core_volume_rd, "| 4KiB blocks |");
-	STATS_DUMP_FIELD(buf, "| Writes from core volume(s)   |", blocks, core_volume_wr, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Writes to core volume(s)     |", blocks, core_volume_wr, "| 4KiB blocks |");
 	STATS_DUMP_FIELD(buf, "| Total to/from core volume(s) |", blocks, core_volume_total, "| 4KiB blocks |");
 	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
 	STATS_DUMP_FIELD(buf, "| Reads from cache volume      |", blocks, cache_volume_rd, "| 4KiB blocks |");
-	STATS_DUMP_FIELD(buf, "| Writes from cache volume     |", blocks, cache_volume_wr, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Writes to cache volume       |", blocks, cache_volume_wr, "| 4KiB blocks |");
 	STATS_DUMP_FIELD(buf, "| Total to/from cache volume   |", blocks, cache_volume_total, "| 4KiB blocks |");
 	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
 	STATS_DUMP_FIELD(buf, "| Reads from core(s)           |", blocks, volume_rd, "| 4KiB blocks |");
-	STATS_DUMP_FIELD(buf, "| Writes from core(s)          |", blocks, volume_wr, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Writes to core(s)            |", blocks, volume_wr, "| 4KiB blocks |");
 	STATS_DUMP_FIELD(buf, "| Total to/from core(s)        |", blocks, volume_total, "| 4KiB blocks |");
 	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n\n");
 
