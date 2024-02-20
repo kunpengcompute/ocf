@@ -7,16 +7,17 @@
 #include <syslog.h>
 #include <unordered_map>
 #include "completion_queue.h"
+#include "queue_thread.h"
 #include "ctx.h"
 #include "slot_info.h"
 #include "log.h"
 #include "utils_strbuf.h"
 #include "ocf_adaptor.h"
+#include "volume.h"
 
 using namespace std;
 
 #define REGION_SIZE (1UL << 35)
-#define MAX_QUEUE_NUM 64
 #define MAX_CQ_ENTRYS 16
 #define ALIGN_SIZE 4096
 
@@ -25,6 +26,16 @@ using namespace std;
 #define DELETING     2
 
 extern "C" ocf_core_id_t ocf_core_get_id(ocf_core_t core);
+
+/*
+ * Queue ops providing interface for running queue thread in asynchronous
+ * way. Optional synchronous kick callback is not provided. The stop()
+ * operation is called just before queue is being destroyed.
+ */
+const struct ocf_queue_ops queue_ops = {
+	.kick = queue_thread_kick,
+	.stop = queue_thread_stop,
+};
 
 struct ocf_adaptor_context {
 	int state = NONE;
@@ -84,15 +95,206 @@ static int check_ocf_config(struct ocf_config *cfg)
 	return STATE_SUCCESS;
 }
 
+/*
+ * Basic asynchronous completion callback. Just propagate error code and
+ * up the semaphore.
+ */
+static void simple_complete(ocf_cache_t cache, void *priv, int error)
+{
+	struct simple_context *context= (struct simple_context*)priv;
+
+	*context->ret = error;
+	sem_post(&context->sem);
+}
+
 static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config *cfg)
 {
-	// cache_priv init and queue init
+	struct ocf_mngt_cache_config cache_cfg = { };
+	struct ocf_mngt_cache_attach_config attach_cfg = { };
+	struct lava_volume_param param;
+	ocf_volume_t volume;
+	ocf_volume_type_t type;
+	struct ocf_volume_uuid uuid;
+	struct cache_priv *cache_priv;
+	struct simple_context context;
+	int ret;
+	int i;
+
+	/* Open lava chunk pool */
+	ret = Open(cfg->chunk_pool_id);
+	if (ret) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "Open lava chunk pool failed\n");
+		return ret;
+	}
+
+	/* Initialize completion semaphore */
+	ret = sem_init(&context.sem, 0, 0);
+	if (ret)
+		return ret;
+
+	/*
+	 * Asynchronous callbacks will assign error code to ret. That
+	 * way we have always the same variable holding last error code.
+	 */
+	context.ret = &ret;
+
+	/* Cache configuration */
+	strcpy(cache_cfg.name, "UCache");
+	ocf_mngt_cache_config_set_default(&cache_cfg);
+	cache_cfg.metadata_volatile = true;
+	cache_cfg.cache_line_size = (ocf_cache_line_size_t)cfg->cache_line_size;
+
+	/* Cache deivce (volume) configuration */
+	type = ocf_ctx_get_volume_type(ctx, LAVA_VOL_TYPE);
+	ret = ocf_uuid_set_str(&uuid, "cache");
+	if (ret)
+		goto err_sem;
+
+	ret = ocf_volume_create(&volume, type, &uuid);
+	if (ret)
+		goto err_sem;
+
+	param.chunk_num = cfg->cache_capacity / LAVA_CHUNK_SIZE;
+	ocf_mngt_cache_attach_config_set_default(&attach_cfg);
+	attach_cfg.device.volume = volume;
+	attach_cfg.cache_line_size = (ocf_cache_line_size_t)cfg->cache_line_size;
+	attach_cfg.device.volume_params = &param;
+
+	/*
+	 * Allocate cache private structure. We can not initialize it
+	 * on stack, as it may be used in various async contexts
+	 * throughout the entire live span of cache object.
+	 */
+	cache_priv = (struct cache_priv*)malloc(sizeof(*cache_priv));
+	if (!cache_priv) {
+		ret = -ENOMEM;
+		goto err_vol;
+	}
+	cache_priv->queue_num = cfg->io_worker_num;
+
+	/* Start cache */
+	ret = ocf_mngt_cache_start(ctx, cache, &cache_cfg, NULL);
+	if (ret)
+		goto err_priv;
+
+	/* Assing cache priv structure to cache. */
+	ocf_cache_set_priv(*cache, cache_priv);
+
+	/*
+	 * Create management queue. It will be used for performing various
+	 * asynchronous management operations, such as attaching cache volume
+	 * or adding core object.
+	 */
+	ret = ocf_queue_create(*cache, &cache_priv->mngt_queue, &queue_ops);
+	if (ret) {
+		ocf_mngt_cache_stop(*cache, simple_complete, &context);
+		sem_wait(&context.sem);
+		goto err_priv;
+	}
+
+	/*
+	 * Assign management queue to cache. This has to be done before any
+	 * other management operation. Management queue is treated specially,
+	 * and it may not be used for submitting IO requests. It also will not
+	 * be put on the cache stop - we have to put it manually at the end.
+	 */
+	ocf_mngt_cache_set_mngt_queue(*cache, cache_priv->mngt_queue);
+
+	/* Create queue which will be used for IO submission. */
+	for (i = 0; i < cfg->io_worker_num; ++i) {
+		ret = ocf_queue_create(*cache, &cache_priv->io_queues[i], &queue_ops);
+		if (ret)
+			goto err_cache;
+	}
+
+	for (i = 0; i < cfg->io_worker_num; ++i) {
+		ret = completion_queue_create(&cache_priv->completion_queues[i]);
+		if (ret)
+			goto err_cache;
+	}
+
+	ret = initialize_threads(cache_priv->mngt_queue, cache_priv->io_queues,
+		cache_priv->queue_num, cfg->core_num, cfg->core_mask);
+	if (ret)
+		goto err_cache;
+
+	/* Attach volume to cache */
+	ocf_mngt_cache_attach(*cache, &attach_cfg, simple_complete, &context);
+	sem_wait(&context.sem);
+	if (ret)
+		goto err_cache;
+
 	return 0;
+
+err_cache:
+	ocf_mngt_cache_stop(*cache, simple_complete, &context);
+	ocf_queue_put(cache_priv->mngt_queue);
+err_priv:
+	free(cache_priv);
+err_vol:
+	ocf_volume_destroy(volume);
+err_sem:
+	sem_destroy(&context.sem);
+	return ret;
+}
+
+/*
+ * Add core completion callback context. We need this to propagate error code
+ * and handle to freshly initialized core object.
+ */
+struct add_core_context {
+	ocf_core_t *core;
+	int *error;
+	sem_t sem;
+};
+
+/* Add core complete callback. Just rewrite args to context structure and
+ * up the semaphore.
+ */
+static void add_core_complete(ocf_cache_t cache, ocf_core_t core,
+		void *priv, int error)
+{
+	struct add_core_context *context = (struct add_core_context*)priv;
+
+	*context->core = core;
+	*context->error = error;
+	sem_post(&context->sem);
 }
 
 static int initialize_core(ocf_cache_t cache, ocf_core_t *core)
 {
-	return 0;
+	struct ocf_mngt_core_config core_cfg = { };
+	struct add_core_context context;
+	int ret;
+
+	/* Initialize completion semaphore */
+	ret = sem_init(&context.sem, 0, 0);
+	if (ret)
+		return ret;
+
+	/*
+	 * Asynchronous callback will assign core handle to core,
+	 * and to error code to ret.
+	 */
+	context.core = core;
+	context.error = &ret;
+
+	/* Core configuration */
+	ocf_mngt_core_config_set_default(&core_cfg);
+	strcpy(core_cfg.name, "slot");
+	core_cfg.volume_type = LAVA_VOL_TYPE;
+	ret = ocf_uuid_set_str(&core_cfg.uuid, "slot");
+	if (ret)
+		goto err_sem;
+
+	/* Add core to cache */
+	ocf_mngt_cache_add_core(cache, &core_cfg, add_core_complete, &context);
+	sem_wait(&context.sem);
+
+err_sem:
+	sem_destroy(&context.sem);
+
+	return ret;
 }
 
 static void core_remove_complete(void *ctx, int ret)
