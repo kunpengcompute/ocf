@@ -10,6 +10,7 @@
 #include "utils/utils_user_part.h"
 #include "utils/utils_cache_line.h"
 #include "utils/utils_stats.h"
+#include "utils/utils_strbuf.h"
 
 static void _fill_req(struct ocf_stats_requests *req, struct ocf_stats_core *s)
 {
@@ -455,4 +456,130 @@ int ocf_stats_collect_cache(ocf_cache_t cache,
 		_fill_errors(errors, &s);
 
 	return 0;
+}
+
+struct stats_dump_ctx {
+	struct strbuf *buf;
+	env_completion *cmpl;
+};
+
+#define STATS_DUMP_FIELD(buf, name, group, field, units) \
+	strbuf_write_format_str(buf, name" %20lu | %3lu.%2lu "units"\n", \
+				group.field.value, group.field.fraction / 100, group.field.fraction % 100)
+
+static void _stats_dump_cache_cb(ocf_cache_t cache, void *priv, int error)
+{
+	struct stats_dump_ctx *dump_ctx = priv;
+	struct strbuf *buf = dump_ctx->buf;
+	struct ocf_stats_usage usage;
+	struct ocf_stats_requests req;
+	struct ocf_stats_blocks blocks;
+	struct ocf_stats_errors errors;
+
+	ocf_stats_collect_cache(cache, &usage, &req, &blocks, &errors);
+
+	/* format usage stats */
+	strbuf_write_str(buf, "+------------------+----------------------+--------+-------------+\n");
+	strbuf_write_str(buf, "| Usage statistics |         Count        |    %   |    Units    |\n");
+	strbuf_write_str(buf, "+------------------+----------------------+--------+-------------+\n");
+	STATS_DUMP_FIELD(buf, "| Occupancy        |", usage, occupancy, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Free             |", usage, free, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Clean            |", usage, clean, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Dirty            |", usage, dirty, "| 4KiB blocks |");
+	strbuf_write_str(buf, "+------------------+----------------------+--------+-------------+\n\n");
+
+	/* format req stats */
+	strbuf_write_str(buf, "+----------------------+----------------------+--------+----------+\n");
+	strbuf_write_str(buf, "| Request statistics   |         Count        |    %   |   Units  |\n");
+	strbuf_write_str(buf, "+----------------------+----------------------+--------+----------+\n");
+	STATS_DUMP_FIELD(buf, "| Read hits            |", req, rd_hits, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Read partial misses  |", req, rd_partial_misses, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Read full misses     |", req, rd_full_misses, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Read total           |", req, rd_total, "| Requests |");
+	strbuf_write_str(buf, "+----------------------+----------------------+--------+----------+\n");
+	STATS_DUMP_FIELD(buf, "| Write hits           |", req, wr_hits, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Write partial misses |", req, wr_partial_misses, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Write full misses    |", req, wr_full_misses, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Write total          |", req, wr_total, "| Requests |");
+	strbuf_write_str(buf, "+----------------------+----------------------+--------+----------+\n");
+	STATS_DUMP_FIELD(buf, "| Pass-Through reads   |", req, rd_pt, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Pass-Through writes  |", req, wr_pt, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Serviced requests    |", req, serviced, "| Requests |");
+	strbuf_write_str(buf, "+----------------------+----------------------+--------+----------+\n");
+	STATS_DUMP_FIELD(buf, "| Total requests       |", req, total, "| Requests |");
+	strbuf_write_str(buf, "+----------------------+----------------------+--------+----------+\n\n");
+
+	/* format blocks stats */
+	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
+	strbuf_write_str(buf, "| Block statistics             |         Count        |    %   |    Units    |\n");
+	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
+	STATS_DUMP_FIELD(buf, "| Reads from core volume(s)    |", blocks, core_volume_rd, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Writes to core volume(s)     |", blocks, core_volume_wr, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Total to/from core volume(s) |", blocks, core_volume_total, "| 4KiB blocks |");
+	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
+	STATS_DUMP_FIELD(buf, "| Reads from cache volume      |", blocks, cache_volume_rd, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Writes to cache volume       |", blocks, cache_volume_wr, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Total to/from cache volume   |", blocks, cache_volume_total, "| 4KiB blocks |");
+	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
+	STATS_DUMP_FIELD(buf, "| Reads from core(s)           |", blocks, volume_rd, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Writes to core(s)            |", blocks, volume_wr, "| 4KiB blocks |");
+	STATS_DUMP_FIELD(buf, "| Total to/from core(s)        |", blocks, volume_total, "| 4KiB blocks |");
+	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n\n");
+
+	/* format error stats */
+	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n");
+	strbuf_write_str(buf, "| Error statistics   |         Count        |    %   |   Units  |\n");
+	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n");
+	STATS_DUMP_FIELD(buf, "| Core read errors   |", errors, core_volume_rd, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Core write errors  |", errors, core_volume_wr, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Core total errors  |", errors, core_volume_total, "| Requests |");
+	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n");
+	STATS_DUMP_FIELD(buf, "| Cache read errors  |", errors, cache_volume_rd, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Cache write errors |", errors, cache_volume_wr, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| Cache total errors |", errors, cache_volume_total, "| Requests |");
+	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n");
+	STATS_DUMP_FIELD(buf, "| Total errors       |", errors, total, "| Requests |");
+	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n\n");
+	
+	/* tell the caller that we have done */
+	env_completion_complete(dump_ctx->cmpl);
+}
+
+struct strbuf* ocf_stats_dump_cache(ocf_ctx_t ctx, const char *cache_name)
+{
+	struct stats_dump_ctx dump_ctx;
+	struct strbuf *b;
+	env_completion cmpl;
+	ocf_cache_t cache;
+
+	if(!cache_name) {
+		return NULL;
+	}
+
+	b = new_strbuf();
+	if(b == NULL) {
+		ocf_log(ctx, log_err, "Failed to allcation memory for string buffer\n");
+		return b;
+	}
+
+	if(ocf_mngt_cache_get_by_name(ctx, cache_name, OCF_CACHE_NAME_SIZE, &cache)) {
+		/* no cache found */
+		strbuf_write_format_str(b, "cache named %.*s not exist\n",
+					OCF_CACHE_NAME_SIZE, cache_name);
+		goto end;
+	}
+
+	env_completion_init(&cmpl);
+	dump_ctx.buf = b;
+	dump_ctx.cmpl = &cmpl;
+	ocf_mngt_cache_read_lock(cache, _stats_dump_cache_cb, &dump_ctx);
+	env_completion_wait(&cmpl);
+	env_completion_destroy(&cmpl);
+
+	ocf_mngt_cache_put(cache);
+
+end:
+	strbuf_write_end(b);
+
+	return b;
 }
