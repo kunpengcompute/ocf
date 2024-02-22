@@ -117,8 +117,6 @@ static void* run(void *arg)
 	struct ocf_queue **io_queues = qt->io_queues;
 	uint8_t queue_num = qt->queue_num;
 	uint32_t pending_io = 0;
-	for (i = 0; i < queue_num; ++i)
-		pending_io += ocf_queue_pending_io(io_queues[i]);
 
 	pthread_mutex_lock(&qt->mutex);
 
@@ -126,6 +124,9 @@ static void* run(void *arg)
 		if (qt->signalled) {
 			qt->signalled = false;
 			pthread_mutex_unlock(&qt->mutex);
+
+			for (i = 0; i < queue_num; ++i)
+				pending_io += ocf_queue_pending_io(io_queues[i]);
 
 			/* execute items on the queue */
 			while (pending_io > 0) {
