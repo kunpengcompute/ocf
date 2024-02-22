@@ -73,7 +73,7 @@ int strbuf_write_str(struct strbuf *b, const char *str)
 		}
 	}
 
-	strncpy(b->buf+b->cur, str, min(b->len-b->cur, needspace));
+	strncpy(b->buf+b->cur, str, ocf_min(b->len-b->cur, needspace));
 	b->cur += needspace;
 	return needspace;
 }

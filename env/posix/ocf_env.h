@@ -44,7 +44,7 @@
 #define PAGE_SIZE 4096
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
-#define min(a,b) MIN(a,b)
+#define ocf_min(a,b) ocf_min(a,b)
 
 #define ENV_PRIu64 "lu"
 #define ENV_PRId64 "ld"
@@ -91,7 +91,7 @@ void env_stack_trace(void);
 
 /* STRING OPERATIONS */
 #define env_memcpy(dest, dmax, src, slen) ({ \
-		memcpy(dest, src, min(dmax, slen)); \
+		memcpy(dest, src, ocf_min(dmax, slen)); \
 		0; \
 	})
 #define env_memset(dest, dmax, val) ({ \
@@ -99,14 +99,14 @@ void env_stack_trace(void);
 		0; \
 	})
 #define env_memcmp(s1, s1max, s2, s2max, diff) ({ \
-		*diff = memcmp(s1, s2, min(s1max, s2max)); \
+		*diff = memcmp(s1, s2, ocf_min(s1max, s2max)); \
 		0; \
 	})
 #define env_strdup strndup
 #define env_strnlen(s, smax) strnlen(s, smax)
-#define env_strncmp(s1, slen1, s2, slen2) strncmp(s1, s2, min(slen1, slen2))
+#define env_strncmp(s1, slen1, s2, slen2) strncmp(s1, s2, ocf_min(slen1, slen2))
 #define env_strncpy(dest, dmax, src, slen) ({ \
-		strncpy(dest, src, min(dmax - 1, slen)); \
+		strncpy(dest, src, ocf_min(dmax - 1, slen)); \
 		dest[dmax - 1] = '\0'; \
 		0; \
 	})

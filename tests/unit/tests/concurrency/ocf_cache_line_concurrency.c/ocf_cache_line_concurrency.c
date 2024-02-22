@@ -340,7 +340,7 @@ void thread(void *_ctx)
 	bool single;
 	int (*lock_pfn)(struct ocf_cache_line_concurrency *c, struct ocf_request *req,
 				void (*cmpl)(struct ocf_request *req));
-	unsigned max_io_size = min(min(TEST_MAX_MAP_SIZE, ctx->clines), ctx->max_io_size);
+	unsigned max_io_size = ocf_min(ocf_min(TEST_MAX_MAP_SIZE, ctx->clines), ctx->max_io_size);
 	unsigned line;
 	bool locked;
 
