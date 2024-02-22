@@ -12,19 +12,6 @@
 
 using namespace std;
 
-struct segment {
-	uint32_t offset;
-	uint32_t length;
-	char *data;
-};
-
-struct Request {
-	uint64_t chunk_id;
-	std::vector<segment> segments;
-	void *user_ctx;
-	std::function<void(int ret, void *context)> cb;
-};
-
 struct lava_volume {
 	const char *name;
 	std::vector<uint64_t> chunk_ids;
@@ -95,7 +82,7 @@ static void lava_volume_submit_io(struct ocf_io *io)
 	lava_volume = (struct lava_volume*)ocf_volume_get_priv(ocf_io_get_volume(io));
 
 	do {
-		segment s;
+		Segment s;
 		Request *req = (Request*)malloc(sizeof(struct Request));
 		uint32_t chunk_remain = LAVA_CHUNK_SIZE - (addr % LAVA_CHUNK_SIZE);
 		s.offset = addr + submitted_len;
@@ -131,8 +118,6 @@ static void lava_volume_submit_io(struct ocf_io *io)
 	ocf_adaptor_log(OCF_LOG_INFO, "VOL: (name: %s), IO: (dir: %s, addr: %ld, bytes: %d)\n",
 			lava_volume->name, io->dir == OCF_READ ? "read" : "write",
 			io->addr, io->bytes);
-	
-	return 0;
 }
 
 /*

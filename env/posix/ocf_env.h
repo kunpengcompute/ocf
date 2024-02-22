@@ -44,7 +44,7 @@
 #define PAGE_SIZE 4096
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
-#define ocf_min(a,b) ocf_min(a,b)
+#define ocf_min(a,b) MIN(a,b)
 
 #define ENV_PRIu64 "lu"
 #define ENV_PRId64 "ld"

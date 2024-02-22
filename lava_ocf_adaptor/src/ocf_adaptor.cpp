@@ -120,13 +120,6 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 	int ret;
 	int i;
 
-	/* Open lava chunk pool */
-	ret = Open(cfg->chunk_pool_id);
-	if (ret) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "Open lava chunk pool failed\n");
-		return ret;
-	}
-
 	/* Initialize completion semaphore */
 	ret = sem_init(&context.sem, 0, 0);
 	if (ret)
