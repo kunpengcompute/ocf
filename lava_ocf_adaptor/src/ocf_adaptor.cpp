@@ -9,7 +9,6 @@
 #include "completion_queue.h"
 #include "queue_thread.h"
 #include "ctx.h"
-#include "de"
 #include "slot_info.h"
 #include "log.h"
 #include "utils_strbuf.h"
