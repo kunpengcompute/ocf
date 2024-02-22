@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <stdlib.h>
-#include <sched.h>
-#include <pthread.h>
-
 #include <ocf/ocf.h>
 #include "queue_thread.h"
 #include "log.h"
+
+#include <stdlib.h>
+#include <sched.h>
+#include <pthread.h>
 
 /* queue thread main function */
 static void* run(void *);
