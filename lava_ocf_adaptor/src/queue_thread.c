@@ -4,6 +4,7 @@
  */
 
 #include <stdlib.h>
+#include <sched.h>
 #include <pthread.h>
 
 #include <ocf/ocf.h>
