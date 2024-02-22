@@ -9,11 +9,12 @@
 #include "completion_queue.h"
 #include "queue_thread.h"
 #include "ctx.h"
+#include "de"
 #include "slot_info.h"
 #include "log.h"
 #include "utils_strbuf.h"
-#include "ocf_adaptor.h"
 #include "volume.h"
+#include "ocf_adaptor.h"
 
 using namespace std;
 
@@ -33,8 +34,9 @@ extern "C" ocf_core_id_t ocf_core_get_id(ocf_core_t core);
  * operation is called just before queue is being destroyed.
  */
 const struct ocf_queue_ops queue_ops = {
-	.kick = queue_thread_kick,
-	.stop = queue_thread_stop,
+	queue_thread_kick,
+	NULL,
+	queue_thread_stop,
 };
 
 struct ocf_adaptor_context {

@@ -6,6 +6,7 @@
 #include <ocf/ocf.h>
 #include <vector>
 #include <functional>
+#include "device.h"
 #include "volume.h"
 #include "ctx.h"
 #include "log.h"
@@ -183,27 +184,7 @@ static ctx_data_t *lava_volume_io_get_data(struct ocf_io *io)
  * type, which can be later instantiated as backend storage for cache
  * or core.
  */
-const struct ocf_volume_properties volume_properties = {
-	.name = "Chunk volume",
-	.io_priv_size = sizeof(struct lava_volume_io),
-	.volume_priv_size = sizeof(struct lava_volume),
-	.caps = {
-		.atomic_writes = 0,
-	},
-	.ops = {
-		.open = lava_volume_open,
-		.close = lava_volume_close,
-		.submit_io = lava_volume_submit_io,
-		.submit_flush = lava_volume_submit_flush,
-		.submit_discard = lava_volume_submit_discard,
-		.get_max_io_size = lava_volume_get_max_io_size,
-		.get_length = lava_volume_get_length,
-	},
-	.io_ops = {
-		.set_data = lava_volume_io_set_data,
-		.get_data = lava_volume_io_get_data,
-	},
-};
+static struct ocf_volume_properties volume_properties;
 
 /*
  * This function registers volume type in OCF context.
@@ -211,6 +192,22 @@ const struct ocf_volume_properties volume_properties = {
  */
 int volume_init(ocf_ctx_t ocf_ctx)
 {
+	volume_properties.name = "Chunk volume",
+	volume_properties.io_priv_size = sizeof(struct lava_volume_io),
+	volume_properties.volume_priv_size = sizeof(struct lava_volume),
+	volume_properties.caps.atomic_writes = 0;
+
+	volume_properties.ops.open = lava_volume_open;
+	volume_properties.ops.close = lava_volume_close;
+	volume_properties.ops.submit_io = lava_volume_submit_io;
+	volume_properties.ops.submit_flush = lava_volume_submit_flush;
+	volume_properties.ops.submit_discard = lava_volume_submit_discard;
+	volume_properties.ops.get_max_io_size = lava_volume_get_max_io_size;
+	volume_properties.ops.get_length = lava_volume_get_length;
+
+	volume_properties.io_ops.set_data = lava_volume_io_set_data;
+	volume_properties.io_ops.get_data = lava_volume_io_get_data;
+
 	return ocf_ctx_register_volume_type(ocf_ctx, LAVA_VOL_TYPE,
 			&volume_properties);
 }

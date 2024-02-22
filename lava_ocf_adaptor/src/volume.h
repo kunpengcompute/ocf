@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 struct volume_data {
-    void *ptr;
+    char *ptr;
     int offset;
 };
 
