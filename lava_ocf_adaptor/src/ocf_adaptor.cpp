@@ -359,6 +359,7 @@ int ocf_remove_core(uint32_t slot_id)
 		/* default deletion will not fail */
 		ocf_adaptor_log(OCF_LOG_WARN, "cache remove core(%u) fail\n", core_id);
 	}
+	sem_destroy(&ctx.sem);
 	env_free(info);
 
 	return STATE_SUCCESS;
