@@ -196,7 +196,7 @@ int initialize_threads(struct ocf_queue *mngt_queue, struct ocf_queue **io_queue
 			ocf_adaptor_log(OCF_LOG_ERROR, "io_queue_thread%d init failed.\n", i);
 			break;
 		}
-		ocf_queue_set_priv(io_queues[i], io_queue_thread);
+		ocf_queue_set_priv(io_queues[i], io_queue_threads[i]);
 	}
 
 	if (i != cpu_core_num) {
