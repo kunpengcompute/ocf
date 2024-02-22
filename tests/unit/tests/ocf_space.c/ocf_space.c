@@ -50,7 +50,7 @@ uint32_t __wrap_ocf_evict_calculate(ocf_cache_t cache,
 {
 	struct test_cache* tcache = cache;
 
-	return min(tcache->evictable[user_part->part.id], to_evict);
+	return ocf_min(tcache->evictable[user_part->part.id], to_evict);
 }
 
 uint32_t __wrap_ocf_lru_req_clines(struct ocf_request *req,

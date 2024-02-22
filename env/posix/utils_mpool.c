@@ -48,7 +48,7 @@ struct env_mpool *env_mpool_create(uint32_t hdr_size, uint32_t elem_size,
 	mpool->hdr_size = hdr_size;
 	mpool->elem_size = elem_size;
 
-	for (i = 0; i < min(env_mpool_max, mpool_max + 1); i++) {
+	for (i = 0; i < ocf_min(env_mpool_max, mpool_max + 1); i++) {
 		result = snprintf(name, sizeof(name), "%s_%u", name_perfix,
 				(1 << i));
 		if (result < 0 || result >= sizeof(name))

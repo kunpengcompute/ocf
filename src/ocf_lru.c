@@ -609,7 +609,7 @@ void ocf_lru_clean(ocf_cache_t cache, struct ocf_user_part *user_part,
 		.getter = ocf_lru_clean_get,
 		.getter_context = ctx,
 
-		.count = min(count, OCF_EVICTION_CLEAN_SIZE),
+		.count = ocf_min(count, OCF_EVICTION_CLEAN_SIZE),
 
 		.io_queue = io_queue
 	};
