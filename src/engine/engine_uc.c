@@ -90,6 +90,7 @@ static int _ocf_read_ucache_do(struct ocf_request *req)
 	ocf_read_ucache_submit_hit(req);
 
 	/* Update statistics */
+	ocf_engine_update_request_stats(req);
 	ocf_engine_update_block_stats(req);
 
 	/* Put OCF request - decrease reference counter */
