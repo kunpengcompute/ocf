@@ -286,8 +286,7 @@ static bool ocf_ucache_req_info_valid(ocf_cache_t cache,
 static bool ocf_core_submit_ucache_io(ocf_cache_t cache,
 		struct ocf_io *io, struct ocf_request *req)
 {
-	ocf_req_cache_mode_t tmp_mode = ocf_user_part_get_cache_mode(cache,
-				ocf_user_part_class2id(cache, req->part_id));
+	ocf_req_cache_mode_t tmp_mode = cache->conf_meta->cache_mode;
 
 	if (tmp_mode != ocf_req_cache_mode_uc) {
 		if (io->dir != OCF_READ && io->dir != OCF_WRITE) {
@@ -307,9 +306,11 @@ static bool ocf_core_submit_ucache_io(ocf_cache_t cache,
 	if (io->dir == OCF_LOOKUP) {
 		io->flags = OCF_LOOKUP;
 		io->dir = OCF_READ;
+		req->rw = OCF_READ;
 	} else if (io->dir == OCF_INVALID) {
 		io->flags = OCF_INVALID;
 		io->dir = OCF_WRITE;
+		req->rw = OCF_WRITE;
 	}
 
 	int ret;
