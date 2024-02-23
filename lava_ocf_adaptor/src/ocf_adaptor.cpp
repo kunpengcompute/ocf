@@ -255,7 +255,7 @@ static void add_core_complete(ocf_cache_t cache, ocf_core_t core,
 	sem_post(&context->sem);
 }
 
-static int initialize_core(ocf_cache_t cache, ocf_core_t *core)
+static int initialize_core(ocf_cache_t cache, ocf_core_t *core, uint32_t slot_id)
 {
 	struct ocf_mngt_core_config core_cfg = { };
 	struct add_core_context context;
@@ -275,9 +275,9 @@ static int initialize_core(ocf_cache_t cache, ocf_core_t *core)
 
 	/* Core configuration */
 	ocf_mngt_core_config_set_default(&core_cfg);
-	strcpy(core_cfg.name, "slot");
-	core_cfg.volume_type = LAVA_VOL_TYPE;
-	ret = ocf_uuid_set_str(&core_cfg.uuid, "slot");
+	sprintf(core_cfg.name, "slot%u", slot_id);
+	core_cfg.volume_type = CORE_VOL_TYPE;
+	ret = ocf_uuid_set_str(&core_cfg.uuid, core_cfg.name);
 	if (ret)
 		goto err_sem;
 
@@ -496,7 +496,7 @@ int ocf_add_core(uint32_t slot_id)
 	env_rwlock_write_unlock(&table_lock);
 
 	ocf_core_t core;
-	if (initialize_core(g_adaptor.cache, &core)) {
+	if (initialize_core(g_adaptor.cache, &core, slot_id)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "slot(%u) core init failed\n", slot_id);
 		env_rwlock_write_lock(&table_lock);
 		slot_info_table.erase(slot_id);

@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 #define LAVA_VOL_TYPE 1
+#define CORE_VOL_TYPE 2
 
 int ctx_init(ocf_ctx_t *ocf_ctx);
 void ctx_cleanup(ocf_ctx_t ctx);

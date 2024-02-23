@@ -375,6 +375,7 @@ static void ocf_mngt_cache_add_core_insert(ocf_pipeline_t pipeline,
 	ocf_volume_type_t type;
 	ocf_seq_no_t core_sequence_no = 0;
 	uint64_t length;
+	uint64_t cache_line_size = ocf_cache_get_line_size(cache);
 	int i, result = 0;
 
 	ocf_cache_log(cache, log_debug, "Inserting core %s\n", cfg->name);
@@ -413,7 +414,7 @@ static void ocf_mngt_cache_add_core_insert(ocf_pipeline_t pipeline,
 			OCF_PL_FINISH_RET(pipeline, result);
 	}
 
-	result = ocf_volume_open(volume, NULL);
+	result = ocf_volume_open(volume, &cache_line_size);
 	if (result)
 		OCF_PL_FINISH_RET(pipeline, result);
 

@@ -18,6 +18,10 @@ struct lava_volume {
 	std::vector<uint64_t> chunk_ids;
 };
 
+struct no_io_volume {
+	uint64_t cache_line_size;
+};
+
 /*
  * In open() function we store uuid data as volume name (for debug messages)
  * and allocate chunk to excute IO operation.
@@ -60,10 +64,14 @@ static void lava_volume_submit_io_cb(int ret, void *context)
 	struct ocf_io *io = (struct ocf_io*)req->user_ctx;
 	struct lava_volume_io *lava_volume_io = (struct lava_volume_io*)ocf_io_get_priv(io);
 
-	if (--lava_volume_io->req_cnt == 0) {
-		io->end(io, ret);
-		free(req);
+	if (ret) {
+		lava_volume_io->ret = ret;
 	}
+
+	delete req;
+	if (env_atomic_dec_return(&lava_volume_io->req_cnt) == 0) {
+		io->end(io, ret);
+ 	}
 }
 
 /*
@@ -82,9 +90,10 @@ static void lava_volume_submit_io(struct ocf_io *io)
 	data = (struct volume_data*)ocf_io_get_data(io);
 	lava_volume = (struct lava_volume*)ocf_volume_get_priv(ocf_io_get_volume(io));
 
-	do {
+	env_atomic_set(&lava_volume_io->req_cnt, 1);
+	while (io_length > 0) {
 		Segment s;
-		Request *req = (Request*)malloc(sizeof(struct Request));
+		Request *req = new Request();
 		uint32_t chunk_remain = LAVA_CHUNK_SIZE - (addr % LAVA_CHUNK_SIZE);
 		s.offset = addr + submitted_len;
 		if (chunk_remain > io_length) {
@@ -100,9 +109,9 @@ static void lava_volume_submit_io(struct ocf_io *io)
 		req->user_ctx = io;
 		req->cb = lava_volume_submit_io_cb;
 		submitted_len += s.length;
-		lava_volume_io->req_cnt++;
+		env_atomic_inc(&lava_volume_io->req_cnt);
 
-		if (io->dir = OCF_WRITE) {
+		if (io->dir == OCF_WRITE) {
 			ret = AioWrite(req);
 		} else {
 			ret = AioRead(req);
@@ -114,7 +123,11 @@ static void lava_volume_submit_io(struct ocf_io *io)
 		}
 
 		addr += s.length;
-	} while(io_length > 0);
+	}
+
+	if (env_atomic_dec_return(&lava_volume_io->req_cnt) == 0) {
+		io->end(io, ret);
+	}
 
 	ocf_adaptor_log(OCF_LOG_INFO, "VOL: (name: %s), IO: (dir: %s, addr: %ld, bytes: %d)\n",
 			lava_volume->name, io->dir == OCF_READ ? "read" : "write",
@@ -179,12 +192,60 @@ static ctx_data_t *lava_volume_io_get_data(struct ocf_io *io)
 	return lava_volume_io->data;
 }
 
+static int no_io_volume_open(ocf_volume_t volume, void *volume_params)
+{
+    struct no_io_volume *v = (struct no_io_volume*)ocf_volume_get_priv(volume);
+    v->cache_line_size = *(uint64_t *)volume_params;
+    return 0;
+}
+
+static void no_io_volume_close(ocf_volume_t volume)
+{
+}
+
+static void no_io_volume_submit_io(struct ocf_io *io)
+{
+}
+
+static void no_io_volume_submit_flush(struct ocf_io *io)
+{
+}
+
+static void no_io_volume_submit_discard(struct ocf_io *io)
+{
+}
+
+static unsigned int no_io_volume_get_max_io_size(ocf_volume_t volume)
+{
+    return 128 * 1024;
+}
+
+static uint64_t no_io_volume_get_length(ocf_volume_t volume)
+{
+    struct no_io_volume *v = (struct no_io_volume*)ocf_volume_get_priv(volume);
+    return (1UL << 42) * v->cache_line_size;
+}
+
+static int no_io_volume_io_set_data(struct ocf_io *io, ctx_data_t *data,
+        uint32_t offset)
+{
+    return 0;
+}
+
+
+static ctx_data_t *no_io_volume_io_get_data(struct ocf_io *io)
+{
+    return NULL;
+}
+
 /*
  * This structure contains volume properties. It describes volume
  * type, which can be later instantiated as backend storage for cache
  * or core.
  */
 static struct ocf_volume_properties volume_properties;
+
+static struct ocf_volume_properties no_io_volume_properties;
 
 /*
  * This function registers volume type in OCF context.
@@ -208,8 +269,30 @@ int volume_init(ocf_ctx_t ocf_ctx)
 	volume_properties.io_ops.set_data = lava_volume_io_set_data;
 	volume_properties.io_ops.get_data = lava_volume_io_get_data;
 
-	return ocf_ctx_register_volume_type(ocf_ctx, LAVA_VOL_TYPE,
-			&volume_properties);
+	no_io_volume_properties.name = "no io volume",
+	no_io_volume_properties.io_priv_size = 0,
+	no_io_volume_properties.volume_priv_size = sizeof(struct no_io_volume),
+	no_io_volume_properties.caps.atomic_writes = 0;
+
+	no_io_volume_properties.ops.open = no_io_volume_open;
+	no_io_volume_properties.ops.close = no_io_volume_close;
+	no_io_volume_properties.ops.submit_io = no_io_volume_submit_io;
+	no_io_volume_properties.ops.submit_flush = no_io_volume_submit_flush;
+	no_io_volume_properties.ops.submit_discard = no_io_volume_submit_discard;
+	no_io_volume_properties.ops.get_max_io_size = no_io_volume_get_max_io_size;
+	no_io_volume_properties.ops.get_length = no_io_volume_get_length;
+
+	no_io_volume_properties.io_ops.set_data = no_io_volume_io_set_data;
+	no_io_volume_properties.io_ops.get_data = no_io_volume_io_get_data;
+
+	int ret = ocf_ctx_register_volume_type(ocf_ctx, LAVA_VOL_TYPE, &volume_properties);
+	if (ret) {
+		return ret;
+	}
+
+	ret = ocf_ctx_register_volume_type(ocf_ctx, CORE_VOL_TYPE, &no_io_volume_properties);
+
+	return ret;
 }
 
 /*

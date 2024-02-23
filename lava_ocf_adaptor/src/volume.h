@@ -17,18 +17,19 @@ extern "C" {
 #endif
 
 struct volume_data {
-    char *ptr;
-    int offset;
+	char *ptr;
+	int offset;
 };
 
 struct lava_volume_io {
-    struct volume_data *data;
-    uint32_t offset;
-    uint16_t req_cnt;
+	struct volume_data *data;
+	uint32_t offset;
+	int ret;
+	env_atomic req_cnt;
 };
 
 struct lava_volume_param {
-    uint32_t chunk_num;
+	uint32_t chunk_num;
 };
 
 int volume_init(ocf_ctx_t ocf_ctx);
