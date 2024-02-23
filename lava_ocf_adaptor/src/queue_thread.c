@@ -14,6 +14,8 @@
 /* queue thread main function */
 static void* run(void *);
 
+static void* timed_trigger(void *);
+
 /* helper class to store all synchronization related objects */
 struct queue_thread
 {
@@ -71,6 +73,11 @@ struct queue_thread *queue_thread_init(struct ocf_queue **io_queues,
 	pthread_attr_setaffinity_np(&qt->attr, sizeof(mask), &mask);
 	/* create io_queue thread */
 	ret = pthread_create(&qt->thread, NULL, run, qt);
+	if (ret)
+		goto err_mutex;
+
+	pthread_t kick_thread;
+	ret = pthread_create(&kick_thread, NULL, timed_trigger, qt);
 	if (ret)
 		goto err_mutex;
 
@@ -153,6 +160,16 @@ static void* run(void *arg)
 	pthread_exit(0);
 }
 
+static void* timed_trigger(void *arg)
+{
+	struct queue_thread *qt = arg;
+	while (1) {
+		queue_thread_signal(qt, false);
+		sleep(1);
+	}
+	return NULL;
+}
+
 static int select_valid_cpu_core(__uint128_t core_mask, uint8_t *cpu_valid_core)
 {
 	int i = 0;
@@ -178,7 +195,7 @@ int initialize_threads(struct ocf_queue *mngt_queue, struct ocf_queue **io_queue
 	uint16_t thread_handle_q_num = queue_num / cpu_core_num;
 
 	ret = select_valid_cpu_core(core_mask, cpu_valid_core);
-	if (ret < queue_num) {
+	if (ret < cpu_core_num) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "core_mask valid cpu core not enough, ret is %d\n", ret);
 		return ret;
 	}
@@ -197,7 +214,9 @@ int initialize_threads(struct ocf_queue *mngt_queue, struct ocf_queue **io_queue
 			ocf_adaptor_log(OCF_LOG_ERROR, "io_queue_thread%d init failed.\n", i);
 			break;
 		}
-		ocf_queue_set_priv(io_queues[i], io_queue_threads[i]);
+		for (int j = thread_handle_q_num * i; j < thread_handle_q_num * (i + 1); ++j) {
+			ocf_queue_set_priv(io_queues[j], io_queue_threads[i]);
+		}
 	}
 
 	if (i != cpu_core_num) {
