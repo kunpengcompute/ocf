@@ -34,7 +34,7 @@ struct req_context {
 	int (*cb)(int32_t ret, struct req_context *ctx);
 	/*!< request completion callback*/
 
-	char internal[24];
+	char internal[40];
 	/*!< internal use of ocf, no need to set */
 };
 

@@ -358,8 +358,11 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 		return STATE_MEM_ALLOC_ERR;
 	}
 
+	struct volume_data *data = (struct volume_data *)(ctx->internal + sizeof(struct cq_entry));
+	data->ptr = ctx->buffer;
+	data->offset = 0;
 	/* assign data to io, used when read/write, unused when lookup/invalid */
-	ocf_io_set_data(io, ctx->buffer, 0);
+	ocf_io_set_data(io, data, 0);
 	/* setup completion function */
 	ocf_io_set_cmpl(io, ctx, NULL, cmpl);
 	/* submit io */
