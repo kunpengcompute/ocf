@@ -33,6 +33,8 @@ struct queue_thread
 	pthread_mutex_t mutex;
 	/* associated OCF queue num */
 	uint16_t queue_num;
+	/* alive queue num */
+	uint16_t alive_queue_num;
 	/* associated OCF queue */
 	struct ocf_queue *io_queues[MAX_QUEUE_NUM];
 };
@@ -65,6 +67,7 @@ struct queue_thread *queue_thread_init(struct ocf_queue **io_queues,
 	qt->signalled = false;
 	qt->stop = false;
 	qt->queue_num = end - start + 1;
+	qt->alive_queue_num = qt->queue_num;
 	for (i = 0; i < qt->queue_num; ++i) {
 		qt->io_queues[i] = io_queues[start + i];
 	}
@@ -243,5 +246,7 @@ void queue_thread_stop(struct ocf_queue *q)
 {
 	struct queue_thread *qt = ocf_queue_get_priv(q);
 
-	queue_thread_destroy(qt);
+	if (--qt->alive_queue_num == 0) {
+		queue_thread_destroy(qt);
+	}
 }

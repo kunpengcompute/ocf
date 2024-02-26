@@ -129,7 +129,7 @@ static void lava_volume_submit_io(struct ocf_io *io)
 		io->end(io, ret);
 	}
 
-	ocf_adaptor_log(OCF_LOG_INFO, "VOL: (name: %s), IO: (dir: %s, addr: %ld, bytes: %d)\n",
+	ocf_adaptor_log(OCF_LOG_DEBUG, "VOL: (name: %s), IO: (dir: %s, addr: %ld, bytes: %d)\n",
 			lava_volume->name, io->dir == OCF_READ ? "read" : "write",
 			io->addr, io->bytes);
 }
