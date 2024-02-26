@@ -15,8 +15,13 @@
 #define CORE_LINE_BITS (28 + __builtin_ctz(CORE_SUPPORT_IN_TB))
 
 #define CORE_ID_BITS 12
+
 #if OCF_CONFIG_MAX_CORES >= (1 << CORE_ID_BITS)
 #error "OCF_CONFIG_MAX_CORES must be less than 1 << CORE_ID_BITS"
+#endif
+
+#if CACHE_LINE_BITS >= 32
+#error "CACHE_LINE_BITS must be less than 1 << HASH_LOCK_BIT"
 #endif
 
 struct ocf_lru_meta {

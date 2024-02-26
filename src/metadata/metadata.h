@@ -191,6 +191,11 @@ uint64_t ocf_metadata_get_reserved_lba(ocf_cache_t cache);
  * temporary defined in this file.
  */
 
+#define HASH_LOCK_BIT	(31)
+
+ocf_cache_line_t *
+ocf_metadata_get_hash_p(struct ocf_cache *cache, ocf_cache_line_t index);
+
 ocf_cache_line_t
 ocf_metadata_get_hash(struct ocf_cache *cache, ocf_cache_line_t index);
 
