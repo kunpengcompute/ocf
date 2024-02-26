@@ -483,7 +483,7 @@ static inline uint8_t env_atomic8_cmpxchg(env_atomic8 *a, uint8_t old, uint8_t n
 	return __sync_val_compare_and_swap(&a->counter, old, new_value);
 }
 
-static inline uint8_t env_atomic8_add_unless(env_atomic *a, uint8_t i, uint8_t u)
+static inline uint8_t env_atomic8_add_unless(env_atomic8 *a, uint8_t i, uint8_t u)
 {
 	uint8_t c, old;
 	c = env_atomic8_read(a);
