@@ -20,10 +20,6 @@
 #error "OCF_CONFIG_MAX_CORES must be less than 1 << CORE_ID_BITS"
 #endif
 
-#if CACHE_LINE_BITS >= 32
-#error "CACHE_LINE_BITS must be less than 1 << HASH_LOCK_BIT"
-#endif
-
 struct ocf_lru_meta {
 	uint32_t prev : CACHE_LINE_BITS;
 	uint32_t next : CACHE_LINE_BITS;
