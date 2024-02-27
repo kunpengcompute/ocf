@@ -1,11 +1,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
-# Description: CMakeLists.txt
-# Author: hebo
-# Create: 2024-02-19
+# Description: string buffer test
+# Create: 2024-02-27
 
 cmake_minimum_required(VERSION 3.13)
 
-project(engine_uc_tests VERSION 1.0 LANGUAGES C CXX)
+project(strbuf_tests VERSION 1.0 LANGUAGES C CXX)
 
 SET(CMAKE_CXX_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
 SET(CMAKE_C_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
@@ -29,9 +28,7 @@ aux_source_directory(../../../env/posix TEST_SRC)
 
 # 添加头文件目录
 include_directories(../../../src)
-include_directories(../../../src/engine)
 include_directories(../../../src/utils)
-include_directories(../../../lava_ocf_adaptor/include)
 execute_process(COMMAND mkdir inc WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 execute_process(COMMAND mkdir ocf WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/inc)
 execute_process(COMMAND sudo cp -r ${PROJECT_SOURCE_DIR}/../../../inc/. inc/ocf/ WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
@@ -43,15 +40,15 @@ execute_process(COMMAND cp ${PROJECT_SOURCE_DIR}/../../../env/posix/utils_mpool.
 include_directories(inc)
 
 # 生成目标
-add_executable(engine_uc_tests ${TEST_SRC})
+add_executable(strbuf_tests ${TEST_SRC})
 
-add_test(engine_uc_tests ${CMAKE_CURRENT_BINARY_DIR}/engine_uc_tests)
+add_test(strbuf_tests ${CMAKE_CURRENT_BINARY_DIR}/strbuf_tests)
 
 # 链接库，在此补充UT打桩函数
-target_link_libraries(engine_uc_tests -lpthread -lm -lcmocka -lz)
+target_link_libraries(strbuf_tests -lpthread -lm -lcmocka -lz)
 
 # 打印构建选项
-get_target_property(COMPILE_FLAGS engine_uc_tests COMPILE_OPTIONS)
+get_target_property(COMPILE_FLAGS strbuf_tests COMPILE_OPTIONS)
 message(STATUS "Compiler id: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "Compiler flags: ${COMPILE_FLAGS}")
 message(STATUS "Link flags: ${LINK_FLAGS}")
