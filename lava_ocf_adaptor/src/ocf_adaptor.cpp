@@ -642,8 +642,8 @@ int ocf_range_invalid(struct req_context *ctx)
 	/* align left and right, calculate the actual offset on the core */
 	uint64_t left_pad = ctx->offset % ALIGN_SIZE;
 	uint64_t right_pad = (ALIGN_SIZE - ((ctx->offset + ctx->len) % ALIGN_SIZE)) % ALIGN_SIZE;
-	uint64_t offset -= left_pad;
-	uint64_t len += (left_pad + right_pad);
+	uint64_t offset = ctx->offset - left_pad;
+	uint64_t len = ctx->len + (left_pad + right_pad);
 	uint64_t core_offset = remap_id * REGION_SIZE + offset;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
 	entry->is_region_invalid = 0;
@@ -695,8 +695,8 @@ int ocf_lookup(struct req_context *ctx)
 	/* align left and right, calculate the actual offset on the core */
 	uint64_t left_pad = ctx->offset % ALIGN_SIZE;
 	uint64_t right_pad = (ALIGN_SIZE - ((ctx->offset + ctx->len) % ALIGN_SIZE)) % ALIGN_SIZE;
-	uint64_t offset -= left_pad;
-	uint64_t len += (left_pad + right_pad);
+	uint64_t offset = ctx->offset - left_pad;
+	uint64_t len = ctx->len + (left_pad + right_pad);
 	uint64_t core_offset = remap_id * REGION_SIZE + offset;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
 	entry->is_region_invalid = 0;
