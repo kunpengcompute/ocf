@@ -617,14 +617,6 @@ int ocf_range_invalid(struct req_context *ctx)
 		return STATE_PRRAM_INVALID;
 	}
 
-	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
-		ocf_adaptor_log(OCF_LOG_WARN, "ocf_range_invalid is not 4k aligned\n");
-		if (ctx->cb) {
-			ctx->cb(STATE_SUCCESS, ctx);
-		}
-		return STATE_SUCCESS;
-	}
-
 	/* find the remap id for the region */
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
@@ -647,11 +639,15 @@ int ocf_range_invalid(struct req_context *ctx)
 	uint64_t remap_id = region_map[ctx->region_id];
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
-	/* calculate the actual offset on the core */
-	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
+	/* align left and right, calculate the actual offset on the core */
+	uint64_t left_pad = ctx->offset % ALIGN_SIZE;
+	uint64_t right_pad = (ALIGN_SIZE - ((ctx->offset + ctx->len) % ALIGN_SIZE)) % ALIGN_SIZE;
+	uint64_t offset = ctx->offset - left_pad;
+	uint64_t len = ctx->len + (left_pad + right_pad);
+	uint64_t core_offset = remap_id * REGION_SIZE + offset;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
 	entry->is_region_invalid = 0;
-	return submit_io(ctx, core, core_offset, ctx->len, OCF_INVALID, complete);
+	return submit_io(ctx, core, core_offset, len, OCF_INVALID, complete);
 }
 
 int ocf_lookup(struct req_context *ctx)
@@ -696,10 +692,15 @@ int ocf_lookup(struct req_context *ctx)
 	uint64_t remap_id = region_map[ctx->region_id];
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
-	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
+	/* align left and right, calculate the actual offset on the core */
+	uint64_t left_pad = ctx->offset % ALIGN_SIZE;
+	uint64_t right_pad = (ALIGN_SIZE - ((ctx->offset + ctx->len) % ALIGN_SIZE)) % ALIGN_SIZE;
+	uint64_t offset = ctx->offset - left_pad;
+	uint64_t len = ctx->len + (left_pad + right_pad);
+	uint64_t core_offset = remap_id * REGION_SIZE + offset;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
 	entry->is_region_invalid = 0;
-	return submit_io(ctx, core, core_offset, ctx->len, OCF_LOOKUP, complete);
+	return submit_io(ctx, core, core_offset, len, OCF_LOOKUP, complete);
 }
 
 int ocf_get(struct req_context *ctx)
