@@ -94,8 +94,8 @@ static void lava_volume_submit_io(struct ocf_io *io)
 	while (io_length > 0) {
 		Segment s;
 		Request *req = new Request();
-		uint32_t chunk_remain = LAVA_CHUNK_SIZE - (addr % LAVA_CHUNK_SIZE);
-		s.offset = addr + submitted_len;
+		uint32_t chunk_remain = LAVA_CHUNK_SIZE - ((addr + submitted_len) % LAVA_CHUNK_SIZE);
+		s.offset = (addr + submitted_len) % LAVA_CHUNK_SIZE;
 		if (chunk_remain > io_length) {
 			s.length = io_length;
 			io_length = 0;
@@ -104,7 +104,7 @@ static void lava_volume_submit_io(struct ocf_io *io)
 			io_length -= chunk_remain;
 		}
 		s.data = data->ptr + submitted_len;
-		req->chunk_id = lava_volume->chunk_ids[(addr / LAVA_CHUNK_SIZE)];
+		req->chunk_id = lava_volume->chunk_ids[((addr + submitted_len) / LAVA_CHUNK_SIZE)];
 		req->segments.push_back(s);
 		req->user_ctx = io;
 		req->cb = lava_volume_submit_io_cb;
@@ -121,8 +121,6 @@ static void lava_volume_submit_io(struct ocf_io *io)
 			ocf_adaptor_log(OCF_LOG_ERROR, "Chunk IO failed with ret:%d", ret);
 			lava_volume_submit_io_cb(ret, req);
 		}
-
-		addr += s.length;
 	}
 
 	if (env_atomic_dec_return(&lava_volume_io->req_cnt) == 0) {
