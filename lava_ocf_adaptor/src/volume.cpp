@@ -103,7 +103,7 @@ static void lava_volume_submit_io(struct ocf_io *io)
 			s.length = chunk_remain;
 			io_length -= chunk_remain;
 		}
-		s.data = data->ptr + submitted_len;
+		s.data = data->ptr + lava_volume_io->offset + submitted_len;
 		req->chunk_id = lava_volume->chunk_ids[((addr + submitted_len) / LAVA_CHUNK_SIZE)];
 		req->segments.push_back(s);
 		req->user_ctx = io;
