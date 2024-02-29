@@ -313,17 +313,17 @@ int submit_io(ocf_core_t core, struct volume_data *data,
  * Data buffers and ios are freed in completion callbacks, so there is no
  * need to handle freeing in this function.
  */
-void perform_workload(ocf_core_t core)
+void perform_workload(ocf_core_t core, uint64_t test_data_size)
 {
 	struct volume_data *data1, *data2;
 
 	/* Allocate data buffer and fill it with example data */
-	data1 = ctx_data_alloc(1);
+	data1 = ctx_data_alloc(test_data_size / PAGE_SIZE);
 	if (!data1)
 		error("Unable to allocate data1\n");
 	strcpy(data1->ptr, "This is some test data");
 	/* Prepare and submit write IO to the core */
-	submit_io(core, data1, 0, 512, OCF_WRITE, complete_write);
+	submit_io(core, data1, 0x0, test_data_size, OCF_WRITE, complete_write);
 	/* After write completes, complete_write() callback will be called. */
 
 	/*
@@ -332,11 +332,11 @@ void perform_workload(ocf_core_t core)
 	 */
 
 	/* Allocate data buffer for read */
-	data2 = ctx_data_alloc(1);
+	data2 = ctx_data_alloc(test_data_size / PAGE_SIZE);
 	if (!data2)
 		error("Unable to allocate data2\n");
 	/* Prepare and submit read IO to the core */
-	submit_io(core, data2, 0, 512, OCF_READ, complete_read);
+	submit_io(core, data2, 0x0, test_data_size, OCF_READ, complete_read);
 	/* After read completes, complete_read() callback will be called,
 	 * where we print our example data to stdout.
 	 */
@@ -378,7 +378,8 @@ int main(int argc, char *argv[])
 		error("Unable to add core\n");
 
 	/* Do some actual io operations */
-	perform_workload(core1);
+	uint64_t test_data_size = 16 * KiB;
+	perform_workload(core1, test_data_size);
 
 	/* Remove core from cache */
 	ocf_mngt_cache_remove_core(core1, remove_core_complete, &context);

@@ -62,6 +62,7 @@ static int _ocf_read_ucache_do(struct ocf_request *req)
 {
 	if (ocf_engine_is_miss(req)) {
 		/* Cache Miss */
+		OCF_DEBUG_RQ(req, "Cache Miss, Read Canceled");
 		req->complete(req, -OCF_ERR_CACHE_MISS);
 		ocf_req_unlock(ocf_cache_line_concurrency(req->cache), req);
 		ocf_req_put(req);

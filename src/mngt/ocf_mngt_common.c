@@ -102,6 +102,119 @@ void cache_mngt_core_deinit_attached_meta(ocf_core_t core)
 	}
 }
 
+
+static uint64_t _ocf_mngt_cache_remove_corelines_mapping_do(ocf_core_t core,
+	ocf_cache_line_t hash_start_idx, ocf_cache_line_t hash_end_idx,
+	uint64_t corelines_sidx, uint64_t corelines_eidx,
+	bool multilines_in_hash)
+{
+	ocf_cache_t cache = ocf_core_get_cache(core);
+	ocf_core_id_t core_id = ocf_core_get_id(core);
+	ocf_core_id_t iter_core_id;
+	uint64_t iter_coreline;
+	ocf_cache_line_t curr_cline, prev_cline;
+	uint32_t hash;
+	unsigned lock_idx;
+	uint64_t corelines_removed = 0;
+
+	for (hash = hash_start_idx; hash <= hash_end_idx;) {
+		prev_cline = cache->device->collision_table_entries;
+
+		lock_idx = ocf_metadata_concurrency_next_idx(cache->mngt_queue);
+		ocf_hb_id_prot_lock_wr(&cache->metadata.lock, lock_idx, hash);
+
+		curr_cline = ocf_metadata_get_hash(cache, hash);
+		while (curr_cline != cache->device->collision_table_entries) {
+			ocf_metadata_get_core_info(cache, curr_cline,
+				&iter_core_id, &iter_coreline);
+
+			if (iter_core_id != core_id) {
+				/* `prev_cline` is a pointer to last not sparsed cacheline in
+				 * current hash */
+				prev_cline = curr_cline;
+				curr_cline = ocf_metadata_get_collision_next(cache, curr_cline);
+				continue;
+			}
+
+			if (iter_coreline > corelines_eidx || iter_coreline < corelines_sidx) {
+				continue;
+			}
+
+			if (!ocf_cache_line_try_lock_wr(
+					ocf_cache_line_concurrency(cache), curr_cline)) {
+				break;
+			}
+
+			if (metadata_test_dirty(cache, curr_cline))
+				ocf_purge_cleaning_policy(cache, curr_cline);
+			ocf_metadata_sparse_cache_line(cache, curr_cline);
+
+			ocf_cache_line_unlock_wr(
+					ocf_cache_line_concurrency(cache), curr_cline);
+
+			corelines_removed += 1;
+
+			if (prev_cline != cache->device->collision_table_entries)
+				curr_cline = ocf_metadata_get_collision_next(cache, prev_cline);
+			else
+				curr_cline = ocf_metadata_get_hash(cache, hash);
+			
+			if(!multilines_in_hash) {
+				/* exit current hash-bucket if one coreline get solved */
+				curr_cline = cache->device->collision_table_entries;
+			}
+		}
+		ocf_hb_id_prot_unlock_wr(&cache->metadata.lock, lock_idx, hash);
+
+		/* Check whether all the cachelines from the hash bucket were sparsed */
+		if (curr_cline == cache->device->collision_table_entries)
+			hash++;
+		else
+			env_msleep(10);
+	}
+
+	return corelines_removed;
+}
+
+
+uint64_t _ocf_mngt_cache_remove_corelines_mapping(ocf_core_t core,
+	uint64_t addr, uint64_t bytes)
+{
+	ocf_cache_t cache = ocf_core_get_cache(core);
+	ocf_core_id_t core_id = ocf_core_get_id(core);
+
+	uint64_t corelines_sidx = ocf_cache_bytes_2_lines(cache, addr);
+	uint64_t corelines_eidx = ocf_cache_bytes_2_lines(cache, addr + bytes - 1);
+	uint64_t corelines_removed = 0;
+	
+	ocf_cache_line_t hash_start, hash_end;
+	uint32_t hash_entries = cache->device->hash_table_entries;
+	
+	bool multilines_in_hash;
+
+	if(ocf_cache_bytes_2_lines(cache, bytes) > hash_entries) {
+		hash_start = 0;
+		hash_end = hash_entries - 1;
+		multilines_in_hash = true;
+	} else {
+		hash_start = ocf_metadata_hash_func(cache, corelines_sidx, core_id);
+		hash_end = ocf_metadata_hash_func(cache, corelines_eidx, core_id);
+		multilines_in_hash = false;
+	}
+
+	if (hash_start <= hash_end) {
+		corelines_removed += _ocf_mngt_cache_remove_corelines_mapping_do(core, hash_start, hash_end,
+			corelines_sidx, corelines_eidx, multilines_in_hash);
+	} else {
+		corelines_removed += _ocf_mngt_cache_remove_corelines_mapping_do(core, hash_start, hash_entries - 1,
+			corelines_sidx, corelines_eidx, multilines_in_hash);
+		corelines_removed += _ocf_mngt_cache_remove_corelines_mapping_do(core, 0, hash_end,
+			corelines_sidx, corelines_eidx, multilines_in_hash);
+	}
+	return corelines_removed;
+}
+
+
 /* Mark core as removed in metadata */
 void cache_mngt_core_remove_from_meta(ocf_core_t core)
 {

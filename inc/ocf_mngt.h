@@ -693,6 +693,36 @@ void ocf_mngt_cache_remove_core(ocf_core_t core,
 		ocf_mngt_cache_remove_core_end_t cmpl, void *priv);
 
 /**
+ * @brief Remove core from cache instance
+ *
+ * @param[in] core Core handle
+ * @param[in] cmpl Completion callback
+ * @param[in] priv Completion callback context
+ */
+int ocf_mngt_remove_core(ocf_core_t core,
+		ocf_mngt_cache_remove_core_end_t cmpl, void *priv);
+
+/**
+ * @brief Completion callback of remove corelines operation
+ *
+ * @param[in] cache Cache handle
+ * @param[in] priv Callback context
+ * @param[in] error Error code (zero on success)
+ */
+typedef void (*ocf_mngt_cache_remove_corelines_end_t)(ocf_cache_t cache,
+		void *priv, int error);
+
+/**
+ * @brief Remove corelines from cache instance
+ *
+ * @param[in] core Core handle
+ * @param[in] cmpl Completion callback
+ * @param[in] priv Completion callback context
+ */
+int ocf_mngt_cache_remove_corelines(ocf_core_t core, uint64_t addr, uint64_t bytes,
+		ocf_mngt_cache_remove_corelines_end_t cmpl, void *priv);
+
+/**
  * @brief Completion callback of detach core operation
  *
  * @param[in] priv Callback context
