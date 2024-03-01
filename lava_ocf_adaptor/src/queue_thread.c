@@ -196,6 +196,9 @@ int initialize_threads(struct ocf_queue *mngt_queue, struct ocf_queue **io_queue
 	uint8_t cpu_valid_core[MAX_QUEUE_NUM];
 	struct queue_thread* io_queue_threads[MAX_QUEUE_NUM];
 	uint16_t thread_handle_q_num = queue_num / cpu_core_num;
+	uint16_t remain_q = queue_num % cpu_core_num;
+	uint16_t start = 0;
+	uint16_t end;
 
 	ret = select_valid_cpu_core(core_mask, cpu_valid_core);
 	if (ret < cpu_core_num) {
@@ -211,15 +214,20 @@ int initialize_threads(struct ocf_queue *mngt_queue, struct ocf_queue **io_queue
 	ocf_queue_set_priv(mngt_queue, mngt_queue_thread);
 
 	for (i = 0; i < cpu_core_num; ++i) {
+		end = start + (thread_handle_q_num - 1 + (remain_q ? 1 : 0));
 		io_queue_threads[i] = queue_thread_init(io_queues,
-			thread_handle_q_num * i, thread_handle_q_num * (i + 1) - 1, cpu_valid_core[i]);
+			start, end, cpu_valid_core[i]);
 		if (!io_queue_threads[i]) {
 			ocf_adaptor_log(OCF_LOG_ERROR, "io_queue_thread%d init failed.\n", i);
 			break;
 		}
-		for (int j = thread_handle_q_num * i; j < thread_handle_q_num * (i + 1); ++j) {
+		for (int j = start; j <= end; ++j) {
 			ocf_queue_set_priv(io_queues[j], io_queue_threads[i]);
 		}
+		if (remain_q) {
+			--remain_q;
+		}
+		start = end + 1;
 	}
 
 	if (i != cpu_core_num) {
