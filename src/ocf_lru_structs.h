@@ -6,13 +6,13 @@
 
 #define __EVICTION_LRU_STRUCTS_H__
 
-#define CACHE_SUPPORT_IN_TB 4
+#define CACHE_MAX_SUPPORT_IN_TB 8
 
-/* 16384 means 2^14 */
-#define CORE_SUPPORT_IN_TB 16384
+/* 32768 means 2^15 for 8 KiB Cacheline*/
+#define CORE_MAX_SUPPORT_IN_TB 32768
 
-#define CACHE_LINE_BITS (28 + __builtin_ctz(CACHE_SUPPORT_IN_TB))
-#define CORE_LINE_BITS (28 + __builtin_ctz(CORE_SUPPORT_IN_TB))
+#define CACHE_LINE_BITS (27 + __builtin_ctz(CACHE_MAX_SUPPORT_IN_TB))
+#define CORE_LINE_BITS (27 + __builtin_ctz(CORE_MAX_SUPPORT_IN_TB))
 
 #define CORE_ID_BITS 12
 

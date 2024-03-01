@@ -13,7 +13,7 @@
 struct ocf_metadata_list_info {
 	ocf_cache_line_t next_col : CACHE_LINE_BITS;
 		/*!<  Next cache line in collision list*/
-	ocf_part_id_t partition_id : 6;
+	ocf_part_id_t partition_id : 2;
 		/*!<  ID of partition where is assigned this cache line*/
 } __attribute__((packed));
 
