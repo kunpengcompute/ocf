@@ -64,8 +64,6 @@ struct simple_context {
 	int *ret;
 };
 
-typedef void (*op_complete_t)(ocf_cache_t cache, void *priv, int error);
-
 static int check_ocf_config(struct ocf_config *cfg)
 {
 	if (cfg->io_worker_num > MAX_QUEUE_NUM) {
@@ -295,10 +293,12 @@ err_sem:
 
 static void region_remove_complete(ocf_cache_t cache, void *priv, int error)
 {
+	// region_remove启动后一定会成功，可以不设置回调，后续有回调需求可以实现
 }
 
 static void core_remove_complete(void *ctx, int ret)
 {
+	// core_remove启动后一定会成功，可以不设置回调，后续有回调需求可以实现
 }
 
 static void cache_remove_complete(ocf_cache_t cache, void *ctx, int ret)
@@ -540,20 +540,22 @@ int ocf_remove_core(uint32_t slot_id)
 		env_rwlock_write_unlock(&table_lock);
 		return STATE_CORE_CREATING;
 	}
+	
+	/* remove core from cache */
+	int ret;
 	core = info->core;
 	core_id = ocf_core_get_id(core);
+	ret = ocf_mngt_remove_core(core, core_remove_complete, NULL);
+	if (ret) {
+		return STATE_MEM_ALLOC_ERR;
+	}
+	
+	/* erase slot id */
 	slot_info_table.erase(slot_id);
 	region_remap_table.erase(slot_id);
 	ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core(%u) remove success\n", slot_id, core_id);
 	env_rwlock_write_unlock(&table_lock);
 
-	/* remove core from cache */
-	int ret;
-	ret = ocf_mngt_remove_core(core, core_remove_complete, NULL);
-
-	if (ret) {
-		return STATE_MEM_ALLOC_ERR;
-	}
 	env_free(info);
 
 	return STATE_SUCCESS;
@@ -596,7 +598,6 @@ int ocf_region_invalid(struct req_context *ctx)
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
-	entry->is_region_invalid = 1;
 
 	int ret;
 	ret = ocf_mngt_cache_remove_corelines(core, core_offset, REGION_SIZE,
@@ -606,6 +607,8 @@ int ocf_region_invalid(struct req_context *ctx)
 		return STATE_MEM_ALLOC_ERR;
 	}
 
+	entry->is_region_invalid = 1;
+	
 	return STATE_SUCCESS;
 }
 
