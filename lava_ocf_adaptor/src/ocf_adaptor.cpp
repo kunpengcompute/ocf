@@ -291,14 +291,14 @@ err_sem:
 	return ret;
 }
 
+static void region_remove_complete(ocf_cache_t cache, void *priv, int error)
+{
+	// region_remove启动后一定会成功，可以不设置回调，后续有回调需求可以实现
+}
+
 static void core_remove_complete(void *ctx, int ret)
 {
-	struct simple_context *context = (struct simple_context *)ctx;
-
-	if (ret) {
-		*context->ret = ret;
-	}
-	sem_post(&context->sem);
+	// core_remove启动后一定会成功，可以不设置回调，后续有回调需求可以实现
 }
 
 static void cache_remove_complete(ocf_cache_t cache, void *ctx, int ret)
@@ -540,25 +540,22 @@ int ocf_remove_core(uint32_t slot_id)
 		env_rwlock_write_unlock(&table_lock);
 		return STATE_CORE_CREATING;
 	}
+	
+	/* remove core from cache */
+	int ret;
 	core = info->core;
 	core_id = ocf_core_get_id(core);
+	ret = ocf_mngt_remove_core(core, core_remove_complete, NULL);
+	if (ret) {
+		return STATE_MEM_ALLOC_ERR;
+	}
+	
+	/* erase slot id */
 	slot_info_table.erase(slot_id);
 	region_remap_table.erase(slot_id);
 	ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core(%u) remove success\n", slot_id, core_id);
 	env_rwlock_write_unlock(&table_lock);
 
-	/* remove core from cache */
-	int ret = STATE_SUCCESS;
-	simple_context ctx;
-	ctx.ret = &ret;
-	sem_init(&ctx.sem, 0, 0);
-	ocf_mngt_cache_remove_core(core, core_remove_complete, &ctx);
-	sem_wait(&ctx.sem);
-	if (ret) {
-		/* default deletion will not fail */
-		ocf_adaptor_log(OCF_LOG_WARN, "cache remove core(%u) fail\n", core_id);
-	}
-	sem_destroy(&ctx.sem);
 	env_free(info);
 
 	return STATE_SUCCESS;
@@ -601,8 +598,18 @@ int ocf_region_invalid(struct req_context *ctx)
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE;
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
+
+	int ret;
+	ret = ocf_mngt_cache_remove_corelines(core, core_offset, REGION_SIZE,
+			region_remove_complete, ctx);
+
+	if (ret) {
+		return STATE_MEM_ALLOC_ERR;
+	}
+
 	entry->is_region_invalid = 1;
-	return submit_io(ctx, core, core_offset, REGION_SIZE, OCF_INVALID, complete);
+	
+	return STATE_SUCCESS;
 }
 
 int ocf_range_invalid(struct req_context *ctx)
