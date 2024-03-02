@@ -296,9 +296,19 @@ static void region_remove_complete(ocf_cache_t cache, void *priv, int error)
 	// region_remove启动后一定会成功，可以不设置回调，后续有回调需求可以实现
 }
 
+static void single_core_remove_complete(void *ctx, int ret)
+{
+	// region_remove启动后一定会成功，可以不设置回调，后续有回调需求可以实现
+}
+
 static void core_remove_complete(void *ctx, int ret)
 {
-	// core_remove启动后一定会成功，可以不设置回调，后续有回调需求可以实现
+	struct simple_context *context = (struct simple_context *)ctx;
+
+	if (ret) {
+		*context->ret = ret;
+	}
+	sem_post(&context->sem);
 }
 
 static void cache_remove_complete(ocf_cache_t cache, void *ctx, int ret)
@@ -437,6 +447,7 @@ void ocf_exit()
 	for (uint32_t i = 0; i < slot_info_table.size(); ++i) {
 		sem_wait(&ctx.sem);
 	}
+
 	if (ret) {
 		/* default deletion will not fail */
 		ocf_adaptor_log(OCF_LOG_WARN, "ocf core remove fail\n");
@@ -542,11 +553,11 @@ int ocf_remove_core(uint32_t slot_id)
 	}
 	
 	/* remove core from cache */
-	int ret;
 	core = info->core;
 	core_id = ocf_core_get_id(core);
-	ret = ocf_mngt_remove_core(core, core_remove_complete, NULL);
+	int ret = ocf_mngt_remove_core(core, single_core_remove_complete, NULL);
 	if (ret) {
+		env_rwlock_write_unlock(&table_lock);
 		return STATE_MEM_ALLOC_ERR;
 	}
 	
@@ -557,62 +568,47 @@ int ocf_remove_core(uint32_t slot_id)
 	env_rwlock_write_unlock(&table_lock);
 
 	env_free(info);
-
 	return STATE_SUCCESS;
 }
 
-int ocf_region_invalid(struct req_context *ctx)
+int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 {
 	if (g_adaptor.state != INITIALIZED) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit region_invalid io\n");
 		return STATE_FAIL;
 	}
 
-	if (!ctx) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_region_invalid ctx is NULL\n");
-		return STATE_PRRAM_INVALID;
-	}
-
 	/* find the remap id for the region */
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	env_rwlock_read_lock(&g_adaptor.table_lock);
-	if (region_remap_table.find(ctx->slot_id) == region_remap_table.end()) {
+	if (region_remap_table.find(slot_id) == region_remap_table.end()) {
 		env_rwlock_read_unlock(&g_adaptor.table_lock);
-		return STATE_CORE_NOT_EXIST;
-	}
-
-	slot_info_t info = slot_info_table[ctx->slot_id];
-	auto &region_map = region_remap_table[ctx->slot_id];
-	ocf_core_t core = info->core;
-	if (region_map.find(ctx->region_id) == region_map.end()) {
-		env_rwlock_read_unlock(&g_adaptor.table_lock);
-		if (ctx->cb) {
-			ctx->cb(STATE_SUCCESS, ctx);
-		}
 		return STATE_SUCCESS;
 	}
-	uint64_t remap_id = region_map[ctx->region_id];
-	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
-	/* calculate the actual offset on the core */
-	uint64_t core_offset = remap_id * REGION_SIZE;
-	cq_entry_t entry = (cq_entry_t)ctx->internal;
-
-	int ret;
-	ret = ocf_mngt_cache_remove_corelines(core, core_offset, REGION_SIZE,
-			region_remove_complete, ctx);
-
+	slot_info_t info = slot_info_table[slot_id];
+	auto &region_map = region_remap_table[slot_id];
+	ocf_core_t core = info->core;
+	if (region_map.find(region_id) == region_map.end()) {
+		env_rwlock_read_unlock(&g_adaptor.table_lock);
+		return STATE_SUCCESS;
+	}
+	uint64_t remap_id = region_map[region_id];
+	int ret = ocf_mngt_cache_remove_corelines(core, remap_id * REGION_SIZE, REGION_SIZE,
+		region_remove_complete, NULL);
 	if (ret) {
+		env_rwlock_read_unlock(&g_adaptor.table_lock);
 		return STATE_MEM_ALLOC_ERR;
 	}
 
-	entry->is_region_invalid = 1;
-	
+	region_map.erase(region_id);
+	env_rwlock_read_unlock(&g_adaptor.table_lock);
+
 	return STATE_SUCCESS;
 }
 
-int ocf_range_invalid(struct req_context *ctx)
+int ocf_invalid(struct req_context *ctx)
 {
 	if (g_adaptor.state != INITIALIZED) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit range_invalid io\n");
@@ -620,7 +616,7 @@ int ocf_range_invalid(struct req_context *ctx)
 	}
 
 	if (!ctx) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_range_invalid ctx is NULL\n");
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_invalid ctx is NULL\n");
 		return STATE_PRRAM_INVALID;
 	}
 
@@ -652,8 +648,6 @@ int ocf_range_invalid(struct req_context *ctx)
 	uint64_t offset = ctx->offset - left_pad;
 	uint64_t len = ctx->len + (left_pad + right_pad);
 	uint64_t core_offset = remap_id * REGION_SIZE + offset;
-	cq_entry_t entry = (cq_entry_t)ctx->internal;
-	entry->is_region_invalid = 0;
 	return submit_io(ctx, core, core_offset, len, OCF_INVALID, complete);
 }
 
@@ -705,8 +699,6 @@ int ocf_lookup(struct req_context *ctx)
 	uint64_t offset = ctx->offset - left_pad;
 	uint64_t len = ctx->len + (left_pad + right_pad);
 	uint64_t core_offset = remap_id * REGION_SIZE + offset;
-	cq_entry_t entry = (cq_entry_t)ctx->internal;
-	entry->is_region_invalid = 0;
 	return submit_io(ctx, core, core_offset, len, OCF_LOOKUP, complete);
 }
 
@@ -754,8 +746,6 @@ int ocf_get(struct req_context *ctx)
 
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
-	cq_entry_t entry = (cq_entry_t)ctx->internal;
-	entry->is_region_invalid = 0;
 	return submit_io(ctx, core, core_offset, ctx->len, OCF_READ, complete);
 }
 
@@ -811,8 +801,6 @@ int ocf_put(struct req_context *ctx)
 
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
-	cq_entry_t entry = (cq_entry_t)ctx->internal;
-	entry->is_region_invalid = 0;
 	return submit_io(ctx, core, core_offset, ctx->len, OCF_WRITE, complete);
 }
 
@@ -839,22 +827,6 @@ int ocf_poll(uint32_t io_worker_id, int max_num)
 	for (int i = 0; i < num; ++i) {
 		entry = entrys[i];
 		ctx = (struct req_context *)get_req_context(entry);
-
-		/* if region invalid success, delete region remapping key-value in the request sending thread */
-		if (unlikely(entry->is_region_invalid && entry->ret == STATE_SUCCESS)) {
-			auto &region_remap_table = g_adaptor.region_remap_table;
-			env_rwlock_read_lock(&g_adaptor.table_lock);
-			if (region_remap_table.find(ctx->slot_id) != region_remap_table.end()) {
-				auto &region_remap = region_remap_table[ctx->slot_id];
-				slot_info_t info = g_adaptor.slot_info_table[ctx->slot_id];
-				put_remap_id(info, region_remap[ctx->region_id]);
-				region_remap.erase(ctx->region_id);
-				ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) remove region_id(%u) remap\n",
-					ctx->slot_id, ctx->region_id);
-			}
-			env_rwlock_read_unlock(&g_adaptor.table_lock);
-		}
-
 		ctx->cb(entry->ret, ctx);
 	}
 	return STATE_SUCCESS;

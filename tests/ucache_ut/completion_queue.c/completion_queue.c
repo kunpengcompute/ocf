@@ -21,7 +21,6 @@ static void completion_queue_push_test(void **state)
 
 	struct cq_entry e = {
 		.ret = 1,
-		.is_region_invalid = 0,
 		.node = {
 			.next = NULL,
 			.prev = NULL,
@@ -30,7 +29,6 @@ static void completion_queue_push_test(void **state)
 
 	struct cq_entry e1 = {
 		.ret = 2,
-		.is_region_invalid = 1,
 		.node = {
 			.next = NULL,
 			.prev = NULL,
@@ -46,7 +44,6 @@ static void completion_queue_push_test(void **state)
 	assert_int_equal(ret, 1);
 	assert_non_null(e_ret[0]);
 	assert_int_equal(e_ret[0]->ret, e.ret);
-	assert_int_equal(e_ret[0]->is_region_invalid, e.is_region_invalid);
 	
 	e_ret[0] = NULL;
 	/* pop elements that exceed the length of the queue */
@@ -54,7 +51,6 @@ static void completion_queue_push_test(void **state)
 	assert_int_equal(ret, 1);
 	assert_non_null(e_ret[0]);
 	assert_int_equal(e_ret[0]->ret, e1.ret);
-	assert_int_equal(e_ret[0]->is_region_invalid, e1.is_region_invalid);
 	/* check NULL */
 	assert_null(e_ret[1]);
 

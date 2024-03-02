@@ -56,13 +56,13 @@ int ocf_remove_core(uint32_t slot_id);
 /**
  * @brief clear the entire region data in the cache
  *
- * @param[in] ctx: user request context, this interface does not require setting offset and len
+ * @param[in] slot_id: unique id of a slot
+ * @param[in] region_id: unique id of a region
  *
- * @retval STATE_SUCCESS when the invalid request is successfully submmitted
- *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         othewise STATE_FAIL
+ * @retval STATE_SUCCESS when remove region successfully
+ *         othewise STATE_FAIL or STATE_MEM_ALLOC_ERR
  */
-int ocf_region_invalid(struct req_context *ctx);
+int ocf_remove_region(uint32_t slot_id, uint32_t region_id);
 
 /**
  * @brief clear the specified region segment data in the cache
@@ -73,7 +73,7 @@ int ocf_region_invalid(struct req_context *ctx);
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
  *         othewise STATE_FAIL
  */
-int ocf_range_invalid(struct req_context *ctx);
+int ocf_invalid(struct req_context *ctx);
 
 /**
  * @brief check whether the specified segment data is hit in the cache
