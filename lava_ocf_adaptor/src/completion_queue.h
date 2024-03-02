@@ -22,7 +22,6 @@ struct completion_queue {
 
 struct cq_entry {
 	int ret;
-	int is_region_invalid;
 	struct list_head node;
 };
 
