@@ -108,6 +108,17 @@ static void simple_complete(ocf_cache_t cache, void *priv, int error)
 	sem_post(&context->sem);
 }
 
+static int validate_cache_cfg(struct ocf_config *cfg)
+{
+	if (cfg->io_worker_num == 0 || cfg->core_num == 0) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "io_worker_num or core_num is zero, io_worker_num = %u, core_num = %u\n",
+			cfg->io_worker_num, cfg->core_num);
+		return STATE_FAIL;
+	}
+
+	return STATE_SUCCESS;
+}
+
 static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config *cfg)
 {
 	struct ocf_mngt_cache_config cache_cfg = { };
@@ -120,6 +131,10 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 	struct simple_context context;
 	int ret;
 	int i;
+
+	ret = validate_cache_cfg(cfg);
+	if (ret)
+		return ret;
 
 	/* Initialize completion semaphore */
 	ret = sem_init(&context.sem, 0, 0);
