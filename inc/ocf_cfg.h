@@ -21,7 +21,7 @@
 
 /** Maximum number of IO classes that can be configured */
 #ifndef OCF_CONFIG_MAX_IO_CLASSES
-#define OCF_CONFIG_MAX_IO_CLASSES 33
+#define OCF_CONFIG_MAX_IO_CLASSES 1
 #endif
 
 #if OCF_CONFIG_MAX_IO_CLASSES > 256
