@@ -20,6 +20,6 @@ typedef enum {
 	OCF_LOG_DEBUG,
 } ocf_log_level;
 
-typedef int (*log_print_func)(ocf_log_level lvl, const char *message);
+typedef int (*log_print_func)(ocf_log_level lvl, const char *fmt, va_list args);
 
 #endif

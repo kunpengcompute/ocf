@@ -5,14 +5,25 @@
  */
 #include <syslog.h>
 #include <stdio.h>
+#include "ocf_env.h"
 #include "log.h"
 
 #define MAX_BUF 1024
 
-static int default_log_print(ocf_log_level lvl, const char *message)
+static int default_log_print(ocf_log_level lvl, const char *fmt, va_list args)
 {
-	int severity = lvl;	
-	syslog(severity, "%s", message);
+	if (lvl > OCF_LOG_INFO) {
+		return 0;
+	}
+
+	int severity = lvl;
+	char buf[MAX_BUF];
+	int ret = vsnprintf(buf, MAX_BUF, fmt, args);
+	if (unlikely(ret < 0)) {
+		syslog(OCF_LOG_ERROR, "print log is too long\n");
+	} else {
+		syslog(severity, "%s", buf);
+	}
 	return 0;
 }
 
@@ -30,14 +41,9 @@ log_print_func get_log_print()
 
 int log_raw(ocf_log_level lvl, const char *fmt, ...)
 {
-	char buf[MAX_BUF];
 	va_list args;
 	va_start(args, fmt);
-	int ret = vsnprintf(buf, sizeof(buf), fmt, args);
+	int ret = g_log_print(lvl, fmt, args);
 	va_end(args);
-	if (ret < 0) {
-		g_log_print(OCF_LOG_ERROR, "the print is too long\n");
-		return -1;
-	}
-	return g_log_print(lvl, buf);
+	return ret;
 }

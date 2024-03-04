@@ -166,16 +166,8 @@ static void lava_ctx_cleaner_stop(ocf_cleaner_t c)
 static int lava_ctx_logger_print(ocf_logger_t logger, ocf_logger_lvl_t lvl, const char *fmt, va_list args)
 {
 	int ocf_log_lvl = lvl;
-	char buf[MAX_BUF];
 	log_print_func print = get_log_print();
-
-	int ret = vsnprintf(buf, sizeof(buf), fmt, args);
-	if (ret < 0) {
-		print(OCF_LOG_ERROR, "the print is too long\n");
-		return -1;
-	}
-
-	return print((ocf_log_level)ocf_log_lvl, buf);
+	return print((ocf_log_level)ocf_log_lvl, fmt, args);
 }
 
 static const struct ocf_ctx_config ctx_cfg = {
