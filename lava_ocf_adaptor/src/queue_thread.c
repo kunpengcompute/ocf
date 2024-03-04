@@ -113,6 +113,9 @@ void queue_thread_destroy(struct queue_thread *qt)
 		return;
 
 	queue_thread_signal(qt, true);
+	if (--qt->alive_queue_num != 0) {
+		return;
+	}
 	pthread_join(qt->thread, NULL);
 
 	pthread_mutex_destroy(&qt->mutex);
@@ -140,13 +143,13 @@ static void* run(void *arg)
 				pending_io += ocf_queue_pending_io(io_queues[i]);
 
 			/* execute items on the queue */
+			i = 0;
 			while (pending_io > 0) {
-				for (i = 0; i < queue_num; ++i) {
-					if (ocf_queue_pending_io(io_queues[i]) > 0) {
-						ocf_queue_run_single(io_queues[i]);
-						--pending_io;
-					}
+				if (ocf_queue_pending_io(io_queues[i]) > 0) {
+					ocf_queue_run_single(io_queues[i]);
+					--pending_io;
 				}
+				i = (i + 1) % queue_num;
 			}
 
 			PollCompletion(1024);
@@ -246,7 +249,5 @@ void queue_thread_stop(struct ocf_queue *q)
 {
 	struct queue_thread *qt = ocf_queue_get_priv(q);
 
-	if (--qt->alive_queue_num == 0) {
-		queue_thread_destroy(qt);
-	}
+	queue_thread_destroy(qt);
 }
