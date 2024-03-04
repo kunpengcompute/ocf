@@ -48,6 +48,6 @@ int Read(uint64_t chunk_id, Segment_t segment);
 int AioWrite(Request_t req);
 int AioRead(Request_t req);
 
-int PollCompletion(uint32_t max);
+extern "C" int PollCompletion(uint32_t max);
 
 #endif
