@@ -23,6 +23,19 @@ struct ocf_counters_req {
 	env_atomic64 pass_through;
 };
 
+struct ocf_counters_latency {
+	/* max latency, unit: microseconds */
+	uint64_t max;
+	/* min latency, unit: microseconds */
+	uint64_t min;
+	/* average latency, unit: microseconds */
+	double avg;
+	/* number of samples */
+	uint64_t samples;
+	/* mutex for read and write */
+	env_mutex mutex;
+};
+
 /**
  * @brief OCF requests statistics like hit, miss, etc...
  *
@@ -52,6 +65,20 @@ struct ocf_stats_error {
 
 	/** Write errors */
 	uint32_t write;
+};
+
+struct ocf_stats_latency {
+	/** max latency */
+	uint64_t max;
+
+	/** min latency */
+	uint64_t min;
+
+	/** samples */
+	uint64_t samples;
+
+	/** avg latency */
+	double avg;
 };
 
 /**
@@ -145,6 +172,12 @@ struct ocf_stats_core {
 	/** Core volume error statistics */
 	struct ocf_stats_error core_errors;
 
+	/** OCF latency statistics */
+	struct ocf_stats_latency ocf_latency[LATENCY_TYPE_MAX];
+
+	/** backend latency statistics */
+	struct ocf_stats_latency backend_latency[LATENCY_TYPE_MAX];
+
 	/** Debug statistics */
 	struct ocf_stats_core_debug debug_stat;
 };
@@ -160,6 +193,9 @@ struct ocf_counters_part {
 
 	struct ocf_counters_block core_blocks;
 	struct ocf_counters_block cache_blocks;
+
+	struct ocf_counters_latency ocf_latency[LATENCY_TYPE_MAX];
+	struct ocf_counters_latency backend_latency[LATENCY_TYPE_MAX];
 };
 
 #ifdef OCF_DEBUG_STATS
@@ -196,6 +232,9 @@ void ocf_core_stats_request_pt_update(ocf_core_t core, ocf_part_id_t part_id,
 
 void ocf_core_stats_core_error_update(ocf_core_t core, uint8_t dir);
 void ocf_core_stats_cache_error_update(ocf_core_t core, uint8_t dir);
+
+void ocf_core_stats_latency_update(ocf_core_t core, ocf_part_id_t part_id,
+		int class, int type, uint64_t latency);
 
 /**
  * @brief ocf_core_io_class_get_stats retrieve io class statistics

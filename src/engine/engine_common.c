@@ -615,6 +615,40 @@ void ocf_engine_update_request_stats(struct ocf_request *req)
 			req->info.hit_no, req->core_line_count);
 }
 
+void ocf_engine_update_latency_stats(struct ocf_request *req, int class)
+{
+	uint64_t start_timestamp, end_timestamp;
+	switch (class) {
+		case OCF_LATENCY:
+			start_timestamp = req->ocf_start_timestamp;
+			break;
+		case BACKEND_LATENCY:
+			start_timestamp = req->backend_start_timestamp;
+			break;
+		default:
+			ENV_BUG();
+	}
+
+	/* return if start timestamp is zero */
+	if (start_timestamp == 0) {
+		return;
+	}
+
+	/* end timestamp */
+	end_timestamp = env_get_tick_count();
+
+	if (start_timestamp > end_timestamp) {
+		/* clock drift may cause this situation */
+		ocf_core_log(req->core, log_debug,
+				"timestamp error start: %lu, end: %lu\n",
+				start_timestamp, end_timestamp);
+		return;
+	}
+
+	ocf_core_stats_latency_update(req->core, req->part_id,
+			class, ocf_req_get_latency_class(req), end_timestamp - start_timestamp);
+}
+
 void ocf_engine_push_req_back(struct ocf_request *req, bool allow_sync)
 {
 	ocf_cache_t cache = req->cache;

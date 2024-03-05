@@ -25,6 +25,17 @@ static inline uint64_t _fraction(uint64_t numerator, uint64_t denominator)
     return result;
 }
 
+static inline uint64_t _fraction_double(double numerator, uint64_t denominator)
+{
+    uint64_t result;
+    if (denominator) {
+        result = 10000 * numerator / denominator;
+    } else {
+        result = 0;
+    }
+    return result;
+}
+
 static inline uint64_t _lines4k(uint64_t size,
         ocf_cache_line_size_t cache_line_size)
 {
@@ -45,6 +56,26 @@ static inline void _set(struct ocf_stat *stat, uint64_t value,
 {
     stat->value = value;
     stat->fraction = _fraction(value, denominator);
+}
+
+static inline void _set_double(struct ocf_stat_double *stat,
+		double value, uint64_t denominator)
+{
+	stat->value = value;
+	stat->fraction = _fraction_double(value, denominator);
+}
+
+static inline void _reset_latency_min_value(struct ocf_stats_core *stats)
+{
+	stats->ocf_latency[READ_LATENCY].min = UINT64_MAX;
+	stats->ocf_latency[WRITE_LATENCY].min = UINT64_MAX;
+	stats->ocf_latency[LOOKUP_LATENCY].min = UINT64_MAX;
+	stats->ocf_latency[INVALID_LATENCY].min = UINT64_MAX;
+
+	stats->backend_latency[READ_LATENCY].min = UINT64_MAX;
+	stats->backend_latency[WRITE_LATENCY].min = UINT64_MAX;
+	stats->backend_latency[LOOKUP_LATENCY].min = UINT64_MAX;
+	stats->backend_latency[INVALID_LATENCY].min = UINT64_MAX;
 }
 
 #endif

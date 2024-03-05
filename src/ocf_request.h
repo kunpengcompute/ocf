@@ -216,6 +216,12 @@ struct ocf_request {
 
 	struct ocf_req_discard_info discard;
 
+	uint64_t ocf_start_timestamp;
+	/*!< timestamp recorded when the IO entered the OCF */
+
+	uint64_t backend_start_timestamp;
+	/*!< timestamp recorded when the IO entered the backend */
+
 	uint32_t alock_rw;
 	/*!< Read/Write mode for alock*/
 

@@ -366,6 +366,9 @@ void ocf_core_volume_submit_io(struct ocf_io *io)
 	req->core = core;
 	req->complete = ocf_req_complete;
 
+	/* stats for io latency */
+	req->ocf_start_timestamp = env_get_tick_count();
+
 	if (ocf_core_submit_ucache_io(cache, io, req)) {
 		return;
 	}

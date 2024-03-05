@@ -8,6 +8,7 @@
 
 #include "../ocf_request.h"
 #include "../utils/utils_cache_line.h"
+#include "../utils/utils_request.h"
 
 /**
  * @file engine_common.h
@@ -291,6 +292,14 @@ void ocf_engine_update_block_stats(struct ocf_request *req);
  * @param req OCF request
  */
 void ocf_engine_update_request_stats(struct ocf_request *req);
+
+/**
+ * @brief Update OCF request latency statistics
+ *
+ * @param req OCF request
+ * @param class OCF_LATENCY or BACKEND_LATENCY
+ */
+void ocf_engine_update_latency_stats(struct ocf_request *req, int class);
 
 /**
  * @brief Push front OCF request to the OCF thread worker queue
