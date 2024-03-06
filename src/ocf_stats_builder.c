@@ -587,32 +587,18 @@ static void _stats_dump_cache_cb(ocf_cache_t cache, void *priv, int error)
 	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
 	strbuf_write_str(buf, "| Block statistics             |         Count        |    %   |    Units    |\n");
 	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
-	STATS_DUMP_FIELD(buf, "| Reads from core volume(s)    |", blocks, core_volume_rd, "| 4KiB blocks |");
-	STATS_DUMP_FIELD(buf, "| Writes to core volume(s)     |", blocks, core_volume_wr, "| 4KiB blocks |");
-	STATS_DUMP_FIELD(buf, "| Total to/from core volume(s) |", blocks, core_volume_total, "| 4KiB blocks |");
-	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
 	STATS_DUMP_FIELD(buf, "| Reads from cache volume      |", blocks, cache_volume_rd, "| 4KiB blocks |");
 	STATS_DUMP_FIELD(buf, "| Writes to cache volume       |", blocks, cache_volume_wr, "| 4KiB blocks |");
 	STATS_DUMP_FIELD(buf, "| Total to/from cache volume   |", blocks, cache_volume_total, "| 4KiB blocks |");
-	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n");
-	STATS_DUMP_FIELD(buf, "| Reads from core(s)           |", blocks, volume_rd, "| 4KiB blocks |");
-	STATS_DUMP_FIELD(buf, "| Writes to core(s)            |", blocks, volume_wr, "| 4KiB blocks |");
-	STATS_DUMP_FIELD(buf, "| Total to/from core(s)        |", blocks, volume_total, "| 4KiB blocks |");
 	strbuf_write_str(buf, "+------------------------------+----------------------+--------+-------------+\n\n");
 
 	/* format error stats */
 	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n");
 	strbuf_write_str(buf, "| Error statistics   |         Count        |    %   |   Units  |\n");
 	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n");
-	STATS_DUMP_FIELD(buf, "| Core read errors   |", errors, core_volume_rd, "| Requests |");
-	STATS_DUMP_FIELD(buf, "| Core write errors  |", errors, core_volume_wr, "| Requests |");
-	STATS_DUMP_FIELD(buf, "| Core total errors  |", errors, core_volume_total, "| Requests |");
-	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n");
 	STATS_DUMP_FIELD(buf, "| Cache read errors  |", errors, cache_volume_rd, "| Requests |");
 	STATS_DUMP_FIELD(buf, "| Cache write errors |", errors, cache_volume_wr, "| Requests |");
 	STATS_DUMP_FIELD(buf, "| Cache total errors |", errors, cache_volume_total, "| Requests |");
-	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n");
-	STATS_DUMP_FIELD(buf, "| Total errors       |", errors, total, "| Requests |");
 	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n\n");
 
 	/* format latency stats */
