@@ -171,7 +171,7 @@ static void* timed_trigger(void *arg)
 	struct queue_thread *qt = arg;
 	while (1) {
 		queue_thread_signal(qt, false);
-		sleep(1);
+		usleep(10);
 	}
 	return NULL;
 }
