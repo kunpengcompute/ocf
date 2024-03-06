@@ -7,6 +7,8 @@
 #ifndef __UTILS_STRBUF_H__
 #define __UTILS_STRBUF_H__
 
+#include <stdbool.h>
+
 #define DEFAULT_BUF_SIZE 4096
 #define DEFAULT_PRINT_BUF_SIZE 128
 
@@ -29,6 +31,7 @@ int strbuf_write_format_str(struct strbuf *b, const char *format, ...);
 int strbuf_write_str(struct strbuf *b, const char *str);
 int strbuf_write_char(struct strbuf *b, char c);
 int strbuf_write_end(struct strbuf *b);
+bool using_scientific_notation(double num);
 
 #ifdef __cplusplus
 }

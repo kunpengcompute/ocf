@@ -8,6 +8,7 @@
 #include "../ocf_cache_priv.h"
 #include "../ocf_volume_priv.h"
 #include "../ocf_request.h"
+#include "../engine/engine_common.h"
 #include "utils_io.h"
 #include "utils_cache_line.h"
 
@@ -283,6 +284,11 @@ void ocf_submit_cache_reqs(struct ocf_cache *cache,
 		ocf_core_stats_cache_block_update(req->core, io_class,
 				dir, bytes);
 
+		/* calc io handle latency */
+		ocf_engine_update_latency_stats(req, OCF_LATENCY);
+		req->ocf_start_timestamp = 0;
+		/* start backend io */
+		req->backend_start_timestamp = env_get_tick_count();
 		ocf_volume_submit_io(io);
 		return;
 	}
@@ -332,6 +338,14 @@ void ocf_submit_cache_reqs(struct ocf_cache *cache,
 		}
 		ocf_core_stats_cache_block_update(req->core, io_class,
 				dir, bytes);
+
+		if (i == 0) {
+			/* calc ocf io handle latency */
+			ocf_engine_update_latency_stats(req, OCF_LATENCY);
+			req->ocf_start_timestamp = 0;
+			/* start backend io */
+			req->backend_start_timestamp = env_get_tick_count();
+		}
 		ocf_volume_submit_io(io);
 		total_bytes += bytes;
 	}
@@ -365,5 +379,11 @@ void ocf_submit_volume_req(ocf_volume_t volume, struct ocf_request *req,
 		callback(req, err);
 		return;
 	}
+
+	/* calc io handle latency */
+	ocf_engine_update_latency_stats(req, OCF_LATENCY);
+	req->ocf_start_timestamp = 0;
+	/* start backend io */
+	req->backend_start_timestamp = env_get_tick_count();
 	ocf_volume_submit_io(io);
 }

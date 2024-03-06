@@ -332,6 +332,21 @@ typedef enum {
 #define OCF_LOOKUP		3
 
 /**
+ * @name latency class
+ */
+#define OCF_LATENCY		0
+#define BACKEND_LATENCY	1
+
+/**
+ * @name latency types
+ */
+#define READ_LATENCY		0
+#define WRITE_LATENCY		1
+#define LOOKUP_LATENCY		2
+#define INVALID_LATENCY		3
+#define LATENCY_TYPE_MAX	4
+
+/**
  * @}
  */
 

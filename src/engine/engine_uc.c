@@ -25,6 +25,9 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 	if (error)
 		req->error |= error;
 
+	/* calc backend latency */
+	ocf_engine_update_latency_stats(req, BACKEND_LATENCY);
+
 	/* Handle callback-caller race to let only one of the two complete the
 	 * request. Also, complete original request only if this is the last
 	 * sub-request to complete
@@ -39,6 +42,8 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 		}
 
 		ocf_req_unlock(c, req);
+
+		req->backend_start_timestamp = 0;
 
 		/* Complete request */
 		req->complete(req, req->error);
@@ -106,6 +111,11 @@ static void _ocf_lookup_ucache(struct ocf_request *req)
 	ocf_hb_req_prot_lock_rd(req);
 	ocf_engine_lookup(req);
 	ocf_hb_req_prot_unlock_rd(req);
+
+	/* calc ocf io handle latency */
+	ocf_engine_update_latency_stats(req, OCF_LATENCY);
+	req->ocf_start_timestamp = 0;
+
 	if (ocf_engine_is_hit(req)) {
 		req->complete(req, 0);
 	} else {
@@ -179,11 +189,15 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 		req->error = req->error ?: error;
 		ocf_core_stats_cache_error_update(req->core, OCF_WRITE);
 	}
+	/* calc backend latency */
+	ocf_engine_update_latency_stats(req, BACKEND_LATENCY);
 
 	if (env_atomic_dec_return(&req->req_remaining))
 		return;
 
 	OCF_DEBUG_RQ(req, "Completion");
+
+	req->backend_start_timestamp = 0;
 
 	if (req->error) {
 		/* An error occured */
@@ -247,6 +261,9 @@ static void _ocf_write_uc_update_bits(struct ocf_request *req)
 
 static int _ocf_invalid_write_do(struct ocf_request *req)
 {
+	/* calc ocf io handle latency */
+	ocf_engine_update_latency_stats(req, OCF_LATENCY);
+	req->ocf_start_timestamp = 0;
 	req->complete(req, 0);
 	ocf_engine_invalidate(req);
 	return 0;

@@ -24,6 +24,16 @@ struct ocf_stat {
 };
 
 /**
+ * Entire row of double statistcs
+ */
+struct ocf_stat_double {
+	/** Value */
+	double value;
+	/** percent x100 */
+	uint64_t fraction;
+};
+
+/**
  * @brief Usage statistics in 4 KiB unit
  *
  * An example of presenting statistics:
@@ -151,6 +161,51 @@ struct ocf_stats_errors {
 };
 
 /**
+ * @brief Latency statistics
+ *
+ * An example of presenting statistics:
+ * <pre>
+ * ╔═══════════════════════════╤═══════╤═══╤═════════════╗
+ * ║ Latency statistics        │ Count │ % │ Units       ║
+ * ╠═══════════════════════════╪═══════╪═══╪═════════════╣
+ * ║ OCF Read max latency      │  2000 │ - │ Microsecond ║
+ * ║ OCF Read min latency      │   500 │ - │ Microsecond ║
+ * ║ OCF Read avg latency      │  1000 │ - │ Microsecond ║
+ * ╟───────────────────────────┼───────┼───┼─────────────╢
+ * ║ OCF Write max latency     │  2000 │ - │ Microsecond ║
+ * ║ OCF Write min latency     │   500 │ - │ Microsecond ║
+ * ║ OCF Write avg latency     │  1000 │ - │ Microsecond ║
+ * ╟───────────────────────────┼───────┼───┼─────────────╢
+ * ║ OCF Lookup max latency    │  2000 │ - │ Microsecond ║
+ * ║ OCF Lookup min latency    │   500 │ - │ Microsecond ║
+ * ║ OCF Lookup avg latency    │  1000 │ - │ Microsecond ║
+ * ╟───────────────────────────┼───────┼───┼─────────────╢
+ * ║ OCF Invalid max latency   │  2000 │ - │ Microsecond ║
+ * ║ OCF Invalid min latency   │   500 │ - │ Microsecond ║
+ * ║ OCF Invalid avg latency   │  1000 │ - │ Microsecond ║
+ * ╟───────────────────────────┼───────┼───┼─────────────╢
+ * ║ Backend Read max latency  │  2000 │ - │ Microsecond ║
+ * ║ Backend Read min latency  │   500 │ - │ Microsecond ║
+ * ║ Backend Read avg latency  │  1000 │ - │ Microsecond ║
+ * ╟───────────────────────────┼───────┼───┼─────────────╢
+ * ║ Backend Write max latency │  2000 │ - │ Microsecond ║
+ * ║ Backend Write min latency │   500 │ - │ Microsecond ║
+ * ║ Backend Write avg latency │  1000 │ - │ Microsecond ║
+ * ╚═══════════════════════════╧═══════╧═══╧═════════════╝
+ * </pre>
+ */
+struct ocf_stats_latency_item {
+	struct ocf_stat max;
+	struct ocf_stat min;
+	struct ocf_stat_double avg;
+	struct ocf_stat samples;
+};
+struct ocf_stats_latencys {
+	struct ocf_stats_latency_item ocf_latency_items[LATENCY_TYPE_MAX];
+	struct ocf_stats_latency_item backend_latency_items[LATENCY_TYPE_MAX];
+};
+
+/**
  * @param Collect statistics for given cache
  *
  * @param cache Cache instance for which statistics will be collected
@@ -166,7 +221,8 @@ int ocf_stats_collect_cache(ocf_cache_t cache,
 		struct ocf_stats_usage *usage,
 		struct ocf_stats_requests *req,
 		struct ocf_stats_blocks *blocks,
-		struct ocf_stats_errors *errors);
+		struct ocf_stats_errors *errors,
+		struct ocf_stats_latencys *latencys);
 
 /**
  * @param Collect statistics for given core
@@ -184,7 +240,8 @@ int ocf_stats_collect_core(ocf_core_t core,
 		struct ocf_stats_usage *usage,
 		struct ocf_stats_requests *req,
 		struct ocf_stats_blocks *blocks,
-		struct ocf_stats_errors *errors);
+		struct ocf_stats_errors *errors,
+		struct ocf_stats_latencys *latencys);
 
 /**
  * @param Collect statistics for given ioclass

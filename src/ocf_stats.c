@@ -7,6 +7,7 @@
 #include "ocf_priv.h"
 #include "metadata/metadata.h"
 #include "engine/cache_engine.h"
+#include "utils/utils_stats.h"
 #include "utils/utils_user_part.h"
 #include "utils/utils_cache_line.h"
 
@@ -27,6 +28,15 @@ static void ocf_stats_debug_init(struct ocf_counters_debug *stats)
 }
 #endif
 
+#define INIT_LATENCY(type) \
+	do { \
+		env_mutex_init(&(type.mutex)); \
+		type.max = 0; \
+		type.min = UINT64_MAX; \
+		type.avg = 0.0; \
+		type.samples = 0; \
+	} while (0)
+
 static void ocf_stats_req_init(struct ocf_counters_req *stats)
 {
 	env_atomic64_set(&stats->full_miss, 0);
@@ -41,6 +51,14 @@ static void ocf_stats_block_init(struct ocf_counters_block *stats)
 	env_atomic64_set(&stats->write_bytes, 0);
 }
 
+static void ocf_stats_latencys_init(struct ocf_counters_latency stats[])
+{
+	INIT_LATENCY(stats[READ_LATENCY]);
+	INIT_LATENCY(stats[WRITE_LATENCY]);
+	INIT_LATENCY(stats[LOOKUP_LATENCY]);
+	INIT_LATENCY(stats[INVALID_LATENCY]);
+}
+
 static void ocf_stats_part_init(struct ocf_counters_part *stats)
 {
 	ocf_stats_req_init(&stats->read_reqs);
@@ -49,12 +67,66 @@ static void ocf_stats_part_init(struct ocf_counters_part *stats)
 	ocf_stats_block_init(&stats->blocks);
 	ocf_stats_block_init(&stats->core_blocks);
 	ocf_stats_block_init(&stats->cache_blocks);
+
+	ocf_stats_latencys_init(stats->ocf_latency);
+	ocf_stats_latencys_init(stats->backend_latency);
 }
 
 static void ocf_stats_error_init(struct ocf_counters_error *stats)
 {
 	env_atomic_set(&stats->read, 0);
 	env_atomic_set(&stats->write, 0);
+}
+
+static void _ocf_stats_latency_update(struct ocf_counters_latency *counters,
+		uint64_t latency)
+{
+	double val = latency;
+	double delta;
+
+	env_mutex_lock(&counters->mutex);
+	/* update statistics */
+	if (latency > counters->max)
+		counters->max = latency;
+	if (latency < counters->min)
+		counters->min = latency;
+
+	if (unlikely(counters->samples == UINT64_MAX)) {
+		/* rotation will occurs, avg statistics need to be reset */
+		counters->samples = 0;
+		counters->avg = 0.0;
+	}
+	delta = val - counters->avg;
+	if (delta) {
+		counters->avg += delta / (counters->samples + 1.0);
+	}
+	counters->samples++;
+
+	env_mutex_unlock(&counters->mutex);
+}
+
+void ocf_core_stats_latency_update(ocf_core_t core, ocf_part_id_t part_id,
+		int class, int type, uint64_t latency)
+{
+	struct ocf_counters_latency *counters = NULL;
+
+	/* get counters */
+	switch (class) {
+	case OCF_LATENCY:
+		counters = core->counters->part_counters[part_id].ocf_latency;
+		break;
+	case BACKEND_LATENCY:
+		counters = core->counters->part_counters[part_id].backend_latency;
+		break;
+	default:
+		ENV_BUG();
+	}
+
+	if (unlikely(type < 0 || type >= LATENCY_TYPE_MAX)) {
+		ENV_BUG();
+	}
+
+	_ocf_stats_latency_update(&counters[type], latency);
 }
 
 static void _ocf_stats_block_update(struct ocf_counters_block *counters, int dir,
@@ -259,6 +331,30 @@ static void copy_error_stats(struct ocf_stats_error *dest,
 	dest->write = env_atomic_read(&from->write);
 }
 
+static void accum_latency_stats(struct ocf_stats_latency dest[],
+		struct ocf_counters_latency from[])
+{
+	for (int i = 0; i<LATENCY_TYPE_MAX; i++) {
+		env_mutex_lock(&from[i].mutex);
+
+		if (from[i].max > dest[i].max)
+			dest[i].max = from[i].max;
+		if (from[i].min < dest[i].min)
+			dest[i].min = from[i].min;
+
+		if (dest[i].samples != 0) {
+			dest[i].avg = ((dest[i].avg)*(dest[i].samples)+(from[i].avg)*(from[i].samples))
+							/ (dest[i].samples+from[i].samples);
+			dest[i].samples += from[i].samples;
+		} else {
+			dest[i].avg = from[i].avg;
+			dest[i].samples = from[i].samples;
+		}
+
+		env_mutex_unlock(&from[i].mutex);
+	}
+}
+
 #ifdef OCF_DEBUG_STATS
 static void copy_debug_stats(struct ocf_stats_core_debug *dest,
 		const struct ocf_counters_debug *from)
@@ -336,6 +432,9 @@ int ocf_core_get_stats(ocf_core_t core, struct ocf_stats_core *stats)
 
 	ENV_BUG_ON(env_memset(stats, sizeof(*stats), 0));
 
+	/* set to uint64_max for easy calculation of the minimum value */
+	_reset_latency_min_value(stats);
+
 	copy_error_stats(&stats->core_errors,
 			&core_stats->core_errors);
 	copy_error_stats(&stats->cache_errors,
@@ -357,6 +456,9 @@ int ocf_core_get_stats(ocf_core_t core, struct ocf_stats_core *stats)
 		accum_block_stats(&stats->core, &curr->blocks);
 		accum_block_stats(&stats->core_volume, &curr->core_blocks);
 		accum_block_stats(&stats->cache_volume, &curr->cache_blocks);
+
+		accum_latency_stats(stats->ocf_latency, curr->ocf_latency);
+		accum_latency_stats(stats->backend_latency, curr->backend_latency);
 
 		stats->cache_occupancy += env_atomic_read(&core->runtime_meta->
 				part_counters[i].cached_clines);

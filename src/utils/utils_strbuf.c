@@ -95,3 +95,13 @@ int strbuf_write_end(struct strbuf *b)
 {
 	return strbuf_write_char(b, '\0');
 }
+
+/**
+ * When the length of floating point number exceeds 20 bytes after formatting,
+ * we should use scientific notation.
+ */
+bool using_scientific_notation(double num)
+{
+	char buf[20];
+	return snprintf(buf, 20, "%.2f", num) > 20;
+}
