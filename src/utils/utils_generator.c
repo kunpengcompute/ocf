@@ -179,7 +179,7 @@ uint32_t ocf_generator_bisect_next(
 	maplen = 1 << (32 - clz);
 
 	do {
-		value = bitreverse32(generator->curr) >> clz;
+		value = generator->curr;
 		generator->curr = (generator->curr + 1) % maplen;
 	} while (value >= generator->limit);
 

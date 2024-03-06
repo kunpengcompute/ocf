@@ -504,6 +504,7 @@ int ocf_add_core(uint32_t slot_id)
 		env_rwlock_write_lock(&table_lock);
 		slot_info_table.erase(slot_id);
 		env_rwlock_write_unlock(&table_lock);
+		env_free(info);
 		return STATE_FAIL;
 	}
 	

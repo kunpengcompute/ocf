@@ -10,7 +10,7 @@
 #include "ocf_lru.h"
 #include "ocf_lru_structs.h"
 
-#define OCF_NUM_LRU_LISTS 32
+#define OCF_NUM_LRU_LISTS 1
 
 struct ocf_part;
 struct ocf_user_part;
