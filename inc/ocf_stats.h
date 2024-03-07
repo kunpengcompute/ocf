@@ -73,6 +73,12 @@ struct ocf_stats_usage {
  * ║ Write full misses    │     0 │   0.0 │ Requests ║
  * ║ Write total          │     0 │   0.0 │ Requests ║
  * ╟──────────────────────┼───────┼───────┼──────────╢
+ * ║ Lookup hits          │     0 │   0.0 │ Requests ║
+ * ║ Lookup partial misses│     0 │   0.0 │ Requests ║
+ * ║ Lookup full misses   │     0 │   0.0 │ Requests ║
+ * ║ Lookup total         │     0 │   0.0 │ Requests ║
+ * ╟──────────────────────┼───────┼───────┼──────────╢
+ * ║ Invalid requests     │     0 │   0.0 │ Requests ║
  * ║ Pass-Through reads   │     0 │   0.0 │ Requests ║
  * ║ Pass-Through writes  │     0 │   0.0 │ Requests ║
  * ║ Serviced requests    │   222 │ 100.0 │ Requests ║
@@ -92,6 +98,11 @@ struct ocf_stats_requests {
 	struct ocf_stat wr_total;
 	struct ocf_stat rd_pt;
 	struct ocf_stat wr_pt;
+	struct ocf_stat lookup_hits;
+	struct ocf_stat lookup_partial_misses;
+	struct ocf_stat lookup_full_misses;
+	struct ocf_stat lookup_total;
+	struct ocf_stat invalid_total;
 	struct ocf_stat serviced;
 	struct ocf_stat total;
 };
@@ -161,6 +172,36 @@ struct ocf_stats_errors {
 };
 
 /**
+ * @brief Success statistics
+ *
+ * An example of presenting statistics:
+ * <pre>
+ * ╔═════════════════════╤═══════╤═════╤══════════╗
+ * ║ Success statistics  │ Count │  %  │ Units    ║
+ * ╠═════════════════════╪═══════╪═════╪══════════╣
+ * ║ Cache read success  │     0 │ 0.0 │ Requests ║
+ * ║ Cache write success │     0 │ 0.0 │ Requests ║
+ * ║ Cache total success │     0 │ 0.0 │ Requests ║
+ * ╟─────────────────────┼───────┼─────┼──────────╢
+ * ║ Core read success   │     0 │ 0.0 │ Requests ║
+ * ║ Core write success  │     0 │ 0.0 │ Requests ║
+ * ║ Core total success  │     0 │ 0.0 │ Requests ║
+ * ╟─────────────────────┼───────┼─────┼──────────╢
+ * ║ Total success       │     0 │ 0.0 │ Requests ║
+ * ╚═════════════════════╧═══════╧═════╧══════════╝
+ * </pre>
+ */
+struct ocf_stats_success {
+	struct ocf_stat core_volume_rd;
+	struct ocf_stat core_volume_wr;
+	struct ocf_stat core_volume_total;
+	struct ocf_stat cache_volume_rd;
+	struct ocf_stat cache_volume_wr;
+	struct ocf_stat cache_volume_total;
+	struct ocf_stat total;
+};
+
+/**
  * @brief Latency statistics
  *
  * An example of presenting statistics:
@@ -201,8 +242,37 @@ struct ocf_stats_latency_item {
 	struct ocf_stat samples;
 };
 struct ocf_stats_latencys {
-	struct ocf_stats_latency_item ocf_latency_items[LATENCY_TYPE_MAX];
-	struct ocf_stats_latency_item backend_latency_items[LATENCY_TYPE_MAX];
+	struct ocf_stats_latency_item ocf_latency_items[STATS_TYPE_MAX];
+	struct ocf_stats_latency_item backend_latency_items[STATS_TYPE_MAX];
+};
+
+/**
+ * @brief Access statistics
+ *
+ * An example of presenting statistics:
+ * <pre>
+ * ╔═══════════════════╤═══════╤═══════╤══════════╗
+ * ║ Access statistics │ Count │   %   │  Units   ║
+ * ╠═══════════════════╪═══════╪═══════╪══════════╣
+ * ║ OCF Read Enter    │   300 │  30.0 │ Requests ║
+ * ║ OCF Write Enter   │   300 │  30.0 │ Requests ║
+ * ║ OCF Lookup Enter  │   200 │  20.0 │ Requests ║
+ * ║ OCF Invalid Enter │   200 │  20.0 │ Requests ║
+ * ║ OCF Total Enter   │  1000 │ 100.0 │ Requests ║
+ * ╟───────────────────┼───────┼───────┼──────────╢
+ * ║ OCF Read Leave    │   300 │  30.0 │ Requests ║
+ * ║ OCF Write Leave   │   300 │  30.0 │ Requests ║
+ * ║ OCF Lookup Leave  │   200 │  30.0 │ Requests ║
+ * ║ OCF Invalid Leave │   200 │  20.0 │ Requests ║
+ * ║ OCF Total Leave   │  1000 │ 100.0 │ Requests ║
+ * ╚═══════════════════╧═══════╧═══════╧══════════╝
+ * </pre>
+ */
+struct ocf_stats_ocf_inout_reqs {
+	struct ocf_stat total_in;
+	struct ocf_stat total_out;
+	struct ocf_stat in_reqs[STATS_TYPE_MAX];
+	struct ocf_stat out_reqs[STATS_TYPE_MAX];
 };
 
 /**
@@ -222,7 +292,9 @@ int ocf_stats_collect_cache(ocf_cache_t cache,
 		struct ocf_stats_requests *req,
 		struct ocf_stats_blocks *blocks,
 		struct ocf_stats_errors *errors,
-		struct ocf_stats_latencys *latencys);
+		struct ocf_stats_success *success,
+		struct ocf_stats_latencys *latencys,
+		struct ocf_stats_ocf_inout_reqs *inout_reqs);
 
 /**
  * @param Collect statistics for given core
@@ -241,7 +313,9 @@ int ocf_stats_collect_core(ocf_core_t core,
 		struct ocf_stats_requests *req,
 		struct ocf_stats_blocks *blocks,
 		struct ocf_stats_errors *errors,
-		struct ocf_stats_latencys *latencys);
+		struct ocf_stats_success *success,
+		struct ocf_stats_latencys *latencys,
+		struct ocf_stats_ocf_inout_reqs *inout_reqs);
 
 /**
  * @param Collect statistics for given ioclass

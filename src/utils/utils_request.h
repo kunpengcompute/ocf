@@ -12,4 +12,4 @@ int ocf_req_actor(struct ocf_request *req, ocf_req_actor_t actor);
 
 void ocf_req_set_cleaning_hot(struct ocf_request *req);
 
-int ocf_req_get_latency_class(struct ocf_request *req);
+int ocf_req_get_stats_type(struct ocf_request *req);

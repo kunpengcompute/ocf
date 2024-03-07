@@ -294,10 +294,17 @@ void ocf_engine_update_block_stats(struct ocf_request *req);
 void ocf_engine_update_request_stats(struct ocf_request *req);
 
 /**
+ * @brief Update OCF lookup request statistics for an exported object
+ *
+ * @param req OCF request
+ */
+void ocf_engine_update_lookup_req_stats(struct ocf_request *req);
+
+/**
  * @brief Update OCF request latency statistics
  *
  * @param req OCF request
- * @param class OCF_LATENCY or BACKEND_LATENCY
+ * @param class STATS_CLASS_OCF or STATS_CLASS_BACKEND
  */
 void ocf_engine_update_latency_stats(struct ocf_request *req, int class);
 

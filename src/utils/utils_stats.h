@@ -67,15 +67,15 @@ static inline void _set_double(struct ocf_stat_double *stat,
 
 static inline void _reset_latency_min_value(struct ocf_stats_core *stats)
 {
-	stats->ocf_latency[READ_LATENCY].min = UINT64_MAX;
-	stats->ocf_latency[WRITE_LATENCY].min = UINT64_MAX;
-	stats->ocf_latency[LOOKUP_LATENCY].min = UINT64_MAX;
-	stats->ocf_latency[INVALID_LATENCY].min = UINT64_MAX;
+	stats->ocf_latency[STATS_TYPE_READ].min = UINT64_MAX;
+	stats->ocf_latency[STATS_TYPE_WRITE].min = UINT64_MAX;
+	stats->ocf_latency[STATS_TYPE_LOOKUP].min = UINT64_MAX;
+	stats->ocf_latency[STATS_TYPE_INVALID].min = UINT64_MAX;
 
-	stats->backend_latency[READ_LATENCY].min = UINT64_MAX;
-	stats->backend_latency[WRITE_LATENCY].min = UINT64_MAX;
-	stats->backend_latency[LOOKUP_LATENCY].min = UINT64_MAX;
-	stats->backend_latency[INVALID_LATENCY].min = UINT64_MAX;
+	stats->backend_latency[STATS_TYPE_READ].min = UINT64_MAX;
+	stats->backend_latency[STATS_TYPE_WRITE].min = UINT64_MAX;
+	stats->backend_latency[STATS_TYPE_LOOKUP].min = UINT64_MAX;
+	stats->backend_latency[STATS_TYPE_INVALID].min = UINT64_MAX;
 }
 
 #endif

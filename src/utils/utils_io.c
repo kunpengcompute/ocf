@@ -285,7 +285,7 @@ void ocf_submit_cache_reqs(struct ocf_cache *cache,
 				dir, bytes);
 
 		/* calc io handle latency */
-		ocf_engine_update_latency_stats(req, OCF_LATENCY);
+		ocf_engine_update_latency_stats(req, STATS_CLASS_OCF);
 		req->ocf_start_timestamp = 0;
 		/* start backend io */
 		req->backend_start_timestamp = env_get_tick_count();
@@ -341,7 +341,7 @@ void ocf_submit_cache_reqs(struct ocf_cache *cache,
 
 		if (i == 0) {
 			/* calc ocf io handle latency */
-			ocf_engine_update_latency_stats(req, OCF_LATENCY);
+			ocf_engine_update_latency_stats(req, STATS_CLASS_OCF);
 			req->ocf_start_timestamp = 0;
 			/* start backend io */
 			req->backend_start_timestamp = env_get_tick_count();
@@ -381,7 +381,7 @@ void ocf_submit_volume_req(ocf_volume_t volume, struct ocf_request *req,
 	}
 
 	/* calc io handle latency */
-	ocf_engine_update_latency_stats(req, OCF_LATENCY);
+	ocf_engine_update_latency_stats(req, STATS_CLASS_OCF);
 	req->ocf_start_timestamp = 0;
 	/* start backend io */
 	req->backend_start_timestamp = env_get_tick_count();

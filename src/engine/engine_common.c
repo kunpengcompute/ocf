@@ -615,14 +615,20 @@ void ocf_engine_update_request_stats(struct ocf_request *req)
 			req->info.hit_no, req->core_line_count);
 }
 
+void ocf_engine_update_lookup_req_stats(struct ocf_request *req)
+{
+	ocf_core_stats_lookup_req_update(req->core, req->part_id,
+			req->info.hit_no, req->core_line_count);
+}
+
 void ocf_engine_update_latency_stats(struct ocf_request *req, int class)
 {
 	uint64_t start_timestamp, end_timestamp;
 	switch (class) {
-		case OCF_LATENCY:
+		case STATS_CLASS_OCF:
 			start_timestamp = req->ocf_start_timestamp;
 			break;
-		case BACKEND_LATENCY:
+		case STATS_CLASS_BACKEND:
 			start_timestamp = req->backend_start_timestamp;
 			break;
 		default:
@@ -646,7 +652,7 @@ void ocf_engine_update_latency_stats(struct ocf_request *req, int class)
 	}
 
 	ocf_core_stats_latency_update(req->core, req->part_id,
-			class, ocf_req_get_latency_class(req), end_timestamp - start_timestamp);
+			class, ocf_req_get_stats_type(req), end_timestamp - start_timestamp);
 }
 
 void ocf_engine_push_req_back(struct ocf_request *req, bool allow_sync)
