@@ -129,6 +129,7 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 	struct ocf_volume_uuid uuid;
 	struct cache_priv *cache_priv;
 	struct simple_context context;
+	int stop_ret;
 	int ret;
 	int i;
 
@@ -231,8 +232,10 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 	/* Attach volume to cache */
 	ocf_mngt_cache_attach(*cache, &attach_cfg, simple_complete, &context);
 	sem_wait(&context.sem);
-	if (ret)
+	if (ret) {
+		context.ret = &stop_ret;
 		goto err_cache;
+	}
 
 	return 0;
 
