@@ -99,6 +99,7 @@
 #define KiB (1ULL << 10)
 #define MiB (1ULL << 20)
 #define GiB (1ULL << 30)
+#define TiB (1ULL << 40)
 
 #if OCF_CONFIG_DEBUG_STATS == 1
 /** Macro which indicates that extended debug statistics shall be on*/
