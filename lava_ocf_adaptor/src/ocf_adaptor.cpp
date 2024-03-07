@@ -164,6 +164,7 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 		goto err_sem;
 
 	param.chunk_num = cfg->cache_capacity / LAVA_CHUNK_SIZE;
+	param.chunk_num += ((cfg->cache_capacity % LAVA_CHUNK_SIZE) ? 1 : 0);
 	ocf_mngt_cache_attach_config_set_default(&attach_cfg);
 	attach_cfg.device.volume = volume;
 	attach_cfg.cache_line_size = (ocf_cache_line_size_t)cfg->cache_line_size;
