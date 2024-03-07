@@ -14,6 +14,7 @@
 #include "utils_strbuf.h"
 #include "volume.h"
 #include "ocf_adaptor.h"
+#include <../../src/ocf_lru_structs.h>
 
 using namespace std;
 
@@ -80,6 +81,11 @@ static int check_ocf_config(struct ocf_config *cfg)
 		default:
 			ocf_adaptor_log(OCF_LOG_ERROR, "cache line size(%lu) is not suppoerted\n", cfg->cache_line_size);
 			return STATE_FAIL;
+	}
+
+	if (cfg->cache_capacity > CACHE_MAX_SUPPORT_IN_TB * TiB) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "cache capacity should be <= %d TiB\n", CACHE_MAX_SUPPORT_IN_TB);
+		return STATE_FAIL;
 	}
 
 	uint128_t core_mask = cfg->core_mask;
