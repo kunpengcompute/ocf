@@ -198,6 +198,9 @@ struct ocf_stats_core {
 	/** Invalid requests statistics */
 	struct ocf_stats_frequency invalid_reqs;
 
+	/** OCF Error request statistics */
+	struct ocf_stats_frequency ocf_errors[STATS_TYPE_MAX];
+
 	/** OCF latency statistics */
 	struct ocf_stats_latency ocf_latency[STATS_TYPE_MAX];
 
@@ -251,6 +254,7 @@ struct ocf_counters_core {
 	struct ocf_counters_rw cache_errors;
 	struct ocf_counters_rw core_success;
 	struct ocf_counters_rw cache_success;
+	struct ocf_counters_frequency ocf_errors[STATS_TYPE_MAX];
 
 	struct ocf_counters_part part_counters[OCF_USER_IO_CLASS_MAX];
 #ifdef OCF_DEBUG_STATS
@@ -272,6 +276,7 @@ void ocf_core_stats_request_pt_update(ocf_core_t core, ocf_part_id_t part_id,
 
 void ocf_core_stats_core_error_update(ocf_core_t core, uint8_t dir);
 void ocf_core_stats_cache_error_update(ocf_core_t core, uint8_t dir);
+void ocf_core_stats_ocf_error_update(ocf_core_t core, int type);
 void ocf_core_stats_core_success_update(ocf_core_t core, uint8_t dir);
 void ocf_core_stats_cache_success_update(ocf_core_t core, uint8_t dir);
 

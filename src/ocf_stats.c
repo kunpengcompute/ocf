@@ -59,12 +59,11 @@ static void ocf_stats_latencys_init(struct ocf_counters_latency stats[])
 	INIT_LATENCY(stats[STATS_TYPE_INVALID]);
 }
 
-static void ocf_stats_ocf_inout_req_init(struct ocf_counters_frequency stats[])
+static void ocf_stats_frequencys_init(struct ocf_counters_frequency stats[], int size)
 {
-	env_atomic64_set(&stats[STATS_TYPE_READ].total, 0);
-	env_atomic64_set(&stats[STATS_TYPE_WRITE].total, 0);
-	env_atomic64_set(&stats[STATS_TYPE_LOOKUP].total, 0);
-	env_atomic64_set(&stats[STATS_TYPE_INVALID].total, 0);
+	for (int i = 0; i<size; i++) {
+		env_atomic64_set(&stats[i].total, 0);
+	}
 }
 
 static void ocf_stats_part_init(struct ocf_counters_part *stats)
@@ -82,8 +81,8 @@ static void ocf_stats_part_init(struct ocf_counters_part *stats)
 	ocf_stats_latencys_init(stats->ocf_latency);
 	ocf_stats_latencys_init(stats->backend_latency);
 
-	ocf_stats_ocf_inout_req_init(stats->ocf_in_reqs);
-	ocf_stats_ocf_inout_req_init(stats->ocf_out_reqs);
+	ocf_stats_frequencys_init(stats->ocf_in_reqs, STATS_TYPE_MAX);
+	ocf_stats_frequencys_init(stats->ocf_out_reqs, STATS_TYPE_MAX);
 }
 
 static void ocf_stats_rw_init(struct ocf_counters_rw *stats)
@@ -305,6 +304,18 @@ void ocf_core_stats_cache_error_update(ocf_core_t core, uint8_t dir)
 	_ocf_core_stats_rw_update(counters, dir);
 }
 
+void ocf_core_stats_ocf_error_update(ocf_core_t core, int type)
+{
+	if (unlikely(type < 0 || type >= STATS_TYPE_MAX)) {
+		ENV_BUG();
+	}
+
+	struct ocf_counters_frequency *counters =
+		core->counters->ocf_errors;
+
+	env_atomic64_inc(&counters[type].total);
+}
+
 void ocf_core_stats_core_success_update(ocf_core_t core, uint8_t dir)
 {
 	struct ocf_counters_rw *counters = &core->counters->core_success;
@@ -345,6 +356,7 @@ void ocf_core_stats_initialize(ocf_core_t core)
 	ocf_stats_rw_init(&exp_obj_stats->core_errors);
 	ocf_stats_rw_init(&exp_obj_stats->cache_success);
 	ocf_stats_rw_init(&exp_obj_stats->core_success);
+	ocf_stats_frequencys_init(exp_obj_stats->ocf_errors, STATS_TYPE_MAX);
 
 	for (i = 0; i != OCF_USER_IO_CLASS_MAX; i++)
 		ocf_stats_part_init(&exp_obj_stats->part_counters[i]);
@@ -434,17 +446,17 @@ static void accum_latency_stats(struct ocf_stats_latency dest[],
 	}
 }
 
-static inline void accum_frequency_stats(struct ocf_stats_frequency *dest,
+static inline void _accum_frequency_stats(struct ocf_stats_frequency *dest,
 		const struct ocf_counters_frequency *from)
 {
 	dest->total += env_atomic64_read(&from->total);
 }
 
-static void accum_inout_frequency_stats(struct ocf_stats_frequency dest[],
+static void accum_frequencys_stats(struct ocf_stats_frequency dest[],
 		const struct ocf_counters_frequency from[], int size)
 {
 	for (int i = 0; i<size; i++) {
-		accum_frequency_stats(&dest[i], &from[i]);
+		_accum_frequency_stats(&dest[i], &from[i]);
 	}
 }
 
@@ -536,6 +548,8 @@ int ocf_core_get_stats(ocf_core_t core, struct ocf_stats_core *stats)
 			&core_stats->core_success);
 	copy_rw_stats(&stats->cache_success,
 			&core_stats->cache_success);
+	accum_frequencys_stats(stats->ocf_errors, 
+			core_stats->ocf_errors, STATS_TYPE_MAX);
 
 #ifdef OCF_DEBUG_STATS
 	copy_debug_stats(&stats->debug_stat,
@@ -551,7 +565,7 @@ int ocf_core_get_stats(ocf_core_t core, struct ocf_stats_core *stats)
 				&curr->write_reqs);
 		accum_req_stats(&stats->lookup_reqs,
 				&curr->lookup_reqs);
-		accum_frequency_stats(&stats->invalid_reqs,
+		_accum_frequency_stats(&stats->invalid_reqs,
 				&curr->invalid_reqs);
 
 		accum_block_stats(&stats->core, &curr->blocks);
@@ -561,8 +575,8 @@ int ocf_core_get_stats(ocf_core_t core, struct ocf_stats_core *stats)
 		accum_latency_stats(stats->ocf_latency, curr->ocf_latency, STATS_TYPE_MAX);
 		accum_latency_stats(stats->backend_latency, curr->backend_latency, STATS_TYPE_MAX);
 
-		accum_inout_frequency_stats(stats->ocf_in_reqs, curr->ocf_in_reqs, STATS_TYPE_MAX);
-		accum_inout_frequency_stats(stats->ocf_out_reqs, curr->ocf_out_reqs, STATS_TYPE_MAX);
+		accum_frequencys_stats(stats->ocf_in_reqs, curr->ocf_in_reqs, STATS_TYPE_MAX);
+		accum_frequencys_stats(stats->ocf_out_reqs, curr->ocf_out_reqs, STATS_TYPE_MAX);
 
 		stats->cache_occupancy += env_atomic_read(&core->runtime_meta->
 				part_counters[i].cached_clines);
