@@ -379,7 +379,7 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 	ocf_cache_t cache = ocf_core_get_cache(core);
 	ocf_volume_t core_vol = ocf_core_get_front_volume(core);
 	struct cache_priv *priv = (struct cache_priv *)ocf_cache_get_priv(cache);
-	if (ctx->io_worker_id >= priv->queue_num) {
+	if (unlikely(ctx->io_worker_id >= priv->queue_num)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io_work_id(%u) is not within the range of [0, %u)\n",
 			ctx->io_worker_id, priv->queue_num);
 		return STATE_PRRAM_INVALID;
@@ -388,7 +388,7 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 	ocf_queue_t q = priv->io_queues[ctx->io_worker_id];
 	/* allocate new io */
 	struct ocf_io *io = ocf_volume_new_io(core_vol, q, addr, len, dir, 0, 0);
-	if (!io) {
+	if (unlikely(!io)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io memory request fail\n");
 		return STATE_MEM_ALLOC_ERR;
 	}
@@ -510,7 +510,7 @@ void ocf_exit()
 
 int ocf_add_core(uint32_t slot_id)
 {
-	if (g_adaptor.state != INITIALIZED) {
+	if (unlikely(g_adaptor.state != INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not add core\n");
 		return STATE_FAIL;
 	}
@@ -554,7 +554,7 @@ int ocf_add_core(uint32_t slot_id)
 
 int ocf_remove_core(uint32_t slot_id)
 {
-	if (g_adaptor.state != INITIALIZED) {
+	if (unlikely(g_adaptor.state != INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not remove core\n");
 		return STATE_FAIL;
 	}
@@ -599,7 +599,7 @@ int ocf_remove_core(uint32_t slot_id)
 
 int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 {
-	if (g_adaptor.state != INITIALIZED) {
+	if (unlikely(g_adaptor.state != INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit region_invalid io\n");
 		return STATE_FAIL;
 	}
@@ -636,12 +636,12 @@ int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 
 int ocf_invalid(struct req_context *ctx)
 {
-	if (g_adaptor.state != INITIALIZED) {
+	if (unlikely(g_adaptor.state != INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit range_invalid io\n");
 		return STATE_FAIL;
 	}
 
-	if (!ctx) {
+	if (unlikely(!ctx)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_invalid ctx is NULL\n");
 		return STATE_PRRAM_INVALID;
 	}
@@ -679,18 +679,18 @@ int ocf_invalid(struct req_context *ctx)
 
 int ocf_lookup(struct req_context *ctx)
 {
-	if (g_adaptor.state != INITIALIZED) {
+	if (unlikely(g_adaptor.state != INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit lookup io\n");
 		return STATE_FAIL;
 	}
 
-	if (!ctx) {
+	if (unlikely(!ctx)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_lookup ctx is NULL\n");
 		return STATE_PRRAM_INVALID;
 	}
 
 	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "ock_lookup is not 4k aligned\n");
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ock_lookup is not 4k aligned\n");
 		if (ctx->cb) {
 			ctx->cb(STATE_MISS, ctx);
 		}
@@ -730,18 +730,18 @@ int ocf_lookup(struct req_context *ctx)
 
 int ocf_get(struct req_context *ctx)
 {
-	if (g_adaptor.state != INITIALIZED) {
+	if (unlikely(g_adaptor.state != INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit read io\n");
 		return STATE_FAIL;
 	}
 
-	if (!ctx) {
+	if (unlikely(!ctx)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_get ctx is NULL\n");
 		return STATE_PRRAM_INVALID;
 	}
 
 	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_get is not 4k aligned\n");
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf_get is not 4k aligned\n");
 		if (ctx->cb) {
 			ctx->cb(STATE_MISS, ctx);
 		}
@@ -777,18 +777,18 @@ int ocf_get(struct req_context *ctx)
 
 int ocf_put(struct req_context *ctx)
 {
-	if (g_adaptor.state != INITIALIZED) {
+	if (unlikely(g_adaptor.state != INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit write io\n");
 		return STATE_FAIL;
 	}
 
-	if (!ctx) {
+	if (unlikely(!ctx)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_put ctx is NULL\n");
 		return STATE_PRRAM_INVALID;
 	}
 
 	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_put is not 4k aligned\n");
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf_put is not 4k aligned\n");
 		if (ctx->cb) {
 			ctx->cb(STATE_SUCCESS, ctx);
 		}
@@ -833,7 +833,7 @@ int ocf_put(struct req_context *ctx)
 int ocf_poll(uint32_t io_worker_id, int max_num)
 {
 	struct cache_priv *priv = (struct cache_priv *)ocf_cache_get_priv(g_adaptor.cache);
-	if (io_worker_id >= priv->queue_num) {
+	if (unlikely(io_worker_id >= priv->queue_num)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io_work_id(%u) can not exceed %u\n", io_worker_id, priv->queue_num);
 		return STATE_PRRAM_INVALID;
 	}
