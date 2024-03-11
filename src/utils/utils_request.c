@@ -39,20 +39,20 @@ void ocf_req_set_cleaning_hot(struct ocf_request *req)
 	ocf_req_actor(req, _set_cleaning_hot_actor);
 }
 
-int ocf_req_get_latency_class(struct ocf_request *req)
+int ocf_req_get_stats_type(struct ocf_request *req)
 {
 	switch (req->ioi.io.dir) {
 		case OCF_READ:
 			if (req->ioi.io.flags == OCF_LOOKUP) {
-				return LOOKUP_LATENCY;
+				return STATS_TYPE_LOOKUP;
 			} else {
-				return READ_LATENCY;
+				return STATS_TYPE_READ;
 			}
 		case OCF_WRITE:
 			if (req->ioi.io.flags == OCF_INVALID) {
-				return INVALID_LATENCY;
+				return STATS_TYPE_INVALID;
 			} else {
-				return WRITE_LATENCY;
+				return STATS_TYPE_WRITE;
 			}
 		default:
 			ENV_BUG();

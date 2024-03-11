@@ -11,7 +11,7 @@ struct ocf_counters_block {
 	env_atomic64 write_bytes;
 };
 
-struct ocf_counters_error {
+struct ocf_counters_rw {
 	env_atomic read;
 	env_atomic write;
 };
@@ -21,6 +21,15 @@ struct ocf_counters_req {
 	env_atomic64 full_miss;
 	env_atomic64 total;
 	env_atomic64 pass_through;
+};
+
+struct ocf_counters_lookup_req {
+	env_atomic64 hit;
+	env_atomic64 total;
+};
+
+struct ocf_counters_frequency {
+	env_atomic64 total;
 };
 
 struct ocf_counters_latency {
@@ -57,9 +66,9 @@ struct ocf_stats_req {
 };
 
 /**
- * @brief OCF error statistics
+ * @brief OCF rw statistics
  */
-struct ocf_stats_error {
+struct ocf_stats_rw {
 	/** Read errors */
 	uint32_t read;
 
@@ -79,6 +88,11 @@ struct ocf_stats_latency {
 
 	/** avg latency */
 	double avg;
+};
+
+struct ocf_stats_frequency {
+	/** total times */
+	uint64_t total;
 };
 
 /**
@@ -167,16 +181,34 @@ struct ocf_stats_core {
 	struct ocf_stats_block core;
 
 	/** Cache volume error statistics */
-	struct ocf_stats_error cache_errors;
+	struct ocf_stats_rw cache_errors;
 
 	/** Core volume error statistics */
-	struct ocf_stats_error core_errors;
+	struct ocf_stats_rw core_errors;
+
+		/** Cache volume success statistics */
+	struct ocf_stats_rw cache_success;
+
+	/** Core volume success statistics */
+	struct ocf_stats_rw core_success;
+
+	/** Lookup requests statistics */
+	struct ocf_stats_req lookup_reqs;
+
+	/** Invalid requests statistics */
+	struct ocf_stats_frequency invalid_reqs;
 
 	/** OCF latency statistics */
-	struct ocf_stats_latency ocf_latency[LATENCY_TYPE_MAX];
+	struct ocf_stats_latency ocf_latency[STATS_TYPE_MAX];
 
 	/** backend latency statistics */
-	struct ocf_stats_latency backend_latency[LATENCY_TYPE_MAX];
+	struct ocf_stats_latency backend_latency[STATS_TYPE_MAX];
+
+	/** io into ocf statistics */
+	struct ocf_stats_frequency ocf_in_reqs[STATS_TYPE_MAX];
+
+	/** io go out from ocf statistics */
+	struct ocf_stats_frequency ocf_out_reqs[STATS_TYPE_MAX];
 
 	/** Debug statistics */
 	struct ocf_stats_core_debug debug_stat;
@@ -194,8 +226,14 @@ struct ocf_counters_part {
 	struct ocf_counters_block core_blocks;
 	struct ocf_counters_block cache_blocks;
 
-	struct ocf_counters_latency ocf_latency[LATENCY_TYPE_MAX];
-	struct ocf_counters_latency backend_latency[LATENCY_TYPE_MAX];
+	struct ocf_counters_req lookup_reqs;
+	struct ocf_counters_frequency invalid_reqs;
+
+	struct ocf_counters_latency ocf_latency[STATS_TYPE_MAX];
+	struct ocf_counters_latency backend_latency[STATS_TYPE_MAX];
+
+	struct ocf_counters_frequency ocf_in_reqs[STATS_TYPE_MAX];
+	struct ocf_counters_frequency ocf_out_reqs[STATS_TYPE_MAX];
 };
 
 #ifdef OCF_DEBUG_STATS
@@ -209,8 +247,10 @@ struct ocf_counters_debug {
 #endif
 
 struct ocf_counters_core {
-	struct ocf_counters_error core_errors;
-	struct ocf_counters_error cache_errors;
+	struct ocf_counters_rw core_errors;
+	struct ocf_counters_rw cache_errors;
+	struct ocf_counters_rw core_success;
+	struct ocf_counters_rw cache_success;
 
 	struct ocf_counters_part part_counters[OCF_USER_IO_CLASS_MAX];
 #ifdef OCF_DEBUG_STATS
@@ -232,9 +272,20 @@ void ocf_core_stats_request_pt_update(ocf_core_t core, ocf_part_id_t part_id,
 
 void ocf_core_stats_core_error_update(ocf_core_t core, uint8_t dir);
 void ocf_core_stats_cache_error_update(ocf_core_t core, uint8_t dir);
+void ocf_core_stats_core_success_update(ocf_core_t core, uint8_t dir);
+void ocf_core_stats_cache_success_update(ocf_core_t core, uint8_t dir);
+
+void ocf_core_stats_lookup_req_update(ocf_core_t core, ocf_part_id_t part_id,
+		uint64_t hit_no, uint64_t core_line_count);
+void ocf_core_stats_invalid_req_update(ocf_core_t core, ocf_part_id_t part_id);
 
 void ocf_core_stats_latency_update(ocf_core_t core, ocf_part_id_t part_id,
 		int class, int type, uint64_t latency);
+
+void ocf_core_stats_ocf_input_req_update(ocf_core_t core, ocf_part_id_t part_id,
+		int type);
+void ocf_core_stats_ocf_output_req_update(ocf_core_t core, ocf_part_id_t part_id,
+		int type);
 
 /**
  * @brief ocf_core_io_class_get_stats retrieve io class statistics

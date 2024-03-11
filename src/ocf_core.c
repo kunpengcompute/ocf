@@ -222,6 +222,10 @@ static inline int ocf_core_validate_io(struct ocf_io *io)
 
 static void ocf_req_complete(struct ocf_request *req, int error)
 {
+	/* stats count the io going out from ocf */
+	ocf_core_stats_ocf_output_req_update(req->core, req->part_id,
+			ocf_req_get_stats_type(req));
+
 	/* Complete IO */
 	ocf_io_end(&req->ioi.io, error);
 
@@ -321,6 +325,10 @@ static bool ocf_core_submit_ucache_io(ocf_cache_t cache,
 	if (ret) {
 		ocf_io_end(io, ret);
 		ocf_io_put(io);
+	} else {
+		/* stats count the io into ocf*/
+		ocf_core_stats_ocf_input_req_update(req->core, req->part_id,
+				ocf_req_get_stats_type(req));
 	}
 
 	return true;
@@ -396,6 +404,10 @@ void ocf_core_volume_submit_io(struct ocf_io *io)
 		dec_counter_if_req_was_dirty(req);
 		ocf_io_end(io, ret);
 		ocf_io_put(io);
+	} else {
+		/* stats count the io into ocf */
+		ocf_core_stats_ocf_input_req_update(req->core, req->part_id,
+				ocf_req_get_stats_type(req));
 	}
 }
 
@@ -435,6 +447,9 @@ static void ocf_core_volume_submit_flush(struct ocf_io *io)
 	ocf_io_get(io);
 
 	ocf_engine_hndl_ops_req(req);
+	/* stats count the io into ocf */
+	ocf_core_stats_ocf_input_req_update(req->core, req->part_id,
+			ocf_req_get_stats_type(req));
 }
 
 static void ocf_core_volume_submit_discard(struct ocf_io *io)
@@ -484,6 +499,9 @@ static void ocf_core_volume_submit_discard(struct ocf_io *io)
 	ocf_io_get(io);
 
 	ocf_engine_hndl_discard_req(req);
+	/* stats count the io into ocf */
+	ocf_core_stats_ocf_input_req_update(req->core, req->part_id,
+			ocf_req_get_stats_type(req));
 }
 
 /* *** VOLUME OPS *** */

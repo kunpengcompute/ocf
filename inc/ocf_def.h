@@ -333,19 +333,19 @@ typedef enum {
 #define OCF_LOOKUP		3
 
 /**
- * @name latency class
+ * @name stats class
  */
-#define OCF_LATENCY		0
-#define BACKEND_LATENCY	1
+#define STATS_CLASS_OCF		0
+#define STATS_CLASS_BACKEND	1
 
 /**
- * @name latency types
+ * @name stats types
  */
-#define READ_LATENCY		0
-#define WRITE_LATENCY		1
-#define LOOKUP_LATENCY		2
-#define INVALID_LATENCY		3
-#define LATENCY_TYPE_MAX	4
+#define STATS_TYPE_READ			0
+#define STATS_TYPE_WRITE		1
+#define STATS_TYPE_LOOKUP		2
+#define STATS_TYPE_INVALID		3
+#define STATS_TYPE_MAX			4
 
 /**
  * @}
