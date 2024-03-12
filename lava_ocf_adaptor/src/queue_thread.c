@@ -223,7 +223,7 @@ int initialize_threads(struct ocf_queue *mngt_queue, struct ocf_queue **io_queue
 		 * Don't need to create extra threads in this situation.
 		 */
 		if (end < start)
-			break;
+			continue;
 		io_queue_threads[i] = queue_thread_init(io_queues,
 			start, end, cpu_valid_core[i]);
 		if (!io_queue_threads[i]) {
@@ -242,7 +242,7 @@ int initialize_threads(struct ocf_queue *mngt_queue, struct ocf_queue **io_queue
 	if (i != cpu_core_num) {
 		queue_thread_destroy(mngt_queue_thread);
 		while (i > 0) {
-			queue_thread_destroy(io_queue_threads[i--]);
+			queue_thread_destroy(io_queue_threads[--i]);
 		}
 		return -1;
 	}
