@@ -218,6 +218,12 @@ int initialize_threads(struct ocf_queue *mngt_queue, struct ocf_queue **io_queue
 
 	for (i = 0; i < cpu_core_num; ++i) {
 		end = start + (thread_handle_q_num - 1 + (remain_q ? 1 : 0));
+		/*
+		 * end smaller than start will only occurs when thread_handle_q_num and remain_q are both zero.
+		 * Don't need to create extra threads in this situation.
+		 */
+		if (end < start)
+			continue;
 		io_queue_threads[i] = queue_thread_init(io_queues,
 			start, end, cpu_valid_core[i]);
 		if (!io_queue_threads[i]) {
@@ -236,7 +242,7 @@ int initialize_threads(struct ocf_queue *mngt_queue, struct ocf_queue **io_queue
 	if (i != cpu_core_num) {
 		queue_thread_destroy(mngt_queue_thread);
 		while (i > 0) {
-			queue_thread_destroy(io_queue_threads[i--]);
+			queue_thread_destroy(io_queue_threads[--i]);
 		}
 		return -1;
 	}
