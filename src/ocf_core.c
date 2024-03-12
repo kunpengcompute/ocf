@@ -225,6 +225,11 @@ static void ocf_req_complete(struct ocf_request *req, int error)
 	/* stats count the io going out from ocf */
 	ocf_core_stats_ocf_output_req_update(req->core, req->part_id,
 			ocf_req_get_stats_type(req));
+	/* in UC engine, cache miss is not an OCF processing error */
+	if (error != 0 && error != -OCF_ERR_CACHE_MISS) {
+		ocf_core_stats_ocf_error_update(req->core,
+				ocf_req_get_stats_type(req));
+	}
 
 	/* Complete IO */
 	ocf_io_end(&req->ioi.io, error);

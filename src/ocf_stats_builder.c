@@ -152,7 +152,7 @@ static void _fill_blocks_part(struct ocf_stats_blocks *blocks,
 static void _fill_errors(struct ocf_stats_errors *errors,
 		struct ocf_stats_core *s)
 {
-	uint64_t rd, wr, total;
+	uint64_t rd, wr, lookup, invalid, total;
 
 	rd = s->core_errors.read;
 	wr = s->core_errors.write;
@@ -168,7 +168,31 @@ static void _fill_errors(struct ocf_stats_errors *errors,
 	_set(&errors->cache_volume_wr, wr, total);
 	_set(&errors->cache_volume_total, total, total);
 
-	total = s->core_errors.read + s->core_errors.write +
+	/** place where OCF collects error IO needs to exclude backend errors */
+	if (s->ocf_errors[STATS_TYPE_READ].total
+		<= (s->core_errors.read + s->cache_errors.read)) {
+		rd = 0;
+	} else {
+		rd = s->ocf_errors[STATS_TYPE_READ].total - 
+				(s->core_errors.read + s->cache_errors.read);
+	}
+	if (s->ocf_errors[STATS_TYPE_WRITE].total
+		<= (s->core_errors.write + s->cache_errors.write)) {
+		wr = 0;
+	} else {
+		wr = s->ocf_errors[STATS_TYPE_WRITE].total - 
+				(s->core_errors.write + s->cache_errors.write);
+	}
+	lookup = s->ocf_errors[STATS_TYPE_LOOKUP].total;
+	invalid = s->ocf_errors[STATS_TYPE_INVALID].total;
+	total = rd + wr + lookup + invalid;
+	_set(&errors->ocf_rd, rd, total);
+	_set(&errors->ocf_wr, wr, total);
+	_set(&errors->ocf_lookup, lookup, total);
+	_set(&errors->ocf_invalid, invalid, total);
+	_set(&errors->ocf_total, total, total);
+
+	total += s->core_errors.read + s->core_errors.write +
 		s->cache_errors.read + s->cache_errors.write;
 
 	_set(&errors->total, total, total);
@@ -287,7 +311,7 @@ static inline void _accumulate_frequency(struct ocf_stats_frequency *to,
 	to->total += from->total;
 }
 
-static void _accumulate_inout_frequency(struct ocf_stats_frequency to[],
+static void _accumulate_frequencys(struct ocf_stats_frequency to[],
 		const struct ocf_stats_frequency from[], int size)
 {
 	for (int i = 0; i<size; i++) {
@@ -522,12 +546,13 @@ static int _accumulate_stats(ocf_core_t core, void *cntx)
 	_accumulate_rw(&total->core_errors, &stats.core_errors);
 	_accumulate_rw(&total->cache_success, &stats.cache_success);
 	_accumulate_rw(&total->core_success, &stats.core_success);
+	_accumulate_frequencys(total->ocf_errors, stats.ocf_errors, STATS_TYPE_MAX);
 
 	_accumulate_latency(total->ocf_latency, stats.ocf_latency, STATS_TYPE_MAX);
 	_accumulate_latency(total->backend_latency, stats.backend_latency, STATS_TYPE_MAX);
 
-	_accumulate_inout_frequency(total->ocf_in_reqs, stats.ocf_in_reqs, STATS_TYPE_MAX);
-	_accumulate_inout_frequency(total->ocf_out_reqs, stats.ocf_out_reqs, STATS_TYPE_MAX);
+	_accumulate_frequencys(total->ocf_in_reqs, stats.ocf_in_reqs, STATS_TYPE_MAX);
+	_accumulate_frequencys(total->ocf_out_reqs, stats.ocf_out_reqs, STATS_TYPE_MAX);
 
 	return 0;
 }
@@ -616,7 +641,7 @@ struct stats_dump_ctx {
 };
 
 #define STATS_DUMP_FIELD(buf, name, field, units) \
-	strbuf_write_format_str(buf, name" %20lu | %3lu.%2lu "units"\n", \
+	strbuf_write_format_str(buf, name" %20lu | %3lu.%-2lu "units"\n", \
 				field.value, field.fraction / 100, field.fraction % 100)
 
 #define STATS_DUMP_FIELD_WITHOUT_F(buf, name, field, units) \
@@ -694,6 +719,12 @@ static void _stats_dump_errors(struct strbuf *buf, struct ocf_stats_errors *erro
 	STATS_DUMP_FIELD(buf, "| Cache read errors  |", errors->cache_volume_rd, "| Requests |");
 	STATS_DUMP_FIELD(buf, "| Cache write errors |", errors->cache_volume_wr, "| Requests |");
 	STATS_DUMP_FIELD(buf, "| Cache total errors |", errors->cache_volume_total, "| Requests |");
+	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n");
+	STATS_DUMP_FIELD(buf, "| OCF read errors    |", errors->ocf_rd, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| OCF write errors   |", errors->ocf_wr, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| OCF lookup errors  |", errors->ocf_lookup, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| OCF invalid errors |", errors->ocf_invalid, "| Requests |");
+	STATS_DUMP_FIELD(buf, "| OCF total errors   |", errors->ocf_total, "| Requests |");
 	strbuf_write_str(buf, "+--------------------+----------------------+--------+----------+\n\n");
 }
 
@@ -711,39 +742,39 @@ static void _stats_dump_success(struct strbuf *buf, struct ocf_stats_success *su
 static void _stats_dump_latencys(struct strbuf *buf, struct ocf_stats_latencys *latencys)
 {
 	struct ocf_stats_latency_item *item = NULL;
-	strbuf_write_str(buf, "+---------------------------+----------------------+---+-------------+\n");
-	strbuf_write_str(buf, "| Latency statistics        |         Count        | % |    Units    |\n");
-	strbuf_write_str(buf, "+---------------------------+----------------------+---+-------------+\n");
+	strbuf_write_str(buf, "+-------------------------+----------------------+---+-------------+\n");
+	strbuf_write_str(buf, "| Latency statistics      |         Count        | % |    Units    |\n");
+	strbuf_write_str(buf, "+-------------------------+----------------------+---+-------------+\n");
 	item = &(latencys->ocf_latency_items[STATS_TYPE_READ]);
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Read max latency      |", (*item).max, "| Microsecond |");
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Read min latency      |", (*item).min, "| Microsecond |");
-	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| OCF Read avg latency      |", (*item).avg, "| Microsecond |");
-	strbuf_write_str(buf, "+---------------------------+----------------------+---+-------------+\n");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Read max latency    |", (*item).max, "| Microsecond |");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Read min latency    |", (*item).min, "| Microsecond |");
+	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| OCF Read avg latency    |", (*item).avg, "| Microsecond |");
+	strbuf_write_str(buf, "+-------------------------+----------------------+---+-------------+\n");
 	item = &(latencys->ocf_latency_items[STATS_TYPE_WRITE]);
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Write max latency     |", (*item).max, "| Microsecond |");
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Write min latency     |", (*item).min, "| Microsecond |");
-	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| OCF Write avg latency     |", (*item).avg, "| Microsecond |");
-	strbuf_write_str(buf, "+---------------------------+----------------------+---+-------------+\n");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Write max latency   |", (*item).max, "| Microsecond |");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Write min latency   |", (*item).min, "| Microsecond |");
+	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| OCF Write avg latency   |", (*item).avg, "| Microsecond |");
+	strbuf_write_str(buf, "+-------------------------+----------------------+---+-------------+\n");
 	item = &(latencys->ocf_latency_items[STATS_TYPE_LOOKUP]);
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Lookup max latency    |", (*item).max, "| Microsecond |");
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Lookup min latency    |", (*item).min, "| Microsecond |");
-	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| OCF Lookup avg latency    |", (*item).avg, "| Microsecond |");
-	strbuf_write_str(buf, "+---------------------------+----------------------+---+-------------+\n");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Lookup max latency  |", (*item).max, "| Microsecond |");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Lookup min latency  |", (*item).min, "| Microsecond |");
+	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| OCF Lookup avg latency  |", (*item).avg, "| Microsecond |");
+	strbuf_write_str(buf, "+-------------------------+----------------------+---+-------------+\n");
 	item = &(latencys->ocf_latency_items[STATS_TYPE_INVALID]);
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Invalid max latency   |", (*item).max, "| Microsecond |");
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Invalid min latency   |", (*item).min, "| Microsecond |");
-	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| OCF Invalid avg latency   |", (*item).avg, "| Microsecond |");
-	strbuf_write_str(buf, "+---------------------------+----------------------+---+-------------+\n");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Invalid max latency |", (*item).max, "| Microsecond |");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| OCF Invalid min latency |", (*item).min, "| Microsecond |");
+	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| OCF Invalid avg latency |", (*item).avg, "| Microsecond |");
+	strbuf_write_str(buf, "+-------------------------+----------------------+---+-------------+\n");
 	item = &(latencys->backend_latency_items[STATS_TYPE_READ]);
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| Backend Read max latency  |", (*item).max, "| Microsecond |");
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| Backend Read min latency  |", (*item).min, "| Microsecond |");
-	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| Backend Read avg latency  |", (*item).avg, "| Microsecond |");
-	strbuf_write_str(buf, "+---------------------------+----------------------+---+-------------+\n");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| Cache Read max latency  |", (*item).max, "| Microsecond |");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| Cache Read min latency  |", (*item).min, "| Microsecond |");
+	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| Cache Read avg latency  |", (*item).avg, "| Microsecond |");
+	strbuf_write_str(buf, "+-------------------------+----------------------+---+-------------+\n");
 	item = &(latencys->backend_latency_items[STATS_TYPE_WRITE]);
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| Backend Write max latency |", (*item).max, "| Microsecond |");
-	STATS_DUMP_FIELD_WITHOUT_F(buf, "| Backend Write min latency |", (*item).min, "| Microsecond |");
-	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| Backend Write avg latency |", (*item).avg, "| Microsecond |");
-	strbuf_write_str(buf, "+---------------------------+----------------------+---+-------------+\n\n");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| Cache Write max latency |", (*item).max, "| Microsecond |");
+	STATS_DUMP_FIELD_WITHOUT_F(buf, "| Cache Write min latency |", (*item).min, "| Microsecond |");
+	STATS_DUMP_DOUBLE_FIELD_WITHOUT_F(buf, "| Cache Write avg latency |", (*item).avg, "| Microsecond |");
+	strbuf_write_str(buf, "+-------------------------+----------------------+---+-------------+\n\n");
 }
 
 static void _stats_dump_inout(struct strbuf *buf, struct ocf_stats_ocf_inout_reqs *inout)
@@ -769,31 +800,59 @@ static void _stats_dump_cache_cb(ocf_cache_t cache, void *priv, int error)
 {
 	struct stats_dump_ctx *dump_ctx = priv;
 	struct strbuf *buf = dump_ctx->buf;
-	struct ocf_stats_usage usage;
-	struct ocf_stats_requests req;
-	struct ocf_stats_blocks blocks;
-	struct ocf_stats_errors errors;
-	struct ocf_stats_success success;
-	struct ocf_stats_latencys latencys;
-	struct ocf_stats_ocf_inout_reqs inout;
+	struct ocf_stats_usage *usage = env_malloc(sizeof(*usage), ENV_MEM_NORMAL);
+	if (!usage)
+		goto err_usage;
+	struct ocf_stats_requests *req = env_malloc(sizeof(*req), ENV_MEM_NORMAL);
+	if (!req)
+		goto err_req;
+	struct ocf_stats_blocks *blocks = env_malloc(sizeof(*blocks), ENV_MEM_NORMAL);
+	if (!blocks)
+		goto err_blocks;
+	struct ocf_stats_errors *errors = env_malloc(sizeof(*errors), ENV_MEM_NORMAL);
+	if (!errors)
+		goto err_errors;
+	struct ocf_stats_success *success  = env_malloc(sizeof(*success), ENV_MEM_NORMAL);
+	if (!success)
+		goto err_success;
+	struct ocf_stats_latencys *latencys = env_malloc(sizeof(*latencys), ENV_MEM_NORMAL);
+	if (!latencys)
+		goto err_latencys;
+	struct ocf_stats_ocf_inout_reqs *inout = env_malloc(sizeof(*inout), ENV_MEM_NORMAL);
+	if (!inout)
+		goto err_inout;
 
-	ocf_stats_collect_cache(cache, &usage, &req, &blocks, &errors, &success, &latencys, &inout);
+	ocf_stats_collect_cache(cache, usage, req, blocks, errors, success, latencys, inout);
 
 	/* format usage stats */
-	_stats_dump_usage(buf, &usage);
+	_stats_dump_usage(buf, usage);
 	/* format req stats */
-	_stats_dump_req(buf, &req);
+	_stats_dump_req(buf, req);
 	/* format blocks stats */
-	_stats_dump_blocks(buf, &blocks);
+	_stats_dump_blocks(buf, blocks);
 	/* format error stats */
-	_stats_dump_errors(buf, &errors);
+	_stats_dump_errors(buf, errors);
 	/* format success stats */
-	_stats_dump_success(buf, &success);
+	_stats_dump_success(buf, success);
 	/* format latency stats */
-	_stats_dump_latencys(buf, &latencys);
+	_stats_dump_latencys(buf, latencys);
 	/* format ocf in out reqs stats */
-	_stats_dump_inout(buf, &inout);
+	_stats_dump_inout(buf, inout);
 
+	env_free(inout);
+err_inout:
+	env_free(latencys);
+err_latencys:
+	env_free(success);
+err_success:
+	env_free(errors);
+err_errors:
+	env_free(blocks);
+err_blocks:
+	env_free(req);
+err_req:
+	env_free(usage);
+err_usage:
 	/* tell the caller that we have done */
 	env_completion_complete(dump_ctx->cmpl);
 }
