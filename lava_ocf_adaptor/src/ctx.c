@@ -8,9 +8,9 @@
 #include "log.h"
 #include "volume.h"
 #include "ctx.h"
+#include <../../env/posix/ocf_env.h>
 
 #define MAX_BUF 1024
-#define PAGE_SIZE 4096
 
 /*
  * Allocate structure representing data for io operations.

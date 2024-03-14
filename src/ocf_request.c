@@ -127,8 +127,8 @@ struct ocf_request *ocf_req_new(ocf_queue_t queue, ocf_core_t core,
 	req->rw = rw;
 	req->part_id = PARTITION_DEFAULT;
 
-	req->discard.sector = BYTES_TO_PAGES_ROUND_DOWN(addr);
-	req->discard.nr_sects = BYTES_TO_PAGES_ROUND_DOWN(bytes);
+	req->discard.sector = BYTES_TO_SECTORS(addr);
+	req->discard.nr_sects = BYTES_TO_SECTORS(bytes);
 	req->discard.handled = 0;
 
 	req->lock_idx = ocf_metadata_concurrency_next_idx(queue);
