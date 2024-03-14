@@ -163,26 +163,20 @@ int ocf_read_ucache(struct ocf_request *req)
 	req->io_if = &_io_if_read_ucache_resume;
 	req->engine_cbs = &_uc_read_engine_callbacks;
 
-	lock = ocf_engine_prepare_clines(req);
+	/* only get lock already mapped */
+	lock = ocf_engine_get_mapped_lock(req);
 
-	if (!ocf_req_test_mapping_error(req)) {
-		if (lock >= 0) {
-			if (lock != OCF_LOCK_ACQUIRED) {
-				/* Lock was not acquired, need to wait for resume */
-				OCF_DEBUG_RQ(req, "NO LOCK");
-			} else {
-				/* Lock was acquired can perform IO */
-				_ocf_read_ucache_do(req);
-			}
+	if (lock >= 0) {
+		if (lock != OCF_LOCK_ACQUIRED) {
+			/* lock was not acquired, need to wait for resume */
+			OCF_DEBUG_RQ(req, "NO LOCK");
 		} else {
-			OCF_DEBUG_RQ(req, "LOCK ERROR %d", lock);
-			req->complete(req, lock);
-			ocf_req_put(req);
+			/* Lock was acquired can perform IO */
+			_ocf_read_ucache_do(req);
 		}
 	} else {
-		ocf_req_clear(req);
-		OCF_DEBUG_RQ(req, "MAP ERROR");
-		req->complete(req, -OCF_ERR_NO_LOCK);
+		OCF_DEBUG_RQ(req, "LOCK ERROR %d\n", lock);
+		req->complete(req, lock);
 		ocf_req_put(req);
 	}
 
