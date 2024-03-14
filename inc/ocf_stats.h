@@ -157,6 +157,12 @@ struct ocf_stats_blocks {
  * ║ Core write errors  │     0 │ 0.0 │ Requests ║
  * ║ Core total errors  │     0 │ 0.0 │ Requests ║
  * ╟────────────────────┼───────┼─────┼──────────╢
+ * ║ OCF read errors    │     0 │ 0.0 │ Requests ║
+ * ║ OCF write errors   │     0 │ 0.0 │ Requests ║
+ * ║ OCF lookup errors  │     0 │ 0.0 │ Requests ║
+ * ║ OCF invalid errors │     0 │ 0.0 │ Requests ║
+ * ║ OCF total errors   │     0 │ 0.0 │ Requests ║
+ * ╟────────────────────┼───────┼─────┼──────────╢
  * ║ Total errors       │     0 │ 0.0 │ Requests ║
  * ╚════════════════════╧═══════╧═════╧══════════╝
  * </pre>
@@ -168,6 +174,11 @@ struct ocf_stats_errors {
 	struct ocf_stat cache_volume_rd;
 	struct ocf_stat cache_volume_wr;
 	struct ocf_stat cache_volume_total;
+	struct ocf_stat ocf_rd;
+	struct ocf_stat ocf_wr;
+	struct ocf_stat ocf_lookup;
+	struct ocf_stat ocf_invalid;
+	struct ocf_stat ocf_total;
 	struct ocf_stat total;
 };
 
@@ -225,13 +236,13 @@ struct ocf_stats_success {
  * ║ OCF Invalid min latency   │   500 │ - │ Microsecond ║
  * ║ OCF Invalid avg latency   │  1000 │ - │ Microsecond ║
  * ╟───────────────────────────┼───────┼───┼─────────────╢
- * ║ Backend Read max latency  │  2000 │ - │ Microsecond ║
- * ║ Backend Read min latency  │   500 │ - │ Microsecond ║
- * ║ Backend Read avg latency  │  1000 │ - │ Microsecond ║
+ * ║ Cache Read max latency    │  2000 │ - │ Microsecond ║
+ * ║ Cache Read min latency    │   500 │ - │ Microsecond ║
+ * ║ Cache Read avg latency    │  1000 │ - │ Microsecond ║
  * ╟───────────────────────────┼───────┼───┼─────────────╢
- * ║ Backend Write max latency │  2000 │ - │ Microsecond ║
- * ║ Backend Write min latency │   500 │ - │ Microsecond ║
- * ║ Backend Write avg latency │  1000 │ - │ Microsecond ║
+ * ║ Cache Write max latency   │  2000 │ - │ Microsecond ║
+ * ║ Cache Write min latency   │   500 │ - │ Microsecond ║
+ * ║ Cache Write avg latency   │  1000 │ - │ Microsecond ║
  * ╚═══════════════════════════╧═══════╧═══╧═════════════╝
  * </pre>
  */
