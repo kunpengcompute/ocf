@@ -28,10 +28,6 @@ struct ocf_metadata_map {
 	uint16_t core_id : CORE_ID_BITS;
 		/*!<  ID of core where is assigned this cache line*/
 
-	uint16_t _valid : 1;
-
-	uint16_t _dirty : 1;
-		/*!<  Entry status structure e.g. valid, dirty...*/
 } __attribute__((packed));
 
 void ocf_metadata_set_collision_info(

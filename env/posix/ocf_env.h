@@ -36,8 +36,8 @@
 #include "ocf/ocf_err.h"
 #include "utils_mpool.h"
 
-/* linux sector 512-bytes */
-#define ENV_SECTOR_SHIFT	9
+/* set sector from 512-bytes to 4096-bytes*/
+#define ENV_SECTOR_SHIFT	__builtin_ctz(4096)
 
 #define OCF_ALLOCATOR_NAME_MAX 128
 
