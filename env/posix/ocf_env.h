@@ -41,8 +41,6 @@
 
 #define OCF_ALLOCATOR_NAME_MAX 128
 
-#define PAGE_SIZE 4096
-
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 #define ocf_min(a,b) MIN(a,b)
 
@@ -60,6 +58,13 @@ typedef uint64_t sector_t;
 
 #define likely(cond)       __builtin_expect(!!(cond), 1)
 #define unlikely(cond)     __builtin_expect(!!(cond), 0)
+
+/* SETTINGS */
+static uint32_t PAGE_SIZE = 4096;
+static inline void update_page_size()
+{
+	PAGE_SIZE = getpagesize();
+}
 
 /* MEMORY MANAGEMENT */
 #define ENV_MEM_NORMAL	0
