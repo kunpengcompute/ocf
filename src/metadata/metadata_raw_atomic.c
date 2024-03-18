@@ -126,9 +126,9 @@ static int _raw_atomic_flush_do_asynch_sec(struct ocf_cache *cache,
 	start_addr *= ocf_line_size(cache);
 	start_addr += cache->device->metadata_offset;
 
-	start_addr += PAGES_TO_BYTES(map->start_flush);
-	len = PAGES_TO_BYTES(map->stop_flush - map->start_flush);
-	len += PAGES_TO_BYTES(1);
+	start_addr += SECTORS_TO_BYTES(map->start_flush);
+	len = SECTORS_TO_BYTES(map->stop_flush - map->start_flush);
+	len += SECTORS_TO_BYTES(1);
 
 	result = _raw_atomic_io_discard_do(cache, req, start_addr, len, ctx);
 

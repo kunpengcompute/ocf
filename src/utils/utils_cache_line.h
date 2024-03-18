@@ -192,7 +192,7 @@ static inline void ocf_purge_map_info(struct ocf_request *req)
 		if (map_idx == 0) {
 			/* First */
 
-			start_bit = BYTES_TO_PAGES_ROUND_DOWN(req->byte_position)
+			start_bit = BYTES_TO_SECTORS(req->byte_position)
 					% ocf_line_sectors(cache);
 
 		}
@@ -200,7 +200,7 @@ static inline void ocf_purge_map_info(struct ocf_request *req)
 		if (map_idx == (count - 1)) {
 			/* Last */
 
-			end_bit = BYTES_TO_PAGES_ROUND_DOWN(req->byte_position +
+			end_bit = BYTES_TO_SECTORS(req->byte_position +
 					req->byte_length - 1) %
 					ocf_line_sectors(cache);
 		}
@@ -218,7 +218,7 @@ static inline
 uint8_t ocf_map_line_start_sector(struct ocf_request *req, uint32_t line)
 {
 	if (line == 0) {
-		return BYTES_TO_PAGES_ROUND_DOWN(req->byte_position)
+		return BYTES_TO_SECTORS(req->byte_position)
 					% ocf_line_sectors(req->cache);
 	}
 
@@ -229,7 +229,7 @@ static inline
 uint8_t ocf_map_line_end_sector(struct ocf_request *req, uint32_t line)
 {
 	if (line == req->core_line_count - 1) {
-		return BYTES_TO_PAGES_ROUND_DOWN(req->byte_position +
+		return BYTES_TO_SECTORS(req->byte_position +
 					req->byte_length - 1) %
 					ocf_line_sectors(req->cache);
 	}
