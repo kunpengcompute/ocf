@@ -7,6 +7,7 @@
 #include <syslog.h>
 #include <unordered_map>
 #include "completion_queue.h"
+#include "mngt_queue_thread.h"
 #include "queue_thread.h"
 #include "ctx.h"
 #include "slot_info.h"
@@ -33,8 +34,14 @@ extern "C" ocf_core_id_t ocf_core_get_id(ocf_core_t core);
  * way. Optional synchronous kick callback is not provided. The stop()
  * operation is called just before queue is being destroyed.
  */
+const struct ocf_queue_ops mqueue_ops = {
+	mqueue_thread_kick,
+	NULL,
+	mqueue_thread_stop,
+};
+
 const struct ocf_queue_ops queue_ops = {
-	queue_thread_kick,
+	NULL,
 	NULL,
 	queue_thread_stop,
 };
@@ -45,7 +52,7 @@ struct ocf_adaptor_context {
 	ocf_cache_t cache;
 
 	env_rwlock table_lock = { PTHREAD_RWLOCK_INITIALIZER };
-	/* By default, same region or regions in the same slot don't support multi-thread concurrent 
+	/* By default, same region or regions in the same slot don't support multi-thread concurrent
 	 * operations(that is, multi-thread concurrent operations such as get/put/invalid/lookup)
 	 * if it exists, it needs to be locked at the slot granularity
 	 */
@@ -202,7 +209,7 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 	 * asynchronous management operations, such as attaching cache volume
 	 * or adding core object.
 	 */
-	ret = ocf_queue_create(*cache, &cache_priv->mngt_queue, &queue_ops);
+	ret = ocf_queue_create(*cache, &cache_priv->mngt_queue, &mqueue_ops);
 	if (ret) {
 		ocf_mngt_cache_stop(*cache, simple_complete, &context);
 		sem_wait(&context.sem);
@@ -230,7 +237,12 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 			goto err_cache;
 	}
 
-	ret = initialize_threads(cache_priv->mngt_queue, cache_priv->io_queues,
+	ret = initialize_mngt_threads(cache_priv->mngt_queue);
+	if (ret) {
+		goto err_cache;
+	}
+
+	ret = initialize_threads(cache_priv->io_queues,
 		cache_priv->queue_num, cfg->core_num, cfg->core_mask);
 	if (ret)
 		goto err_cache;
@@ -545,7 +557,7 @@ int ocf_add_core(uint32_t slot_id)
 		env_free(info);
 		return STATE_FAIL;
 	}
-	
+
 	env_rwlock_write_lock(&table_lock);
 	info->core = core;
 	region_remap_table[slot_id] = unordered_map<uint32_t, int>();
@@ -579,7 +591,7 @@ int ocf_remove_core(uint32_t slot_id)
 		env_rwlock_write_unlock(&table_lock);
 		return STATE_CORE_CREATING;
 	}
-	
+
 	/* remove core from cache */
 	core = info->core;
 	core_id = ocf_core_get_id(core);
@@ -588,7 +600,7 @@ int ocf_remove_core(uint32_t slot_id)
 		env_rwlock_write_unlock(&table_lock);
 		return STATE_MEM_ALLOC_ERR;
 	}
-	
+
 	/* erase slot id */
 	slot_info_table.erase(slot_id);
 	region_remap_table.erase(slot_id);
