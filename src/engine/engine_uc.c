@@ -61,6 +61,8 @@ static void ocf_read_ucache_submit_hit(struct ocf_request *req)
 {
 	env_atomic_set(&req->req_remaining, ocf_engine_io_count(req));
 
+	req->ready_to_cache = 1;
+
 	ocf_submit_cache_reqs(req->cache, req, OCF_READ, 0, req->byte_length,
 		ocf_engine_io_count(req), _ocf_read_ucache_hit_complete);
 }
@@ -122,7 +124,6 @@ static void _ocf_lookup_ucache(struct ocf_request *req)
 	ocf_engine_update_latency_stats(req, STATS_CLASS_OCF);
 	/* update request statistics */
 	ocf_engine_update_lookup_req_stats(req);
-	req->ocf_start_timestamp = 0;
 
 	if (ocf_engine_is_hit(req)) {
 		req->complete(req, 0);
@@ -239,6 +240,8 @@ static inline void _ocf_write_uc_submit(struct ocf_request *req)
 	/* Calculate how many IOs need to be submited */
 	env_atomic_set(&req->req_remaining, ocf_engine_io_count(req)); /* Cache IO */
 
+	req->ready_to_cache = 1;
+
 	/* To cache */
 	ocf_submit_cache_reqs(cache, req, OCF_WRITE, 0, req->byte_length,
 			ocf_engine_io_count(req), _ocf_write_uc_cache_complete);
@@ -276,7 +279,6 @@ static int _ocf_invalid_write_do(struct ocf_request *req)
 	ocf_engine_update_latency_stats(req, STATS_CLASS_OCF);
 	ocf_core_stats_invalid_req_update(req->core, req->part_id);
 
-	req->ocf_start_timestamp = 0;
 	req->complete(req, 0);
 	ocf_engine_invalidate(req);
 	return 0;

@@ -197,6 +197,9 @@ struct ocf_request {
 	uint8_t lock_idx : OCF_METADATA_GLOBAL_LOCK_IDX_BITS;
 	/* !< Selected global metadata read lock */
 
+	uint8_t ready_to_cache : 1;
+	/* !< Flag indicates that request is ready to be submitted */
+
 	ocf_req_cache_mode_t cache_mode;
 
 	uint64_t timestamp;

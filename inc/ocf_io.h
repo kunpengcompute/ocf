@@ -7,6 +7,7 @@
 #ifndef __OCF_IO_H__
 #define __OCF_IO_H__
 
+#include "ocf_env.h"
 #include "ocf_types.h"
 
 /**
@@ -72,6 +73,11 @@ struct ocf_io {
 	 * @brief OCF IO direction
 	 */
 	uint32_t dir;
+
+	/**
+	 * @brief OCF IO completion flag
+	 */
+	env_atomic8 is_ended;
 
 	/**
 	 * @brief Queue handle
