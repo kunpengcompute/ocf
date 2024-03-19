@@ -6,19 +6,20 @@
 
 #define __EVICTION_LRU_STRUCTS_H__
 
-#define CACHE_MAX_SUPPORT_IN_TB 8
+/* support max 256TB for 8 KiB Cacheline*/
+#define CACHE_MAX_SUPPORT_IN_TB 256
 
-/* 32768 means 2^15 for 8 KiB Cacheline*/
-#define CORE_MAX_SUPPORT_IN_TB 32768
+/* support max 4096TB for 8 KiB Cacheline*/
+#define CORE_MAX_SUPPORT_IN_TB 4096
+
+/* support max 511 slots*/
+#define SLOT_MAX_SUPPORT 511
 
 #define CACHE_LINE_BITS (27 + __builtin_ctz(CACHE_MAX_SUPPORT_IN_TB))
 #define CORE_LINE_BITS (27 + __builtin_ctz(CORE_MAX_SUPPORT_IN_TB))
 
-#define CORE_ID_BITS 12
-
-#if OCF_CONFIG_MAX_CORES >= (1 << CORE_ID_BITS)
-#error "OCF_CONFIG_MAX_CORES must be less than 1 << CORE_ID_BITS"
-#endif
+#define OCF_CONFIG_MAX_CORES (SLOT_MAX_SUPPORT + 1)
+#define CORE_ID_BITS __builtin_ctz(OCF_CONFIG_MAX_CORES)
 
 struct ocf_lru_meta {
 	uint32_t prev : CACHE_LINE_BITS;

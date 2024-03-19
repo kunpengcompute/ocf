@@ -49,11 +49,20 @@ enum {
 
 static inline size_t ocf_metadata_status_sizeof(ocf_cache_line_size_t line_size)
 {
-	size_t status_bits = BYTES_TO_SECTORS(line_size);
-	size_t size = DIV_ROUND_UP(status_bits, 8);
+	size_t size;
 
-	/* Number of types of status (valid, dirty, etc...) */
-	size *= ocf_metadata_status_type_max;
+	switch (line_size) {
+		case ocf_cache_line_size_8:
+		case ocf_cache_line_size_16:
+			size = 1; // valid:4bit, clean:4bit
+			break;
+		case ocf_cache_line_size_32:
+		case ocf_cache_line_size_64:
+			size = 4; // valid:2bytes, clean:2bytes
+			break;
+		default:
+			ENV_BUG();
+	}
 
 	/* At the end we have size */
 	return size;
@@ -1486,8 +1495,8 @@ bool ocf_metadata_##what(struct ocf_cache *cache, \
 	switch (cache->metadata.line_size) { \
 		case ocf_cache_line_size_8: \
 		case ocf_cache_line_size_16: \
-		case ocf_cache_line_size_32: \
 			return _ocf_metadata_##what##_u8(cache, line, start, stop, all); \
+		case ocf_cache_line_size_32: \
 		case ocf_cache_line_size_64: \
 			return _ocf_metadata_##what##_u16(cache, line, start, stop, all); \
 		case ocf_cache_line_size_none: \
@@ -1505,8 +1514,8 @@ bool ocf_metadata_##what(struct ocf_cache *cache, \
 	switch (cache->metadata.line_size) { \
 		case ocf_cache_line_size_8: \
 		case ocf_cache_line_size_16: \
-		case ocf_cache_line_size_32: \
 			return _ocf_metadata_##what##_u8(cache, line, start, stop); \
+		case ocf_cache_line_size_32: \
 		case ocf_cache_line_size_64: \
 			return _ocf_metadata_##what##_u16(cache, line, start, stop); \
 		case ocf_cache_line_size_none: \
@@ -1533,9 +1542,9 @@ bool ocf_metadata_clear_valid_if_clean(struct ocf_cache *cache,
 	switch (cache->metadata.line_size) {
 		case ocf_cache_line_size_8:
 		case ocf_cache_line_size_16:
-		case ocf_cache_line_size_32:
 			return _ocf_metadata_clear_valid_if_clean_u8(cache,
 					line, start, stop);
+		case ocf_cache_line_size_32:
 		case ocf_cache_line_size_64:
 			return _ocf_metadata_clear_valid_if_clean_u16(cache,
 					line, start, stop);
@@ -1552,9 +1561,9 @@ void ocf_metadata_clear_dirty_if_invalid(struct ocf_cache *cache,
 	switch (cache->metadata.line_size) {
 		case ocf_cache_line_size_8:
 		case ocf_cache_line_size_16:
-		case ocf_cache_line_size_32:
 			return _ocf_metadata_clear_dirty_if_invalid_u8(cache,
 					line, start, stop);
+		case ocf_cache_line_size_32:
 		case ocf_cache_line_size_64:
 			return _ocf_metadata_clear_dirty_if_invalid_u16(cache,
 					line, start, stop);
@@ -1569,8 +1578,8 @@ bool ocf_metadata_check(struct ocf_cache *cache, ocf_cache_line_t line)
 	switch (cache->metadata.line_size) {
 		case ocf_cache_line_size_8:
 		case ocf_cache_line_size_16:
-		case ocf_cache_line_size_32:
 			return _ocf_metadata_check_u8(cache, line);
+		case ocf_cache_line_size_32:
 		case ocf_cache_line_size_64:
 			return _ocf_metadata_check_u16(cache, line);
 		case ocf_cache_line_size_none:
