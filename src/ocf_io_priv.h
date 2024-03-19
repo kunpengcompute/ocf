@@ -64,7 +64,7 @@ static inline void ocf_io_end(struct ocf_io *io, int error)
 	uint8_t prev = env_atomic8_cmpxchg(&(io->is_ended), 0, 1);
 	if (prev == 1) { /* io has already been ended */
 		ocf_io_put(io);
-		return
+		return;
 	}
 	
 	if (io->end)

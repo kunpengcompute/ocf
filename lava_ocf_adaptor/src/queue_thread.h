@@ -6,6 +6,10 @@
 #ifndef __QUEUE_THREAD_H__
 #define __QUEUE_THREAD_H__
 
+#include <stdlib.h>
+#include <sched.h>
+#include <pthread.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -43,7 +43,10 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 			ocf_core_stats_cache_success_update(req->core, OCF_READ);
 		}
 
-		ocf_req_unlock(c, req);
+		uint8_t prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1);
+		if (prev == 0) { /* req has not been unlock */
+			ocf_req_unlock(c, req);
+		}
 
 		req->backend_start_timestamp = 0;
 
@@ -210,7 +213,10 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 		/* Complete request */
 		req->complete(req, -OCF_ERR_UCACHE_IO);
 
-		ocf_engine_invalidate(req);
+		uint8_t prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1);
+		if (prev == 0) { /* req has not been invalided */
+			ocf_engine_invalidate(req);
+		}
 
 		return;
 	} else {

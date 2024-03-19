@@ -6,6 +6,7 @@
 
 #include <syslog.h>
 #include <unordered_map>
+#include "check_queue_thread.h"
 #include "completion_queue.h"
 #include "mngt_queue_thread.h"
 #include "queue_thread.h"
@@ -63,6 +64,7 @@ struct ocf_adaptor_context {
 struct cache_priv {
 	ocf_queue_t mngt_queue;
 	ocf_queue_t io_queues[MAX_QUEUE_NUM];
+	check_queue_t check_queues[MAX_QUEUE_NUM];
 	completion_queue_t completion_queues[MAX_QUEUE_NUM];
 	uint32_t queue_num;
 };
@@ -232,6 +234,12 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 	}
 
 	for (i = 0; i < cfg->io_worker_num; ++i) {
+		ret = check_queue_create(&cache_priv->check_queues[i]);
+		if (ret)
+			goto err_cache;
+	}
+
+	for (i = 0; i < cfg->io_worker_num; ++i) {
 		ret = completion_queue_create(&cache_priv->completion_queues[i]);
 		if (ret)
 			goto err_cache;
@@ -243,6 +251,11 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 	}
 
 	ret = initialize_threads(cache_priv->io_queues,
+		cache_priv->queue_num, cfg->core_num, cfg->core_mask);
+	if (ret)
+		goto err_cache;
+
+	ret = initialize_check_threads(cache_priv->check_queues,
 		cache_priv->queue_num, cfg->core_num, cfg->core_mask);
 	if (ret)
 		goto err_cache;
@@ -412,6 +425,9 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 	ocf_io_set_data(io, data, 0);
 	/* setup completion function */
 	ocf_io_set_cmpl(io, ctx, NULL, cmpl);
+
+	struct ocf_request *req = ocf_io_to_req(io);
+	check_queue_push(priv->check_queues[ctx->io_worker_id], req);
 	/* submit io */
 	ocf_core_submit_io(io);
 
@@ -508,6 +524,10 @@ void ocf_exit()
 
 	for (uint32_t i = 0; i < priv->queue_num; ++i) {
 		completion_queue_put(priv->completion_queues[i], 1);
+	}
+
+	for (uint32_t i = 0; i < priv->queue_num; ++i) {
+		check_queue_put(priv->check_queues[i]);
 	}
 
 	free(priv);

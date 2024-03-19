@@ -230,4 +230,11 @@ void ocf_core_set_priv(ocf_core_t core, void *priv);
  */
 void *ocf_core_get_priv(ocf_core_t core);
 
+/**
+ * @brief get ocf_request from ocf_io
+ *
+ * @param[in] io IO used
+ */
+struct ocf_request *ocf_io_to_req(struct ocf_io *io);
+
 #endif /* __OCF_CORE_H__ */
