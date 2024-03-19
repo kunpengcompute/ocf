@@ -40,10 +40,11 @@ struct ocf_queue {
 
 static inline void ocf_queue_kick(ocf_queue_t queue, bool allow_sync)
 {
-	if (allow_sync && queue->ops->kick_sync)
-		queue->ops->kick_sync(queue);
-	else
-		queue->ops->kick(queue);
+	if (likely(!queue->ops->kick)) {
+		return;
+	}
+
+	queue->ops->kick(queue);
 }
 
 #endif
