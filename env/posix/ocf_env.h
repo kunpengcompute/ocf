@@ -60,11 +60,7 @@ typedef uint64_t sector_t;
 #define unlikely(cond)     __builtin_expect(!!(cond), 0)
 
 /* SETTINGS */
-static uint32_t PAGE_SIZE = 4096;
-static inline void update_page_size()
-{
-	PAGE_SIZE = getpagesize();
-}
+static uint32_t PAGE_SIZE = getpagesize();
 
 /* MEMORY MANAGEMENT */
 #define ENV_MEM_NORMAL	0

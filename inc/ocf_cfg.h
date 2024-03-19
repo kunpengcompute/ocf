@@ -12,13 +12,6 @@
  * @brief OCF configuration file
  */
 
-/**
- * Configure maximum numbers of cores in cache instance
- */
-#ifndef OCF_CONFIG_MAX_CORES
-#define OCF_CONFIG_MAX_CORES 4095
-#endif
-
 /** Maximum number of IO classes that can be configured */
 #ifndef OCF_CONFIG_MAX_IO_CLASSES
 #define OCF_CONFIG_MAX_IO_CLASSES 1
