@@ -61,6 +61,7 @@ struct ocf_adaptor_context {
 } g_adaptor;
 
 struct cache_priv {
+	uint16_t slot_core_id;
 	ocf_queue_t mngt_queue;
 	ocf_queue_t io_queues[MAX_QUEUE_NUM];
 	completion_queue_t completion_queues[MAX_QUEUE_NUM];
@@ -194,6 +195,7 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 		ret = -ENOMEM;
 		goto err_vol;
 	}
+	cache_priv->slot_core_id = 0;
 	cache_priv->queue_num = cfg->io_worker_num;
 
 	/* Start cache */
@@ -296,6 +298,7 @@ static int initialize_core(ocf_cache_t cache, ocf_core_t *core, uint32_t slot_id
 {
 	struct ocf_mngt_core_config core_cfg = { };
 	struct add_core_context context;
+	struct cache_priv *priv = (struct cache_priv *)ocf_cache_get_priv(cache);
 	int ret;
 
 	/* Initialize completion semaphore */
@@ -312,7 +315,7 @@ static int initialize_core(ocf_cache_t cache, ocf_core_t *core, uint32_t slot_id
 
 	/* Core configuration */
 	ocf_mngt_core_config_set_default(&core_cfg);
-	sprintf(core_cfg.name, "slot%u", slot_id);
+	sprintf(core_cfg.name, "slot%u-%u", slot_id, ++(priv->slot_core_id));
 	core_cfg.volume_type = CORE_VOL_TYPE;
 	ret = ocf_uuid_set_str(&core_cfg.uuid, core_cfg.name);
 	if (ret)
@@ -321,6 +324,9 @@ static int initialize_core(ocf_cache_t cache, ocf_core_t *core, uint32_t slot_id
 	/* Add core to cache */
 	ocf_mngt_cache_add_core(cache, &core_cfg, add_core_complete, &context);
 	sem_wait(&context.sem);
+
+	if (priv->slot_core_id == OCF_CORE_MAX)
+		priv->slot_core_id = 0;
 
 err_sem:
 	sem_destroy(&context.sem);
