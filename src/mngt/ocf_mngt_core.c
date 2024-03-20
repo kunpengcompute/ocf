@@ -630,7 +630,8 @@ struct ocf_mngt_cache_remove_corelines_context {
 	ocf_core_t core;
 	uint64_t addr;
 	uint64_t bytes;
-	struct timeval time_stamp;
+	struct timeval time_start;
+	struct timeval time_end;
 	uint64_t corelines_removed;
 };
 
@@ -640,20 +641,19 @@ static void ocf_mngt_cache_remove_corelines_finish(ocf_pipeline_t pipeline,
 	struct ocf_mngt_cache_remove_corelines_context *context = priv;
 	ocf_cache_t cache = context->cache;
 	uint64_t corelines = ocf_cache_bytes_2_lines(cache, context->bytes);
-	struct timeval end;
 	if (!error) {
 		ocf_cache_log(cache, log_info, 
-			"%ld corelines of addr: %ld bytes: %ld (%ld lines) successfully removed. ",
+			"%ld corelines of addr: %ld bytes: %ld (%ld lines) successfully removed.\n",
 			context->corelines_removed, context->addr, context->bytes, corelines);
+
+		uint64_t us_time = get_us_time_cost(&context->time_start, &context->time_end);
+		ocf_cache_log(cache, log_info, "It cost %.3f sec \n", us_time * 0.000001);
+
 	} else {
 		ocf_cache_log(cache, log_err, 
-			"Removing %ld corelines of addr: %ld bytes: %ld (%ld lines)	failed. ",
+			"Removing %ld corelines of addr: %ld bytes: %ld (%ld lines)	failed.\n",
 			context->corelines_removed, context->addr, context->bytes, corelines);
 	}
-	gettimeofday(&end, NULL);
-
-	uint64_t us_time = get_us_time_cost(&context->time_stamp, &end);
-	ocf_cache_log(cache, log_info, "It cost %.3f sec \n", us_time * 0.000001);
 
 	context->cmpl(cache, context->priv, error);
 
@@ -669,10 +669,12 @@ static void ocf_mngt_cache_remove_corelines_mapping(ocf_pipeline_t pipeline,
 
 	if (!ocf_cache_is_device_attached(cache))
 		OCF_PL_NEXT_RET(pipeline);
-
+	
+	gettimeofday(&context->time_start, NULL);
 	context->corelines_removed = _ocf_mngt_cache_remove_corelines_mapping(
 			core, context->addr, context->bytes);
-
+	gettimeofday(&context->time_end, NULL);
+	
 	ocf_pipeline_next(pipeline);
 }
 
@@ -721,7 +723,6 @@ int ocf_mngt_cache_remove_corelines(ocf_core_t core, uint64_t addr, uint64_t byt
 	context->core = core;
 	context->addr = addr;
 	context->bytes = bytes;
-	gettimeofday(&context->time_stamp, NULL);
 
 	ocf_pipeline_next(pipeline);
 	
@@ -735,7 +736,8 @@ struct ocf_mngt_cache_remove_core_context {
 	ocf_cache_t cache;
 	ocf_core_t core;
 	const char *core_name;
-	struct timeval time_stamp;
+	struct timeval time_start;
+	struct timeval time_end;
 	struct ocf_cleaner_wait_context cleaner_wait;
 };
 
@@ -745,19 +747,17 @@ static void ocf_mngt_cache_remove_core_finish(ocf_pipeline_t pipeline,
 	struct ocf_mngt_cache_remove_core_context *context = priv;
 	ocf_cache_t cache = context->cache;
 
-	struct timeval end;
-
 	if (!error) {
-		ocf_cache_log(cache, log_info, "Core %s successfully removed\n",
+		ocf_cache_log(cache, log_info, "Core %s successfully removed.\n",
 				context->core_name);
+		
+		uint64_t us_time = get_us_time_cost(&context->time_start, &context->time_end);
+		
+		ocf_cache_log(cache, log_info, "It cost %.3f sec.\n", us_time * 0.000001);
 	} else {
-		ocf_cache_log(cache, log_err, "Removing core %s failed\n",
+		ocf_cache_log(cache, log_err, "Removing core %s failed.\n",
 				context->core_name);
 	}
-
-	gettimeofday(&end, NULL);
-	uint64_t us_time = get_us_time_cost(&context->time_stamp, &end);
-	ocf_cache_log(cache, log_info, "It cost %.3f sec \n", us_time * 0.000001);
 
 	ocf_cleaner_refcnt_unfreeze(cache);
 
@@ -781,11 +781,15 @@ static void _ocf_mngt_cache_remove_core_mapping(ocf_pipeline_t pipeline,
 	struct ocf_mngt_cache_remove_core_context *context = priv;
 	ocf_cache_t cache = context->cache;
 	ocf_core_t core = context->core;
-
+	
 	if (!ocf_cache_is_device_attached(cache))
 		OCF_PL_NEXT_RET(pipeline);
 
+	gettimeofday(&context->time_start, NULL);
+
 	cache_mngt_core_deinit_attached_meta(core);
+
+	gettimeofday(&context->time_end, NULL);
 
 	if (env_atomic_read(&core->runtime_meta->dirty_clines) == 0)
 		OCF_PL_NEXT_RET(pipeline);
@@ -889,7 +893,6 @@ void ocf_mngt_cache_remove_core(ocf_core_t core,
 	context->core = core;
 	context->core_name = ocf_core_get_name(core);
 	env_atomic_set(&core->deleting, 1);
-	gettimeofday(&context->time_stamp, NULL);
 
 	ocf_pipeline_next(pipeline);
 }
@@ -926,7 +929,6 @@ int ocf_mngt_remove_core(ocf_core_t core,
 	context->core = core;
 	context->core_name = ocf_core_get_name(core);
 	env_atomic_set(&core->deleting, 1);
-	gettimeofday(&context->time_stamp, NULL);
 
 	ocf_pipeline_next(pipeline);
 
