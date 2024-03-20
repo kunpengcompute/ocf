@@ -56,6 +56,13 @@
 /**
  * @name OCF cores definitions
  */
+/* support max 511 slots*/
+#define SLOT_MAX_SUPPORT 511
+
+#define OCF_CONFIG_MAX_CORES (SLOT_MAX_SUPPORT + 1)
+
+#define CORE_ID_BITS __builtin_ctz(OCF_CONFIG_MAX_CORES)
+
 /**
  * Maximum numbers of cores per cache instance
  */

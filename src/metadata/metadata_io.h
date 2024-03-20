@@ -53,8 +53,8 @@ struct metadata_io_request {
 	void *context;
 	ctx_data_t *data;
 	struct metadata_io_request_asynch *asynch;
-	uint32_t page;
-	uint32_t count;
+	uint64_t page;
+	uint64_t count;
 	uint64_t alock_status;
 };
 
@@ -70,8 +70,8 @@ struct metadata_io_request_asynch {
 	ocf_metadata_io_event_t on_meta_drain;
 	ocf_metadata_io_end_t on_complete;
 	struct ocf_alock *mio_conc;
-	uint32_t page;
-	uint32_t count;
+	uint64_t page;
+	uint64_t count;
 	uint32_t alloc_req_count; /*< Number of allocated metadata_io_requests */
 	int flags;
 	int error;

@@ -97,16 +97,16 @@ static uint64_t _calc_dirty_for(uint64_t dirty_since)
 
 int ocf_cache_get_info(ocf_cache_t cache, struct ocf_cache_info *info)
 {
-	uint32_t cache_occupancy_total = 0;
-	uint32_t dirty_blocks_total = 0;
-	uint32_t initial_dirty_blocks_total = 0;
-	uint32_t flushed_total = 0;
-	uint32_t curr_dirty_cnt;
+	ocf_cache_line_t cache_occupancy_total = 0;
+	ocf_cache_line_t dirty_blocks_total = 0;
+	ocf_cache_line_t initial_dirty_blocks_total = 0;
+	ocf_cache_line_t flushed_total = 0;
+	ocf_cache_line_t curr_dirty_cnt;
 	uint64_t dirty_since = 0;
-	uint32_t init_dirty_cnt;
+	ocf_cache_line_t init_dirty_cnt;
 	uint64_t core_dirty_since;
-	uint32_t dirty_blocks_inactive = 0;
-	uint32_t cache_occupancy_inactive = 0;
+	ocf_cache_line_t dirty_blocks_inactive = 0;
+	ocf_cache_line_t cache_occupancy_inactive = 0;
 	ocf_core_t core;
 	ocf_core_id_t core_id;
 
@@ -148,29 +148,29 @@ int ocf_cache_get_info(ocf_cache_t cache, struct ocf_cache_info *info)
 		/* If current dirty blocks exceeds saved initial dirty
 		 * blocks then update the latter
 		 */
-		curr_dirty_cnt = env_atomic_read(
+		curr_dirty_cnt = env_atomic_cl_read(
 				&core->runtime_meta->dirty_clines);
-		init_dirty_cnt = env_atomic_read(
+		init_dirty_cnt = env_atomic_cl_read(
 				&core->runtime_meta->initial_dirty_clines);
 		if (init_dirty_cnt && (curr_dirty_cnt > init_dirty_cnt)) {
-			env_atomic_set(
+			env_atomic_cl_set(
 				&core->runtime_meta->initial_dirty_clines,
-				env_atomic_read(
+				env_atomic_cl_read(
 					&core->runtime_meta->dirty_clines));
 		}
-		cache_occupancy_total += env_atomic_read(
+		cache_occupancy_total += env_atomic_cl_read(
 				&core->runtime_meta->cached_clines);
 
-		dirty_blocks_total += env_atomic_read(
+		dirty_blocks_total += env_atomic_cl_read(
 				&core->runtime_meta->dirty_clines);
-		initial_dirty_blocks_total += env_atomic_read(
+		initial_dirty_blocks_total += env_atomic_cl_read(
 				&core->runtime_meta->initial_dirty_clines);
 
 		if (!core->opened) {
-			cache_occupancy_inactive += env_atomic_read(
+			cache_occupancy_inactive += env_atomic_cl_read(
 				&core->runtime_meta->cached_clines);
 
-			dirty_blocks_inactive += env_atomic_read(
+			dirty_blocks_inactive += env_atomic_cl_read(
 				&core->runtime_meta->dirty_clines);
 		}
 		core_dirty_since = env_atomic64_read(
@@ -181,7 +181,7 @@ int ocf_cache_get_info(ocf_cache_t cache, struct ocf_cache_info *info)
 				core_dirty_since);
 		}
 
-		flushed_total += env_atomic_read(&core->flushed);
+		flushed_total += env_atomic_cl_read(&core->flushed);
 	}
 
 	info->dirty = dirty_blocks_total;

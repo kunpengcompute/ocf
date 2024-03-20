@@ -26,16 +26,16 @@ struct pio_ctx {
 #define get_pio_ctx(__alock) (void*)__alock + ocf_alock_obj_size();
 
 static inline bool page_belongs_to_section(struct pio_ctx *pio_ctx,
-		enum ocf_metadata_segment_id segment_id, uint32_t page)
+		enum ocf_metadata_segment_id segment_id, uint64_t page)
 {
 	return page >= pio_ctx->segments[segment_id].begin &&
 		page < pio_ctx->segments[segment_id].end;
 }
 
 static inline ocf_cache_line_t page_to_entry(struct pio_ctx *pio_ctx,
-		enum ocf_metadata_segment_id segment_id, uint32_t page)
+		enum ocf_metadata_segment_id segment_id, uint64_t page)
 {
-	uint32_t id_within_section;
+	uint64_t id_within_section;
 
 	id_within_section = page - pio_ctx->segments[segment_id].begin;
 
@@ -45,7 +45,7 @@ static inline ocf_cache_line_t page_to_entry(struct pio_ctx *pio_ctx,
 static ocf_cache_line_t ocf_pio_lock_get_entry(struct ocf_alock *alock,
 		struct ocf_request *req, uint32_t id)
 {
-	uint32_t page;
+	uint64_t page;
 	enum ocf_metadata_segment_id segment_id;
 	struct pio_ctx *pio_ctx = get_pio_ctx(alock);
 	page = req->core_line_first + id;
@@ -195,7 +195,7 @@ int ocf_pio_concurrency_init(struct ocf_alock **self, ocf_cache_t cache)
 	size_t base_size = ocf_alock_obj_size();
 	char name[ALLOCATOR_NAME_MAX];
 	int ret;
-	uint32_t pages_to_alloc = 0;
+	uint64_t pages_to_alloc = 0;
 	enum ocf_metadata_segment_id update_segments[] = {
 		metadata_segment_sb_config,
 		metadata_segment_collision,

@@ -671,8 +671,8 @@ int ocf_core_get_info(ocf_core_t core, struct ocf_core_info *info)
 	info->seq_cutoff_threshold = ocf_core_get_seq_cutoff_threshold(core);
 	info->seq_cutoff_policy = ocf_core_get_seq_cutoff_policy(core);
 
-	info->flushed = env_atomic_read(&core->flushed);
-	info->dirty = env_atomic_read(&core->runtime_meta->dirty_clines);
+	info->flushed = env_atomic_cl_read(&core->flushed);
+	info->dirty = env_atomic_cl_read(&core->runtime_meta->dirty_clines);
 
 	info->dirty_for = _calc_dirty_for(
 			env_atomic64_read(&core->runtime_meta->dirty_since));

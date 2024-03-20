@@ -23,10 +23,10 @@ struct ocf_core_info {
 	uint64_t core_size_bytes;
 
 	/** Number of blocks flushed in ongoing flush operation */
-	uint32_t flushed;
+	ocf_cache_line_t flushed;
 
 	/** Number of blocks left to flush in ongoing flush operation */
-	uint32_t dirty;
+	ocf_cache_line_t dirty;
 
 	/** How long core is dirty in seconds unit */
 	uint64_t dirty_for;

@@ -23,7 +23,7 @@ void ocf_metadata_concurrency_deinit(struct ocf_metadata_lock *metadata_lock);
 
 int ocf_metadata_concurrency_attached_init(
 		struct ocf_metadata_lock *metadata_lock, ocf_cache_t cache,
-		uint32_t hash_table_entries, uint32_t colision_table_pages);
+		ocf_cache_line_t hash_table_entries, ocf_cache_line_t colision_table_pages);
 
 void ocf_metadata_concurrency_attached_deinit(
 		struct ocf_metadata_lock *metadata_lock);
@@ -170,11 +170,11 @@ void ocf_hb_req_prot_lock_upgrade(struct ocf_request *req);
 
 /* collision table page lock interface */
 void ocf_collision_start_shared_access(struct ocf_metadata_lock *metadata_lock,
-		uint32_t page);
+		uint64_t page);
 void ocf_collision_end_shared_access(struct ocf_metadata_lock *metadata_lock,
-		uint32_t page);
+		uint64_t page);
 void ocf_collision_start_exclusive_access(struct ocf_metadata_lock *metadata_lock,
-		uint32_t page);
+		uint64_t page);
 void ocf_collision_end_exclusive_access(struct ocf_metadata_lock *metadata_lock,
-		uint32_t page);
+		uint64_t page);
 #endif

@@ -34,8 +34,8 @@ struct ocf_cache_device {
 	 * indexes.
 	 * Invalid entry is collision_table_entries.
 	 */
-	unsigned int hash_table_entries;
-	unsigned int collision_table_entries;
+	ocf_cache_line_t hash_table_entries;
+	ocf_cache_line_t collision_table_entries;
 
 	int metadata_error;
 		/*!< This field indicates that an error during metadata IO
@@ -170,7 +170,7 @@ static inline uint64_t ocf_get_cache_occupancy(ocf_cache_t cache)
 	ocf_core_id_t core_id;
 
 	for_each_core(cache, core, core_id)
-		result += env_atomic_read(&core->runtime_meta->cached_clines);
+		result += env_atomic_cl_read(&core->runtime_meta->cached_clines);
 
 	return result;
 }

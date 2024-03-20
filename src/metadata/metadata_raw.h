@@ -51,7 +51,7 @@ struct ocf_metadata_raw;
  * @brief Container page lock/unlock callback
  */
 typedef void (*ocf_flush_page_synch_t)(ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, uint32_t page);
+		struct ocf_metadata_raw *raw, uint64_t page);
 
 /**
  * @brief RAW instance descriptor
@@ -118,15 +118,15 @@ struct raw_iface {
 	 *
 	 * @return Number of pages (4 kiB) on cache device
 	 */
-	uint32_t (*size_on_ssd)(struct ocf_metadata_raw *raw);
+	uint64_t (*size_on_ssd)(struct ocf_metadata_raw *raw);
 
-	uint32_t (*checksum)(ocf_cache_t cache,
+	uint64_t (*checksum)(ocf_cache_t cache,
 			struct ocf_metadata_raw *raw);
 
-	uint32_t (*page)(struct ocf_metadata_raw *raw, uint32_t entry);
+	uint64_t (*page)(struct ocf_metadata_raw *raw, ocf_cache_line_t entry);
 
 	void* (*access)(ocf_cache_t cache, struct ocf_metadata_raw *raw,
-			uint32_t entry);
+			ocf_cache_line_t entry);
 
 	int (*update)(ocf_cache_t cache, struct ocf_metadata_raw *raw,
 			ctx_data_t *data, uint64_t page, uint64_t count);
@@ -205,7 +205,7 @@ size_t ocf_metadata_raw_size_on_ssd(struct ocf_metadata_raw* raw);
  * @param raw - RAW descriptor
  * @return Checksum
  */
-static inline uint32_t ocf_metadata_raw_checksum(struct ocf_cache* cache,
+static inline uint64_t ocf_metadata_raw_checksum(struct ocf_cache* cache,
 		struct ocf_metadata_raw* raw)
 {
 	return raw->iface->checksum(cache, raw);
@@ -218,8 +218,8 @@ static inline uint32_t ocf_metadata_raw_checksum(struct ocf_cache* cache,
  * @param entry - Entry number
  * @return Page index
  */
-static inline uint32_t ocf_metadata_raw_page(struct ocf_metadata_raw* raw,
-		uint32_t entry)
+static inline uint64_t ocf_metadata_raw_page(struct ocf_metadata_raw* raw,
+		ocf_cache_line_t entry)
 {
 	return raw->iface->page(raw, entry);
 }
@@ -234,7 +234,7 @@ static inline uint32_t ocf_metadata_raw_page(struct ocf_metadata_raw* raw,
  * @return 0 - Point to accessed data, in case of error NULL
  */
 static inline void *ocf_metadata_raw_wr_access(ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, uint32_t entry)
+		struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	return raw->iface->access(cache, raw, entry);
 }
@@ -248,7 +248,7 @@ static inline void *ocf_metadata_raw_wr_access(ocf_cache_t cache,
  * @return 0 - Point to accessed data, in case of error NULL
  */
 static inline const void *ocf_metadata_raw_rd_access( ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, uint32_t entry)
+		struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	return raw->iface->access(cache, raw, entry);
 }
@@ -337,7 +337,7 @@ static inline int ocf_metadata_raw_flush_do_asynch(ocf_cache_t cache,
 /*
  * Check if line is valid for specified RAW descriptor
  */
-static inline bool _raw_is_valid(struct ocf_metadata_raw *raw, uint32_t entry)
+static inline bool _raw_is_valid(struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	if (unlikely(!raw))
 		return false;
@@ -348,7 +348,7 @@ static inline bool _raw_is_valid(struct ocf_metadata_raw *raw, uint32_t entry)
 	return true;
 }
 
-static inline void _raw_bug_on(struct ocf_metadata_raw *raw, uint32_t entry)
+static inline void _raw_bug_on(struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	ENV_BUG_ON(!_raw_is_valid(raw, entry));
 }

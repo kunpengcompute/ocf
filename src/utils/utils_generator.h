@@ -9,15 +9,15 @@
 #include "ocf/ocf.h"
 
 struct ocf_generator_bisect_state {
-	uint32_t curr;
-	uint32_t limit;
+	ocf_cache_line_t curr;
+	ocf_cache_line_t limit;
 };
 
 void ocf_generator_bisect_init(
 		struct ocf_generator_bisect_state *generator,
-		uint32_t limit, uint32_t offset);
+		ocf_cache_line_t limit, ocf_cache_line_t offset);
 
-uint32_t ocf_generator_bisect_next(
+ocf_cache_line_t ocf_generator_bisect_next(
 		struct ocf_generator_bisect_state *generator);
 
 #endif /* __UTILS_GENERATOR_H__ */

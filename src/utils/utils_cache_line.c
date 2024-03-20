@@ -21,8 +21,8 @@ static void __set_cache_line_invalid(struct ocf_cache *cache, uint8_t start_bit,
 		/*
 		 * Update the number of cached data for that core object
 		 */
-		env_atomic_dec(&core->runtime_meta->cached_clines);
-		env_atomic_dec(&core->runtime_meta->
+		env_atomic_cl_dec(&core->runtime_meta->cached_clines);
+		env_atomic_cl_dec(&core->runtime_meta->
 				part_counters[part_id].cached_clines);
 	}
 
@@ -78,8 +78,8 @@ void set_cache_line_valid(struct ocf_cache *cache, uint8_t start_bit,
 		/*
 		 * Update the number of cached data for that core object
 		 */
-		env_atomic_inc(&req->core->runtime_meta->cached_clines);
-		env_atomic_inc(&req->core->runtime_meta->
+		env_atomic_cl_inc(&req->core->runtime_meta->cached_clines);
+		env_atomic_cl_inc(&req->core->runtime_meta->
 				part_counters[part_id].cached_clines);
 	}
 }
@@ -104,7 +104,7 @@ void set_cache_line_clean(struct ocf_cache *cache, uint8_t start_bit,
 			 * Update the number of dirty cached data for that
 			 * core object
 			 */
-			if (env_atomic_dec_and_test(&req->core->runtime_meta->
+			if (env_atomic_cl_dec_and_test(&req->core->runtime_meta->
 						dirty_clines)) {
 				/*
 				 * If this is last dirty cline reset dirty
@@ -117,7 +117,7 @@ void set_cache_line_clean(struct ocf_cache *cache, uint8_t start_bit,
 			/*
 			 * decrement dirty clines statistic for given cline
 			 */
-			env_atomic_dec(&req->core->runtime_meta->
+			env_atomic_cl_dec(&req->core->runtime_meta->
 					part_counters[part_id].dirty_clines);
 			ocf_lru_clean_cline(cache, part, line);
 			ocf_purge_cleaning_policy(cache, line);
@@ -154,12 +154,12 @@ void set_cache_line_dirty(struct ocf_cache *cache, uint8_t start_bit,
 			 * Update the number of dirty cached data for that
 			 * core object
 			 */
-			env_atomic_inc(&req->core->runtime_meta->dirty_clines);
+			env_atomic_cl_inc(&req->core->runtime_meta->dirty_clines);
 
 			/*
 			 * increment dirty clines statistic for given cline
 			 */
-			env_atomic_inc(&req->core->runtime_meta->
+			env_atomic_cl_inc(&req->core->runtime_meta->
 					part_counters[part_id].dirty_clines);
 			ocf_lru_dirty_cline(cache, part, line);
 		}
