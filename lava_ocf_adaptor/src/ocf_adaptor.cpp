@@ -29,6 +29,8 @@ using namespace std;
 
 extern "C" ocf_core_id_t ocf_core_get_id(ocf_core_t core);
 
+struct ocf_config g_cfg;
+
 /*
  * Queue ops providing interface for running queue thread in asynchronous
  * way. Optional synchronous kick callback is not provided. The stop()
@@ -57,7 +59,7 @@ struct ocf_adaptor_context {
 	 * if it exists, it needs to be locked at the slot granularity
 	 */
 	unordered_map<uint32_t, slot_info_t> slot_info_table;
-	unordered_map<uint32_t, unordered_map<uint32_t, int>> region_remap_table;
+	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
 } g_adaptor;
 
 struct cache_priv {
@@ -426,6 +428,7 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 
 int ocf_init(struct ocf_config *cfg)
 {
+	g_cfg = *cfg;
 	update_page_size();
 
 	if (g_adaptor.state != NONE) {
@@ -475,7 +478,7 @@ void ocf_exit()
 	ctx.ret = &ret;
 	sem_init(&ctx.sem, 0, 0);
 	unordered_map<uint32_t, slot_info_t> slot_info_table;
-	unordered_map<uint32_t, unordered_map<uint32_t, int>> region_remap_table;
+	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
 
 	/* clear slot hash table */
 	env_rwlock_write_lock(&g_adaptor.table_lock);
@@ -486,7 +489,7 @@ void ocf_exit()
 	/* Remove core from cache */
 	for (auto it: slot_info_table) {
 		slot_info_t info = it.second;
-		ocf_mngt_cache_remove_core(info->core, core_remove_complete, &ctx);
+		ocf_mngt_remove_core_skip_unmapping(info->core, core_remove_complete, &ctx);
 		env_free(info);
 	}
 	for (uint32_t i = 0; i < slot_info_table.size(); ++i) {
@@ -566,7 +569,7 @@ int ocf_add_core(uint32_t slot_id)
 
 	env_rwlock_write_lock(&table_lock);
 	info->core = core;
-	region_remap_table[slot_id] = unordered_map<uint32_t, int>();
+	region_remap_table[slot_id] = unordered_map<uint32_t, uint32_t>();
 	env_rwlock_write_unlock(&table_lock);
 	ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core(%u) add success\n", slot_id, ocf_core_get_id(core));
 	return STATE_SUCCESS;
@@ -601,7 +604,19 @@ int ocf_remove_core(uint32_t slot_id)
 	/* remove core from cache */
 	core = info->core;
 	core_id = ocf_core_get_id(core);
-	int ret = ocf_mngt_remove_core(core, single_core_remove_complete, NULL);
+
+	int ret = 0;
+	auto &region_map = region_remap_table[slot_id];
+
+	if (region_map.size() * REGION_SIZE < g_cfg.cache_capacity / 4) {
+		for (auto it = region_map.begin(); it != region_map.end(); it++) {
+			ocf_mngt_cache_remove_corelines(core, it->second * REGION_SIZE, REGION_SIZE, region_remove_complete, NULL);
+		}
+		ret = ocf_mngt_remove_core_skip_unmapping(core, single_core_remove_complete, NULL);
+	} else {
+		ret = ocf_mngt_remove_core(core, single_core_remove_complete, NULL);
+	}
+	
 	if (ret) {
 		env_rwlock_write_unlock(&table_lock);
 		return STATE_MEM_ALLOC_ERR;

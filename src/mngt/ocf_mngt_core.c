@@ -861,6 +861,37 @@ struct ocf_pipeline_properties ocf_mngt_cache_remove_core_pipeline_props = {
 	},
 };
 
+static void ocf_mngt_cache_detach_core_finish(ocf_pipeline_t pipeline,
+		void *priv, int error)
+{
+	struct ocf_mngt_cache_remove_core_context *context = priv;
+	ocf_cache_t cache = context->cache;
+
+	if (!error) {
+		ocf_cache_log(cache, log_info, "Core %s successfully detached\n",
+				context->core_name);
+	} else {
+		ocf_cache_log(cache, log_err, "Detaching core %s failed\n",
+				context->core_name);
+	}
+
+	ocf_cleaner_refcnt_unfreeze(context->cache);
+
+	context->cmpl(context->priv, error);
+
+	ocf_pipeline_destroy(context->pipeline);
+}
+
+struct ocf_pipeline_properties ocf_mngt_cache_remove_core_skip_unmapping_pipeline_props = {
+	.priv_size = sizeof(struct ocf_mngt_cache_remove_core_context),
+	.finish = ocf_mngt_cache_detach_core_finish,
+	.steps = {
+		OCF_PL_STEP(ocf_mngt_cache_remove_core_wait_cleaning),
+		OCF_PL_STEP(_ocf_mngt_cache_remove_core),
+		OCF_PL_STEP_TERMINATOR(),
+	},
+};
+
 void ocf_mngt_cache_remove_core(ocf_core_t core,
 		ocf_mngt_cache_remove_core_end_t cmpl, void *priv)
 {
@@ -935,6 +966,43 @@ int ocf_mngt_remove_core(ocf_core_t core,
 	return 0;
 }
 
+int ocf_mngt_remove_core_skip_unmapping(ocf_core_t core,
+		ocf_mngt_cache_remove_core_end_t cmpl, void *priv)
+{
+	struct ocf_mngt_cache_remove_core_context *context;
+	ocf_pipeline_t pipeline;
+	ocf_cache_t cache;
+	int result;
+
+	OCF_CHECK_NULL(core);
+
+	cache = ocf_core_get_cache(core);
+
+	if (ocf_cache_is_standby(cache))
+		return -OCF_ERR_CACHE_STANDBY;
+
+	if (!cache->mngt_queue)
+		return -OCF_ERR_INVAL;
+
+	result = ocf_pipeline_create(&pipeline, cache,
+			&ocf_mngt_cache_remove_core_skip_unmapping_pipeline_props);
+	if (result)
+		return result;
+
+	context = ocf_pipeline_get_priv(pipeline);
+
+	context->cmpl = cmpl;
+	context->priv = priv;
+	context->pipeline = pipeline;
+	context->cache = cache;
+	context->core = core;
+	context->core_name = ocf_core_get_name(core);
+	env_atomic_set(&core->deleting, 1);
+
+	ocf_pipeline_stay_back(pipeline);
+
+	return 0;
+}
 struct ocf_mngt_cache_detach_core_context {
 	ocf_mngt_cache_detach_core_end_t cmpl;
 	void *priv;
@@ -967,27 +1035,6 @@ static void _ocf_mngt_cache_detach_core(ocf_pipeline_t pipeline,
 	env_bit_set(ocf_cache_state_incomplete,
 			&cache->cache_state);
 	ocf_pipeline_next(pipeline);
-}
-
-static void ocf_mngt_cache_detach_core_finish(ocf_pipeline_t pipeline,
-		void *priv, int error)
-{
-	struct ocf_mngt_cache_remove_core_context *context = priv;
-	ocf_cache_t cache = context->cache;
-
-	if (!error) {
-		ocf_cache_log(cache, log_info, "Core %s successfully detached\n",
-				context->core_name);
-	} else {
-		ocf_cache_log(cache, log_err, "Detaching core %s failed\n",
-				context->core_name);
-	}
-
-	ocf_cleaner_refcnt_unfreeze(context->cache);
-
-	context->cmpl(context->priv, error);
-
-	ocf_pipeline_destroy(context->pipeline);
 }
 
 static void ocf_mngt_cache_detach_core_wait_cleaning_complete(void *priv)
