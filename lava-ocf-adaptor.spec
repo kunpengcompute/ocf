@@ -13,9 +13,8 @@ Requires:   zlib
 %description
 Product Name: Kunpeng BoostKit
 Product Version: 24.0.RC2
-Component Name: BoostKit-OCF
-Component Version: %{version}-%{release}
-Component AppendInfo: kunpeng
+Component Name: BoostKit-%{name}
+Component Version: %{version}
 
 %prep
 %setup -a 0 -c -q
