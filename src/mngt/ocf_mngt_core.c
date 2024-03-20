@@ -151,6 +151,7 @@ static void _ocf_mngt_cache_add_core_handle_error(
 		core->conf_meta->valid = false;
 		core->added = false;
 		core->opened = false;
+		env_atomic_set(&core->deleting, 0);
 
 		env_free(core->counters);
 		core->counters = NULL;
@@ -324,6 +325,7 @@ static void ocf_mngt_cache_try_add_core_insert(ocf_pipeline_t pipeline,
 	}
 
 	core->opened = true;
+	env_atomic_set(&core->deleting, 0);
 
 	if (!(--cache->ocf_core_inactive_count))
 		env_bit_clear(ocf_cache_state_incomplete, &cache->cache_state);
@@ -481,6 +483,7 @@ static void ocf_mngt_cache_add_core_insert(ocf_pipeline_t pipeline,
 	core->conf_meta->valid = true;
 	core->added = true;
 	core->opened = true;
+	env_atomic_set(&core->deleting, 0);
 
 	/* Set default cache parameters for sequential */
 	env_atomic_set(&core->conf_meta->seq_cutoff_policy,
@@ -885,6 +888,7 @@ void ocf_mngt_cache_remove_core(ocf_core_t core,
 	context->cache = cache;
 	context->core = core;
 	context->core_name = ocf_core_get_name(core);
+	env_atomic_set(&core->deleting, 1);
 	gettimeofday(&context->time_stamp, NULL);
 
 	ocf_pipeline_next(pipeline);
@@ -921,6 +925,7 @@ int ocf_mngt_remove_core(ocf_core_t core,
 	context->cache = cache;
 	context->core = core;
 	context->core_name = ocf_core_get_name(core);
+	env_atomic_set(&core->deleting, 1);
 	gettimeofday(&context->time_stamp, NULL);
 
 	ocf_pipeline_next(pipeline);
@@ -954,6 +959,7 @@ static void _ocf_mngt_cache_detach_core(ocf_pipeline_t pipeline,
 	ocf_volume_deinit(&core->front_volume);
 	ocf_volume_close(&core->volume);
 	core->opened = false;
+	env_atomic_set(&core->deleting, 0);
 
 	cache->ocf_core_inactive_count++;
 	env_bit_set(ocf_cache_state_incomplete,
