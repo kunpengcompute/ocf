@@ -60,19 +60,19 @@ struct ocf_core_meta_runtime {
 	/* Number of blocks from that objects that currently are cached
 	 * on the caching device.
 	 */
-	env_atomic cached_clines;
-	env_atomic dirty_clines;
-	env_atomic initial_dirty_clines;
+	env_atomic_cl cached_clines;
+	env_atomic_cl dirty_clines;
+	env_atomic_cl initial_dirty_clines;
 
 	env_atomic64 dirty_since;
 
 	struct {
 		/* clines within lru list (?) */
-		env_atomic cached_clines;
+		env_atomic_cl cached_clines;
 		/* dirty clines assigned to this specific partition within
 		 * cache device
 		 */
-		env_atomic dirty_clines;
+		env_atomic_cl dirty_clines;
 	} part_counters[OCF_USER_IO_CLASS_MAX];
 };
 
@@ -85,8 +85,8 @@ struct ocf_core {
 
 	struct ocf_seq_cutoff *seq_cutoff;
 
-	env_atomic flushed;
 	env_atomic deleting;
+	env_atomic_cl flushed;
 
 	/* This bit means that core volume is initialized */
 	uint32_t has_volume : 1;

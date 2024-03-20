@@ -429,8 +429,9 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 int ocf_init(struct ocf_config *cfg)
 {
 	g_cfg = *cfg;
-	update_page_size();
 
+	ocf_update_metadata_cfg(cfg->cache_line_size);
+	
 	if (g_adaptor.state != NONE) {
 		ocf_adaptor_log(OCF_LOG_WARN, "ocf has been initialized\n");
 		return STATE_FAIL;

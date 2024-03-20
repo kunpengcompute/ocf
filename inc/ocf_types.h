@@ -15,7 +15,7 @@
 /**
  * @brief cache line type (by default designated as 32 bit unsigned integer)
  */
-typedef uint32_t ocf_cache_line_t;
+typedef uint64_t ocf_cache_line_t;
 
 /**
  * @brief core id type (by default designated as 16 bit unsigned integer)

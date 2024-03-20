@@ -11,8 +11,8 @@ static uint32_t ocf_evict_calculate(ocf_cache_t cache,
 		struct ocf_user_part *user_part, uint32_t to_evict)
 {
 
-	uint32_t curr_part_size = ocf_part_get_occupancy(&user_part->part);
-	uint32_t min_part_size = ocf_user_part_get_min_size(cache, user_part);
+	ocf_cache_line_t curr_part_size = ocf_part_get_occupancy(&user_part->part);
+	ocf_cache_line_t min_part_size = ocf_user_part_get_min_size(cache, user_part);
 
 	if (curr_part_size <= min_part_size) {
 		/*

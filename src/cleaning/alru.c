@@ -283,7 +283,7 @@ void cleaning_policy_alru_purge_cache_block(struct ocf_cache *cache,
 }
 
 static void __cleaning_policy_alru_purge_cache_block_any(
-		struct ocf_cache *cache, uint32_t cache_line)
+		struct ocf_cache *cache, ocf_cache_line_t cache_line)
 {
 	struct alru_context *ctx = cache->cleaner.cleaning_policy_context;
 

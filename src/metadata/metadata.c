@@ -353,7 +353,7 @@ static int ocf_metadata_calculate_metadata_size(
 
 	ctrl->count_pages = count_pages;
 	ctrl->cachelines = cache_lines;
-	OCF_DEBUG_PARAM(cache, "Cache lines = %u", ctrl->cachelines);
+	OCF_DEBUG_PARAM(cache, "Cache lines = %lu", ctrl->cachelines);
 
 	if (ctrl->device_lines < ctrl->cachelines)
 		return -1;
@@ -497,7 +497,7 @@ static struct ocf_metadata_ctrl *ocf_metadata_ctrl_init(
 		bool metadata_volatile)
 {
 	struct ocf_metadata_ctrl *ctrl = NULL;
-	uint32_t page = 0;
+	uint64_t page = 0;
 	uint32_t i = 0;
 
 	ctrl = env_vzalloc(sizeof(*ctrl));
@@ -630,7 +630,7 @@ static int ocf_metadata_init_fixed_size(struct ocf_cache *cache,
 }
 
 static void ocf_metadata_flush_lock_collision_page(struct ocf_cache *cache,
-		struct ocf_metadata_raw *raw, uint32_t page)
+		struct ocf_metadata_raw *raw, uint64_t page)
 
 {
 	ocf_collision_start_exclusive_access(&cache->metadata.lock,
@@ -639,7 +639,7 @@ static void ocf_metadata_flush_lock_collision_page(struct ocf_cache *cache,
 
 static void ocf_metadata_flush_unlock_collision_page(
 		struct ocf_cache *cache, struct ocf_metadata_raw *raw,
-		uint32_t page)
+		uint64_t page)
 
 {
 	ocf_collision_end_exclusive_access(&cache->metadata.lock,
@@ -721,9 +721,9 @@ int ocf_metadata_init_variable_size(struct ocf_cache *cache,
 		return -OCF_ERR_INVAL_CACHE_DEV;
 	}
 
-	OCF_DEBUG_PARAM(cache, "Metadata begin pages = %u", ctrl->start_page);
-	OCF_DEBUG_PARAM(cache, "Metadata count pages = %u", ctrl->count_pages);
-	OCF_DEBUG_PARAM(cache, "Metadata end pages = %u", ctrl->start_page
+	OCF_DEBUG_PARAM(cache, "Metadata begin pages = %lu", ctrl->start_page);
+	OCF_DEBUG_PARAM(cache, "Metadata count pages = %lu", ctrl->count_pages);
+	OCF_DEBUG_PARAM(cache, "Metadata end pages = %lu", ctrl->start_page
 			+ ctrl->count_pages);
 
 	superblock = ctrl->segment[metadata_segment_sb_config];
@@ -817,7 +817,7 @@ finalize:
 
 	result = ocf_metadata_concurrency_attached_init(&cache->metadata.lock,
 			cache, ctrl->raw_desc[metadata_segment_hash].entries,
-			(uint32_t)ctrl->raw_desc[metadata_segment_collision].
+			ctrl->raw_desc[metadata_segment_collision].
 			ssd_pages);
 	if (result) {
 		ocf_cache_log(cache, log_err, "Failed to initialize attached "
@@ -1465,7 +1465,7 @@ ocf_cache_line_t *ocf_metadata_get_hash_p(struct ocf_cache *cache,
 ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
 		ocf_cache_line_t index)
 {
-	return *ocf_metadata_get_hash_p(cache, index) & ~(1 << HASH_LOCK_BIT);
+	return *ocf_metadata_get_hash_p(cache, index) & ~(1ULL << HASH_LOCK_BIT);
 }
 
 /*
@@ -1477,7 +1477,7 @@ void ocf_metadata_set_hash(struct ocf_cache *cache, ocf_cache_line_t index,
 	struct ocf_metadata_ctrl *ctrl
 		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	line |= (*ocf_metadata_get_hash_p(cache, index) & (1 << HASH_LOCK_BIT));
+	line |= (*ocf_metadata_get_hash_p(cache, index) & (1ULL << HASH_LOCK_BIT));
 	*(ocf_cache_line_t *)ocf_metadata_raw_wr_access(cache,
 			&(ctrl->raw_desc[metadata_segment_hash]), index) = line;
 }

@@ -148,7 +148,7 @@ void ocf_metadata_start_collision_shared_access(struct ocf_cache *cache,
 		(struct ocf_metadata_ctrl *) cache->metadata.priv;
 	struct ocf_metadata_raw *raw =
 			&ctrl->raw_desc[metadata_segment_collision];
-	uint32_t page = ocf_metadata_raw_page(raw, line);
+	uint64_t page = ocf_metadata_raw_page(raw, line);
 
 	ocf_collision_start_shared_access(&cache->metadata.lock, page);
 }
@@ -161,7 +161,7 @@ void ocf_metadata_end_collision_shared_access(struct ocf_cache *cache,
 		(struct ocf_metadata_ctrl *) cache->metadata.priv;
 	struct ocf_metadata_raw *raw =
 			&ctrl->raw_desc[metadata_segment_collision];
-	uint32_t page = ocf_metadata_raw_page(raw, line);
+	uint64_t page = ocf_metadata_raw_page(raw, line);
 
 	ocf_collision_end_shared_access(&cache->metadata.lock, page);
 }

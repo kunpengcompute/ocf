@@ -29,13 +29,13 @@ struct ocf_metadata_map_u8 {
 	struct ocf_metadata_map map;
 	u8 valid : 4;
 	u8 dirty : 4;
-} __attribute__((packed))
+} __attribute__((packed));
 
 struct ocf_metadata_map_u16 {
 	struct ocf_metadata_map map;
 	u16 valid;
 	u16 dirty;
-} __attribute__((packed))
+} __attribute__((packed));
 
 #define ocf_metadata_bit_func(what, type) \
 static bool _ocf_metadata_test_##what##_##type(struct ocf_cache *cache, \

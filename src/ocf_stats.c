@@ -87,8 +87,8 @@ static void ocf_stats_part_init(struct ocf_counters_part *stats)
 
 static void ocf_stats_rw_init(struct ocf_counters_rw *stats)
 {
-	env_atomic_set(&stats->read, 0);
-	env_atomic_set(&stats->write, 0);
+	env_atomic64_set(&stats->read, 0);
+	env_atomic64_set(&stats->write, 0);
 }
 
 void ocf_core_stats_lookup_req_update(ocf_core_t core, ocf_part_id_t part_id,
@@ -280,10 +280,10 @@ static void _ocf_core_stats_rw_update(struct ocf_counters_rw *counters,
 {
 	switch (dir) {
 		case OCF_READ:
-			env_atomic_inc(&counters->read);
+			env_atomic64_inc(&counters->read);
 			break;
 		case OCF_WRITE:
-			env_atomic_inc(&counters->write);
+			env_atomic64_inc(&counters->write);
 			break;
 		default:
 			ENV_BUG();
@@ -418,8 +418,8 @@ static void accum_block_stats(struct ocf_stats_block *dest,
 static void copy_rw_stats(struct ocf_stats_rw *dest,
 		const struct ocf_counters_rw *from)
 {
-	dest->read = env_atomic_read(&from->read);
-	dest->write = env_atomic_read(&from->write);
+	dest->read = env_atomic64_read(&from->read);
+	dest->write = env_atomic64_read(&from->write);
 }
 
 static void accum_latency_stats(struct ocf_stats_latency dest[],
@@ -500,9 +500,9 @@ int ocf_core_io_class_get_stats(ocf_core_t core, ocf_part_id_t part_id,
 
 	part_stat = &core->counters->part_counters[part_id];
 
-	stats->occupancy_clines = env_atomic_read(&core->runtime_meta->
+	stats->occupancy_clines = env_atomic_cl_read(&core->runtime_meta->
 			part_counters[part_id].cached_clines);
-	stats->dirty_clines = env_atomic_read(&core->runtime_meta->
+	stats->dirty_clines = env_atomic_cl_read(&core->runtime_meta->
 			part_counters[part_id].dirty_clines);
 
 	stats->free_clines = 0;
@@ -578,9 +578,9 @@ int ocf_core_get_stats(ocf_core_t core, struct ocf_stats_core *stats)
 		accum_frequencys_stats(stats->ocf_in_reqs, curr->ocf_in_reqs, STATS_TYPE_MAX);
 		accum_frequencys_stats(stats->ocf_out_reqs, curr->ocf_out_reqs, STATS_TYPE_MAX);
 
-		stats->cache_occupancy += env_atomic_read(&core->runtime_meta->
+		stats->cache_occupancy += env_atomic_cl_read(&core->runtime_meta->
 				part_counters[i].cached_clines);
-		stats->dirty += env_atomic_read(&core->runtime_meta->
+		stats->dirty += env_atomic_cl_read(&core->runtime_meta->
 				part_counters[i].dirty_clines);
 	}
 

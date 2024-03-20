@@ -34,24 +34,24 @@ size_t raw_dynamic_size_of(ocf_cache_t cache,
 /*
  * RAW DYNAMIC Implementation - Size on SSD
  */
-uint32_t raw_dynamic_size_on_ssd(struct ocf_metadata_raw *raw);
+uint64_t raw_dynamic_size_on_ssd(struct ocf_metadata_raw *raw);
 
 /*
  * RAW DYNAMIC Implementation - Checksum
  */
-uint32_t raw_dynamic_checksum(ocf_cache_t cache,
+uint64_t raw_dynamic_checksum(ocf_cache_t cache,
 		struct ocf_metadata_raw *raw);
 
 /*
  * RAM DYNAMIC Implementation - Entry page number
  */
-uint32_t raw_dynamic_page(struct ocf_metadata_raw *raw, uint32_t entry);
+uint64_t raw_dynamic_page(struct ocf_metadata_raw *raw, ocf_cache_line_t entry);
 
 /*
  * RAW DYNAMIC - Write access for specified entry
  */
 void *raw_dynamic_access(ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, uint32_t entry);
+		struct ocf_metadata_raw *raw, ocf_cache_line_t entry);
 
 /*
  * RAW DYNAMIC - Update metadata based on cache volume io

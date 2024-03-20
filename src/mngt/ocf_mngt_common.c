@@ -53,7 +53,7 @@ void cache_mngt_core_deinit_attached_meta(ocf_core_t core)
 	ocf_core_id_t core_id = ocf_core_get_id(core);
 	ocf_core_id_t iter_core_id;
 	ocf_cache_line_t curr_cline, prev_cline;
-	uint32_t hash, num_hash = cache->device->hash_table_entries;
+	ocf_cache_line_t hash, num_hash = cache->device->hash_table_entries;
 	unsigned lock_idx;
 
 	for (hash = 0; hash < num_hash;) {
@@ -115,7 +115,7 @@ static uint64_t _ocf_mngt_cache_remove_corelines_mapping_do(ocf_core_t core,
 	ocf_core_id_t iter_core_id;
 	uint64_t iter_coreline;
 	ocf_cache_line_t curr_cline, prev_cline;
-	uint32_t hash;
+	ocf_cache_line_t hash;
 	unsigned lock_idx;
 	uint64_t corelines_removed = 0;
 
@@ -190,7 +190,7 @@ uint64_t _ocf_mngt_cache_remove_corelines_mapping(ocf_core_t core,
 	uint64_t corelines_removed = 0;
 	
 	ocf_cache_line_t hash_start, hash_end;
-	uint32_t hash_entries = cache->device->hash_table_entries;
+	ocf_cache_line_t hash_entries = cache->device->hash_table_entries;
 	
 	bool multilines_in_hash;
 

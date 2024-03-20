@@ -12,8 +12,8 @@ struct ocf_counters_block {
 };
 
 struct ocf_counters_rw {
-	env_atomic read;
-	env_atomic write;
+	env_atomic64 read;
+	env_atomic64 write;
 };
 
 struct ocf_counters_req {
@@ -70,10 +70,10 @@ struct ocf_stats_req {
  */
 struct ocf_stats_rw {
 	/** Read errors */
-	uint32_t read;
+	uint64_t read;
 
 	/** Write errors */
-	uint32_t write;
+	uint64_t write;
 };
 
 struct ocf_stats_latency {
@@ -160,10 +160,10 @@ struct ocf_stats_core_debug {
  */
 struct ocf_stats_core {
 	/** Number of cache lines allocated in the cache for this core */
-	uint32_t cache_occupancy;
+	ocf_cache_line_t cache_occupancy;
 
 	/** Number of dirty cache lines allocated in the cache for this core */
-	uint32_t dirty;
+	ocf_cache_line_t dirty;
 
 	/** Read requests statistics */
 	struct ocf_stats_req read_reqs;

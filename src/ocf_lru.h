@@ -31,7 +31,7 @@ void ocf_lru_clean(ocf_cache_t cache, struct ocf_user_part *user_part,
 void ocf_lru_repart(ocf_cache_t cache, ocf_cache_line_t cline,
 		struct ocf_part *src_upart, struct ocf_part *dst_upart);
 void ocf_lru_add_free(ocf_cache_t cache, ocf_cache_line_t cline);
-uint32_t ocf_lru_num_free(ocf_cache_t cache);
+ocf_cache_line_t ocf_lru_num_free(ocf_cache_t cache);
 struct ocf_lru_list *ocf_lru_get_list(struct ocf_part *part,
 		uint32_t lru_idx, bool clean);
 void ocf_lru_remove_locked(ocf_cache_t cache, struct ocf_lru_list *list,

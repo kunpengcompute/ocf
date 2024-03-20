@@ -79,11 +79,11 @@ void ocf_alock_mark_index_locked(struct ocf_alock *alock,
 
 bool ocf_alock_lock_one_wr(struct ocf_alock *alock,
 		const ocf_cache_line_t entry, ocf_req_async_lock_cb cmpl,
-		void *req, uint32_t idx);
+		void *req, ocf_cache_line_t idx);
 
 bool ocf_alock_lock_one_rd(struct ocf_alock *alock,
 		const ocf_cache_line_t entry, ocf_req_async_lock_cb cmpl,
-		void *req, uint32_t idx);
+		void *req, ocf_cache_line_t idx);
 
 void ocf_alock_waitlist_remove_entry(struct ocf_alock *alock,
 	struct ocf_request *req, ocf_cache_line_t entry, int i, int rw);

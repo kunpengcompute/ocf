@@ -333,7 +333,7 @@ static void metadata_io_io_end(struct metadata_io_request *m_req, int error)
 			metadata_io_req_drain(m_req);
 	}
 
-	OCF_DEBUG_PARAM(cache, "Page = %u", m_req->page);
+	OCF_DEBUG_PARAM(cache, "Page = %lu", m_req->page);
 
 	if (a_req->mio_conc)
 		ocf_mio_async_unlock(a_req->mio_conc, m_req);
@@ -354,12 +354,12 @@ void metadata_io_req_end(struct metadata_io_request *m_req)
 	ctx_data_free(cache->owner, m_req->data);
 }
 
-static uint32_t metadata_io_max_page(ocf_cache_t cache)
+static uint64_t metadata_io_max_page(ocf_cache_t cache)
 {
-	uint32_t volume_max_io_pages = ocf_volume_get_max_io_size(
+	uint64_t volume_max_io_pages = ocf_volume_get_max_io_size(
 			&cache->device->volume) / PAGE_SIZE;
 	struct metadata_io_request *m_req;
-	uint32_t request_map_capacity_pages = sizeof(m_req->alock_status) * 8;
+	uint64_t request_map_capacity_pages = sizeof(m_req->alock_status) * 8;
 
 	return OCF_MIN(volume_max_io_pages, request_map_capacity_pages);
 }
@@ -367,7 +367,7 @@ static uint32_t metadata_io_max_page(ocf_cache_t cache)
 static void metadata_io_req_advance(struct metadata_io_request *m_req)
 {
 	struct metadata_io_request_asynch *a_req = m_req->asynch;
-	uint32_t max_count = metadata_io_max_page(m_req->cache);
+	uint64_t max_count = metadata_io_max_page(m_req->cache);
 	uint32_t curr;
 
 	if (a_req->error) {

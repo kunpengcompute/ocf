@@ -523,8 +523,8 @@ static void _ocf_cleaner_core_io_for_dirty_range(struct ocf_request *req,
 	ocf_core_stats_core_block_update(core, part_id, OCF_WRITE,
 			SECTORS_TO_BYTES(end - begin));
 
-	OCF_DEBUG_PARAM(req->cache, "Core write, line = %llu, "
-			"sector = %llu, count = %llu", iter->core_line, begin,
+	OCF_DEBUG_PARAM(req->cache, "Core write, line = %lu, "
+			"sector = %lu, count = %lu", iter->core_line, begin,
 			end - begin);
 
 	/* Increase IO counter to be processed */
@@ -681,7 +681,7 @@ static int _ocf_cleaner_fire_cache(struct ocf_request *req)
 		if (iter->status == LOOKUP_MISS)
 			continue;
 
-		OCF_DEBUG_PARAM(req->cache, "Cache read, line =  %u",
+		OCF_DEBUG_PARAM(req->cache, "Cache read, line =  %lu",
 				iter->coll_idx);
 
 		addr = iter->coll_idx;

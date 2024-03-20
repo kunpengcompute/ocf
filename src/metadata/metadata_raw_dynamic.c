@@ -75,7 +75,7 @@ struct _raw_ctrl {
 };
 
 static void *_raw_dynamic_get_item(ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, uint32_t entry)
+		struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	void *new = NULL;
 	struct _raw_ctrl *ctrl = (struct _raw_ctrl *)raw->priv;
@@ -221,7 +221,7 @@ size_t raw_dynamic_size_of(ocf_cache_t cache,
 /*
  * RAW DYNAMIC Implementation - Size on SSD
  */
-uint32_t raw_dynamic_size_on_ssd(struct ocf_metadata_raw *raw)
+uint64_t raw_dynamic_size_on_ssd(struct ocf_metadata_raw *raw)
 {
 	size_t flapping_factor = raw->flapping ? 2 : 1;
 
@@ -231,7 +231,7 @@ uint32_t raw_dynamic_size_on_ssd(struct ocf_metadata_raw *raw)
 /*
  * RAM DYNAMIC Implementation - Checksum
  */
-uint32_t raw_dynamic_checksum(ocf_cache_t cache,
+uint64_t raw_dynamic_checksum(ocf_cache_t cache,
 		struct ocf_metadata_raw *raw)
 {
 	struct _raw_ctrl *ctrl = (struct _raw_ctrl *)raw->priv;
@@ -251,7 +251,7 @@ uint32_t raw_dynamic_checksum(ocf_cache_t cache,
 /*
  * RAM DYNAMIC Implementation - Entry page number
  */
-uint32_t raw_dynamic_page(struct ocf_metadata_raw *raw, uint32_t entry)
+uint64_t raw_dynamic_page(struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	ENV_BUG_ON(entry >= raw->entries);
 
@@ -262,7 +262,7 @@ uint32_t raw_dynamic_page(struct ocf_metadata_raw *raw, uint32_t entry)
 * RAM DYNAMIC Implementation - access
 */
 void *raw_dynamic_access(ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, uint32_t entry)
+		struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	return _raw_dynamic_get_item(cache, raw, entry);
 }
