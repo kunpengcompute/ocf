@@ -703,6 +703,16 @@ int ocf_mngt_remove_core(ocf_core_t core,
 		ocf_mngt_cache_remove_core_end_t cmpl, void *priv);
 
 /**
+ * @brief Remove core from cache instance but skip unmapping, used for fast exit
+ *
+ * @param[in] core Core handle
+ * @param[in] cmpl Completion callback
+ * @param[in] priv Completion callback context
+ */
+int ocf_mngt_remove_core_skip_unmapping(ocf_core_t core,
+		ocf_mngt_cache_remove_core_end_t cmpl, void *priv);
+
+/**
  * @brief Completion callback of remove corelines operation
  *
  * @param[in] cache Cache handle
