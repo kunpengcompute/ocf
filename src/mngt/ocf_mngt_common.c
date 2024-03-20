@@ -29,6 +29,8 @@ void cache_mngt_core_deinit(ocf_core_t core)
 		ocf_volume_deinit(&core->volume);
 
 	core->opened = false;
+	/* deinit means remove core done */
+	env_atomic_set(&core->deleting, 0);
 }
 
 /* Remove core from cleaning policy */
