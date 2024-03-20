@@ -100,7 +100,7 @@ void cache_mngt_core_deinit_attached_meta(ocf_core_t core)
 		if (curr_cline == cache->device->collision_table_entries)
 			hash++;
 		else
-			env_msleep(100);
+			env_msleep(10);
 	}
 }
 
