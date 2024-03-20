@@ -22,7 +22,9 @@ extern "C" {
  *
  * @param[in] cfg: ocf configuration parameters
  *
- * @retval STATE_SUCCESS when success, othewise STATE_FAIL
+ * @retval STATE_SUCCESS when success
+ *         STATE_PRRAM_INVALID when the value of the internal parameter ocf_config is invalid
+ *         STATE_FAIL when ocf fails to be initialized
  */
 int ocf_init(struct ocf_config *cfg);
 
@@ -38,7 +40,8 @@ void ocf_exit();
  *
  * @retval STATE_SUCCESS when the core device is added successfully
  *         STATE_CORE_EXIST when the core device corresponding to the slot already exists
- *         othewise STATE_FAIL
+ *         STATE_MEM_ALLOC_ERR when memory alloc fail
+ *         STATE_FAIL when ocf is not initialized or core device fails to be initialized
  */
 int ocf_add_core(uint32_t slot_id);
 
@@ -48,8 +51,9 @@ int ocf_add_core(uint32_t slot_id);
  * @param[in] slot_id: unique id of a slot
  *
  * @retval STATE_SUCCESS when the core device is removed successfully
- *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         othewise STATE_FAIL
+ *         STATE_CORE_CREATING when the core device corresponding to the slot is being created
+ *         STATE_MEM_ALLOC_ERR when memory alloc fail
+ *         STATE_FAIL when ocf is not initialized
  */
 int ocf_remove_core(uint32_t slot_id);
 
@@ -60,7 +64,8 @@ int ocf_remove_core(uint32_t slot_id);
  * @param[in] region_id: unique id of a region
  *
  * @retval STATE_SUCCESS when remove region successfully
- *         othewise STATE_FAIL or STATE_MEM_ALLOC_ERR
+ *         STATE_MEM_ALLOC_ERR when memory alloc fail
+ *         STATE_FAIL when ocf is not initialized
  */
 int ocf_remove_region(uint32_t slot_id, uint32_t region_id);
 
@@ -71,7 +76,11 @@ int ocf_remove_region(uint32_t slot_id, uint32_t region_id);
  *
  * @retval STATE_SUCCESS when the invalid request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         othewise STATE_FAIL
+ *         STATE_PRRAM_INVALID when the value of the internal parameter req_context is invalid
+ *         STATE_MEM_ALLOC_ERR when memory alloc fail
+ *         STATE_FAIL when ocf is not initialized
+ *
+ * @note   if the retval is not STATE_SUCCESS, the callback function in req_context is not invoked
  */
 int ocf_invalid(struct req_context *ctx);
 
@@ -82,7 +91,11 @@ int ocf_invalid(struct req_context *ctx);
  *
  * @retval STATE_SUCCESS when the lookup request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         othewise STATE_FAIL
+ *         STATE_PRRAM_INVALID when the value of the internal parameter req_context is invalid
+ *         STATE_MEM_ALLOC_ERR when memory alloc fail
+ *         STATE_FAIL when ocf is not initialized
+ *
+ * @note   if the retval is not STATE_SUCCESS, the callback function in req_context is not invoked
  */
 int ocf_lookup(struct req_context *ctx);
 
@@ -93,7 +106,11 @@ int ocf_lookup(struct req_context *ctx);
  *
  * @retval STATE_SUCCESS when the read request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         othewise STATE_FAIL
+ *         STATE_PRRAM_INVALID when the value of the internal parameter req_context is invalid
+ *         STATE_MEM_ALLOC_ERR when memory alloc fail
+ *         STATE_FAIL when ocf is not initialized
+ *
+ * @note   if the retval is not STATE_SUCCESS, the callback function in req_context is not invoked
  */
 int ocf_get(struct req_context *ctx);
 
@@ -104,7 +121,11 @@ int ocf_get(struct req_context *ctx);
  *
  * @retval STATE_SUCCESS when the write request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         othewise STATE_FAIL
+ *         STATE_PRRAM_INVALID when the value of the internal parameter req_context is invalid
+ *         STATE_MEM_ALLOC_ERR when memory alloc fail
+ *         STATE_FAIL when ocf is not initialized
+ *
+ * @note   if the retval is not STATE_SUCCESS, the callback function in req_context is not invoked
  */
 int ocf_put(struct req_context *ctx);
 

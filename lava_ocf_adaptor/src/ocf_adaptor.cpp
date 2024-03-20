@@ -581,9 +581,9 @@ int ocf_remove_core(uint32_t slot_id)
 	ocf_core_id_t core_id;
 	env_rwlock_write_lock(&table_lock);
 	if (slot_info_table.find(slot_id) == slot_info_table.end()) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "slot(%u) core is not exists\n", slot_id);
+		ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core is not exists\n", slot_id);
 		env_rwlock_write_unlock(&table_lock);
-		return STATE_CORE_NOT_EXIST;
+		return STATE_SUCCESS;
 	}
 	info = slot_info_table[slot_id];
 	if (!info->core) {
@@ -645,6 +645,7 @@ int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 	region_map.erase(region_id);
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
+	ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) remove region_id(%u)-remap_id(%lu)\n", slot_id, region_id, remap_id);
 	return STATE_SUCCESS;
 }
 
