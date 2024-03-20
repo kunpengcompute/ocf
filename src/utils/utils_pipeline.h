@@ -163,6 +163,8 @@ void ocf_pipeline_destroy(ocf_pipeline_t pipeline);
 
 void ocf_pipeline_next(ocf_pipeline_t pipeline);
 
+void ocf_pipeline_stay_back(ocf_pipeline_t pipeline);
+
 void ocf_pipeline_finish(ocf_pipeline_t pipeline, int error);
 
 #define OCF_PL_NEXT_RET(pipeline) ({ \
