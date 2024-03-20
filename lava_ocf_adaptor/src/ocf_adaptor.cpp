@@ -172,7 +172,7 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 
 	/* Cache deivce (volume) configuration */
 	type = ocf_ctx_get_volume_type(ctx, LAVA_VOL_TYPE);
-	ret = ocf_uuid_set_str(&uuid, "cache");
+	ret = ocf_uuid_set_str(&uuid, (char *)"cache");
 	if (ret)
 		goto err_sem;
 
