@@ -148,7 +148,14 @@ int ocf_poll(uint32_t io_worker_id, int max_num);
 struct ocf_dump_info *ocf_dump_cache_core_info();
 
 /**
- * @brief dump cache statistic information
+ * @brief dump basic cache information and the mapping between caches and cores device
+ *
+ * @retval NULL when ocf_dump_info malloc fail, otherwise ocf_dump_info pointer
+ */
+struct ocf_dump_info *ocf_dump_region_info();
+
+/**
+ * @brief dump the region that has written data to the ocf.
  *
  * @retval NULL when ocf_dump_info memory malloc fail, otherwise ocf_dump_info pointer
  */
