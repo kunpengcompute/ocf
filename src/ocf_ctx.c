@@ -297,7 +297,7 @@ static int dump_visitor(ocf_cache_t cache, void *cntx)
 	struct ocf_cache_info info;
 	ocf_core_t core;
 	ocf_core_id_t core_id;
-	
+
 	if(ocf_cache_get_info(cache, &info)) {
 		return -1;
 	}

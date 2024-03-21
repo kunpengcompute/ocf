@@ -5,6 +5,8 @@
  */
 
 #include <syslog.h>
+#include <algorithm>
+#include <vector>
 #include <unordered_map>
 #include "completion_queue.h"
 #include "mngt_queue_thread.h"
@@ -616,7 +618,7 @@ int ocf_remove_core(uint32_t slot_id)
 	} else {
 		ret = ocf_mngt_remove_core(core, single_core_remove_complete, NULL);
 	}
-	
+
 	if (ret) {
 		env_rwlock_write_unlock(&table_lock);
 		return STATE_MEM_ALLOC_ERR;
@@ -917,6 +919,62 @@ struct ocf_dump_info *ocf_dump_cache_core_info()
 	return info;
 }
 
+struct node {
+	uint32_t slot_id;
+	uint32_t region_id;
+	uint32_t remap_id;
+	bool operator <(const node &r) {
+		if (slot_id != r.slot_id) {
+			return slot_id < r.slot_id;
+		}
+
+		return region_id < r.region_id;
+	}
+};
+
+struct ocf_dump_info *ocf_dump_region_info()
+{
+	struct ocf_dump_info *info = (struct ocf_dump_info *)env_zalloc(sizeof(struct ocf_dump_info) + sizeof(void *), 0);
+	if (!info) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "dump info memory malloc fail\n");
+		return NULL;
+	}
+
+	struct strbuf *b = new_strbuf();
+	if (!b) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "dump strbuf memory malloc fail\n");
+		env_free(info);
+		return NULL;
+	}
+
+	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
+	env_rwlock_write_lock(&g_adaptor.table_lock);
+	region_remap_table = g_adaptor.region_remap_table;
+	env_rwlock_write_unlock(&g_adaptor.table_lock);
+
+	vector<node> v;
+	for (auto &it: region_remap_table) {
+		uint32_t slot_id = it.first;
+		for (auto &kv: it.second) {
+			v.push_back({slot_id, kv.first, kv.second});
+		}
+	}
+	sort(v.begin(), v.end());
+
+	strbuf_write_str(b, "<slot_id>   <region_id>   <remap_id>\n");
+	for (auto &x: v) {
+		strbuf_write_format_str(b, "%-12u%-14u%u\n", x.slot_id, x.region_id, x.remap_id);
+	}
+	strbuf_write_char(b, '\n');
+
+	info->buf = b->buf;
+	info->len = b->cur;
+	struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
+	*tail = b;
+
+	return info;
+}
+
 struct ocf_dump_info *ocf_dump_cache_stats()
 {
 	struct ocf_dump_info *info = (struct ocf_dump_info *)env_zalloc(sizeof(struct ocf_dump_info) + sizeof(void *), 0);
@@ -942,7 +1000,9 @@ struct ocf_dump_info *ocf_dump_cache_stats()
 
 void ocf_release_dump_info(struct ocf_dump_info *info)
 {
-	struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
-	delete_strbuf(*tail);
-	env_free(info);
+	if (info) {
+		struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
+		delete_strbuf(*tail);
+		env_free(info);
+	}
 }

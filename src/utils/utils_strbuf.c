@@ -32,9 +32,11 @@ struct strbuf* new_strbuf()
 
 void delete_strbuf(struct strbuf *b)
 {
-	OCF_REALLOC_DEINIT(&(b->buf), &(b->len));
-	OCF_REALLOC_DEINIT(&(b->format_buf), &(b->format_buf_len));
-	env_free(b);
+	if (b) {
+		OCF_REALLOC_DEINIT(&(b->buf), &(b->len));
+		OCF_REALLOC_DEINIT(&(b->format_buf), &(b->format_buf_len));
+		env_free(b);
+	}
 }
 
 int strbuf_write_format_str(struct strbuf *b, const char *format, ...)
