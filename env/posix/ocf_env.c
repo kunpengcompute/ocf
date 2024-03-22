@@ -41,7 +41,7 @@ void *env_allocator_new(env_allocator *allocator)
 
 	item = malloc(allocator->item_size);
 
-	if (!item) {
+	if (unlikely(!item)) {
 		return NULL;
 	}
 

@@ -102,7 +102,7 @@ static void* run(void *arg)
 	uint32_t pending_io = 0;
 	qt->stop = false;
 
-	while (!qt->stop) {
+	while (likely(!qt->stop)) {
 		for (i = 0; i < queue_num; ++i) {
 			pending_io += ocf_queue_pending_io(io_queues[i]);
 		}
