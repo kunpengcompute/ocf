@@ -29,6 +29,8 @@ void cache_mngt_core_deinit(ocf_core_t core)
 		ocf_volume_deinit(&core->volume);
 
 	core->opened = false;
+	/* deinit means remove core done */
+	env_atomic_set(&core->deleting, 0);
 }
 
 /* Remove core from cleaning policy */
@@ -98,7 +100,7 @@ void cache_mngt_core_deinit_attached_meta(ocf_core_t core)
 		if (curr_cline == cache->device->collision_table_entries)
 			hash++;
 		else
-			env_msleep(100);
+			env_msleep(10);
 	}
 }
 

@@ -86,6 +86,7 @@ struct ocf_core {
 	struct ocf_seq_cutoff *seq_cutoff;
 
 	env_atomic flushed;
+	env_atomic deleting;
 
 	/* This bit means that core volume is initialized */
 	uint32_t has_volume : 1;

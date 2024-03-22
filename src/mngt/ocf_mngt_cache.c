@@ -323,6 +323,7 @@ static void _ocf_mngt_deinit_added_cores(
 		env_free(core->counters);
 		core->counters = NULL;
 		core->added = false;
+		env_atomic_set(&core->deleting, 0);
 	}
 }
 
@@ -392,6 +393,7 @@ static void _ocf_mngt_load_add_cores(ocf_pipeline_t pipeline,
 
 		}
 		core->added = true;
+		env_atomic_set(&core->deleting, 0);
 		core->volume.cache = cache;
 
 		if (ocf_mngt_core_init_front_volume(core))

@@ -151,6 +151,7 @@ static void _ocf_mngt_cache_add_core_handle_error(
 		core->conf_meta->valid = false;
 		core->added = false;
 		core->opened = false;
+		env_atomic_set(&core->deleting, 0);
 
 		env_free(core->counters);
 		core->counters = NULL;
@@ -324,6 +325,7 @@ static void ocf_mngt_cache_try_add_core_insert(ocf_pipeline_t pipeline,
 	}
 
 	core->opened = true;
+	env_atomic_set(&core->deleting, 0);
 
 	if (!(--cache->ocf_core_inactive_count))
 		env_bit_clear(ocf_cache_state_incomplete, &cache->cache_state);
@@ -481,6 +483,7 @@ static void ocf_mngt_cache_add_core_insert(ocf_pipeline_t pipeline,
 	core->conf_meta->valid = true;
 	core->added = true;
 	core->opened = true;
+	env_atomic_set(&core->deleting, 0);
 
 	/* Set default cache parameters for sequential */
 	env_atomic_set(&core->conf_meta->seq_cutoff_policy,
@@ -627,7 +630,8 @@ struct ocf_mngt_cache_remove_corelines_context {
 	ocf_core_t core;
 	uint64_t addr;
 	uint64_t bytes;
-	struct timeval time_stamp;
+	struct timeval time_start;
+	struct timeval time_end;
 	uint64_t corelines_removed;
 };
 
@@ -637,20 +641,19 @@ static void ocf_mngt_cache_remove_corelines_finish(ocf_pipeline_t pipeline,
 	struct ocf_mngt_cache_remove_corelines_context *context = priv;
 	ocf_cache_t cache = context->cache;
 	uint64_t corelines = ocf_cache_bytes_2_lines(cache, context->bytes);
-	struct timeval end;
 	if (!error) {
 		ocf_cache_log(cache, log_info, 
-			"%ld corelines of addr: %ld bytes: %ld (%ld lines) successfully removed. ",
+			"%ld corelines of addr: %ld bytes: %ld (%ld lines) successfully removed.\n",
 			context->corelines_removed, context->addr, context->bytes, corelines);
+
+		uint64_t us_time = get_us_time_cost(&context->time_start, &context->time_end);
+		ocf_cache_log(cache, log_info, "It cost %.3f sec \n", us_time * 0.000001);
+
 	} else {
 		ocf_cache_log(cache, log_err, 
-			"Removing %ld corelines of addr: %ld bytes: %ld (%ld lines)	failed. ",
+			"Removing %ld corelines of addr: %ld bytes: %ld (%ld lines)	failed.\n",
 			context->corelines_removed, context->addr, context->bytes, corelines);
 	}
-	gettimeofday(&end, NULL);
-
-	uint64_t us_time = get_us_time_cost(&context->time_stamp, &end);
-	ocf_cache_log(cache, log_info, "It cost %.3f sec \n", us_time * 0.000001);
 
 	context->cmpl(cache, context->priv, error);
 
@@ -666,10 +669,12 @@ static void ocf_mngt_cache_remove_corelines_mapping(ocf_pipeline_t pipeline,
 
 	if (!ocf_cache_is_device_attached(cache))
 		OCF_PL_NEXT_RET(pipeline);
-
+	
+	gettimeofday(&context->time_start, NULL);
 	context->corelines_removed = _ocf_mngt_cache_remove_corelines_mapping(
 			core, context->addr, context->bytes);
-
+	gettimeofday(&context->time_end, NULL);
+	
 	ocf_pipeline_next(pipeline);
 }
 
@@ -718,7 +723,6 @@ int ocf_mngt_cache_remove_corelines(ocf_core_t core, uint64_t addr, uint64_t byt
 	context->core = core;
 	context->addr = addr;
 	context->bytes = bytes;
-	gettimeofday(&context->time_stamp, NULL);
 
 	ocf_pipeline_next(pipeline);
 	
@@ -732,7 +736,8 @@ struct ocf_mngt_cache_remove_core_context {
 	ocf_cache_t cache;
 	ocf_core_t core;
 	const char *core_name;
-	struct timeval time_stamp;
+	struct timeval time_start;
+	struct timeval time_end;
 	struct ocf_cleaner_wait_context cleaner_wait;
 };
 
@@ -742,19 +747,17 @@ static void ocf_mngt_cache_remove_core_finish(ocf_pipeline_t pipeline,
 	struct ocf_mngt_cache_remove_core_context *context = priv;
 	ocf_cache_t cache = context->cache;
 
-	struct timeval end;
-
 	if (!error) {
-		ocf_cache_log(cache, log_info, "Core %s successfully removed\n",
+		ocf_cache_log(cache, log_info, "Core %s successfully removed.\n",
 				context->core_name);
+		
+		uint64_t us_time = get_us_time_cost(&context->time_start, &context->time_end);
+		
+		ocf_cache_log(cache, log_info, "It cost %.3f sec.\n", us_time * 0.000001);
 	} else {
-		ocf_cache_log(cache, log_err, "Removing core %s failed\n",
+		ocf_cache_log(cache, log_err, "Removing core %s failed.\n",
 				context->core_name);
 	}
-
-	gettimeofday(&end, NULL);
-	uint64_t us_time = get_us_time_cost(&context->time_stamp, &end);
-	ocf_cache_log(cache, log_info, "It cost %.3f sec \n", us_time * 0.000001);
 
 	ocf_cleaner_refcnt_unfreeze(cache);
 
@@ -778,11 +781,15 @@ static void _ocf_mngt_cache_remove_core_mapping(ocf_pipeline_t pipeline,
 	struct ocf_mngt_cache_remove_core_context *context = priv;
 	ocf_cache_t cache = context->cache;
 	ocf_core_t core = context->core;
-
+	
 	if (!ocf_cache_is_device_attached(cache))
 		OCF_PL_NEXT_RET(pipeline);
 
+	gettimeofday(&context->time_start, NULL);
+
 	cache_mngt_core_deinit_attached_meta(core);
+
+	gettimeofday(&context->time_end, NULL);
 
 	if (env_atomic_read(&core->runtime_meta->dirty_clines) == 0)
 		OCF_PL_NEXT_RET(pipeline);
@@ -854,6 +861,37 @@ struct ocf_pipeline_properties ocf_mngt_cache_remove_core_pipeline_props = {
 	},
 };
 
+static void ocf_mngt_cache_detach_core_finish(ocf_pipeline_t pipeline,
+		void *priv, int error)
+{
+	struct ocf_mngt_cache_remove_core_context *context = priv;
+	ocf_cache_t cache = context->cache;
+
+	if (!error) {
+		ocf_cache_log(cache, log_info, "Core %s successfully detached\n",
+				context->core_name);
+	} else {
+		ocf_cache_log(cache, log_err, "Detaching core %s failed\n",
+				context->core_name);
+	}
+
+	ocf_cleaner_refcnt_unfreeze(context->cache);
+
+	context->cmpl(context->priv, error);
+
+	ocf_pipeline_destroy(context->pipeline);
+}
+
+struct ocf_pipeline_properties ocf_mngt_cache_remove_core_skip_unmapping_pipeline_props = {
+	.priv_size = sizeof(struct ocf_mngt_cache_remove_core_context),
+	.finish = ocf_mngt_cache_detach_core_finish,
+	.steps = {
+		OCF_PL_STEP(ocf_mngt_cache_remove_core_wait_cleaning),
+		OCF_PL_STEP(_ocf_mngt_cache_remove_core),
+		OCF_PL_STEP_TERMINATOR(),
+	},
+};
+
 void ocf_mngt_cache_remove_core(ocf_core_t core,
 		ocf_mngt_cache_remove_core_end_t cmpl, void *priv)
 {
@@ -885,7 +923,7 @@ void ocf_mngt_cache_remove_core(ocf_core_t core,
 	context->cache = cache;
 	context->core = core;
 	context->core_name = ocf_core_get_name(core);
-	gettimeofday(&context->time_stamp, NULL);
+	env_atomic_set(&core->deleting, 1);
 
 	ocf_pipeline_next(pipeline);
 }
@@ -921,13 +959,50 @@ int ocf_mngt_remove_core(ocf_core_t core,
 	context->cache = cache;
 	context->core = core;
 	context->core_name = ocf_core_get_name(core);
-	gettimeofday(&context->time_stamp, NULL);
+	env_atomic_set(&core->deleting, 1);
 
 	ocf_pipeline_next(pipeline);
 
 	return 0;
 }
 
+int ocf_mngt_remove_core_skip_unmapping(ocf_core_t core,
+		ocf_mngt_cache_remove_core_end_t cmpl, void *priv)
+{
+	struct ocf_mngt_cache_remove_core_context *context;
+	ocf_pipeline_t pipeline;
+	ocf_cache_t cache;
+	int result;
+
+	OCF_CHECK_NULL(core);
+
+	cache = ocf_core_get_cache(core);
+
+	if (ocf_cache_is_standby(cache))
+		return -OCF_ERR_CACHE_STANDBY;
+
+	if (!cache->mngt_queue)
+		return -OCF_ERR_INVAL;
+
+	result = ocf_pipeline_create(&pipeline, cache,
+			&ocf_mngt_cache_remove_core_skip_unmapping_pipeline_props);
+	if (result)
+		return result;
+
+	context = ocf_pipeline_get_priv(pipeline);
+
+	context->cmpl = cmpl;
+	context->priv = priv;
+	context->pipeline = pipeline;
+	context->cache = cache;
+	context->core = core;
+	context->core_name = ocf_core_get_name(core);
+	env_atomic_set(&core->deleting, 1);
+
+	ocf_pipeline_stay_back(pipeline);
+
+	return 0;
+}
 struct ocf_mngt_cache_detach_core_context {
 	ocf_mngt_cache_detach_core_end_t cmpl;
 	void *priv;
@@ -954,32 +1029,12 @@ static void _ocf_mngt_cache_detach_core(ocf_pipeline_t pipeline,
 	ocf_volume_deinit(&core->front_volume);
 	ocf_volume_close(&core->volume);
 	core->opened = false;
+	env_atomic_set(&core->deleting, 0);
 
 	cache->ocf_core_inactive_count++;
 	env_bit_set(ocf_cache_state_incomplete,
 			&cache->cache_state);
 	ocf_pipeline_next(pipeline);
-}
-
-static void ocf_mngt_cache_detach_core_finish(ocf_pipeline_t pipeline,
-		void *priv, int error)
-{
-	struct ocf_mngt_cache_remove_core_context *context = priv;
-	ocf_cache_t cache = context->cache;
-
-	if (!error) {
-		ocf_cache_log(cache, log_info, "Core %s successfully detached\n",
-				context->core_name);
-	} else {
-		ocf_cache_log(cache, log_err, "Detaching core %s failed\n",
-				context->core_name);
-	}
-
-	ocf_cleaner_refcnt_unfreeze(context->cache);
-
-	context->cmpl(context->priv, error);
-
-	ocf_pipeline_destroy(context->pipeline);
 }
 
 static void ocf_mngt_cache_detach_core_wait_cleaning_complete(void *priv)

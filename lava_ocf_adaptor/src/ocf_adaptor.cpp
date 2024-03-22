@@ -5,6 +5,8 @@
  */
 
 #include <syslog.h>
+#include <algorithm>
+#include <vector>
 #include <unordered_map>
 #include "check_queue_thread.h"
 #include "completion_queue.h"
@@ -29,6 +31,8 @@ using namespace std;
 #define DELETING     2
 
 extern "C" ocf_core_id_t ocf_core_get_id(ocf_core_t core);
+
+struct ocf_config g_cfg;
 
 /*
  * Queue ops providing interface for running queue thread in asynchronous
@@ -58,10 +62,11 @@ struct ocf_adaptor_context {
 	 * if it exists, it needs to be locked at the slot granularity
 	 */
 	unordered_map<uint32_t, slot_info_t> slot_info_table;
-	unordered_map<uint32_t, unordered_map<uint32_t, int>> region_remap_table;
+	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
 } g_adaptor;
 
 struct cache_priv {
+	uint16_t slot_core_id;
 	ocf_queue_t mngt_queue;
 	ocf_queue_t io_queues[MAX_QUEUE_NUM];
 	check_queue_t check_queues[MAX_QUEUE_NUM];
@@ -171,7 +176,7 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 
 	/* Cache deivce (volume) configuration */
 	type = ocf_ctx_get_volume_type(ctx, LAVA_VOL_TYPE);
-	ret = ocf_uuid_set_str(&uuid, "cache");
+	ret = ocf_uuid_set_str(&uuid, (char *)"cache");
 	if (ret)
 		goto err_sem;
 
@@ -196,6 +201,7 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 		ret = -ENOMEM;
 		goto err_vol;
 	}
+	cache_priv->slot_core_id = 0;
 	cache_priv->queue_num = cfg->io_worker_num;
 
 	/* Start cache */
@@ -309,6 +315,7 @@ static int initialize_core(ocf_cache_t cache, ocf_core_t *core, uint32_t slot_id
 {
 	struct ocf_mngt_core_config core_cfg = { };
 	struct add_core_context context;
+	struct cache_priv *priv = (struct cache_priv *)ocf_cache_get_priv(cache);
 	int ret;
 
 	/* Initialize completion semaphore */
@@ -325,7 +332,7 @@ static int initialize_core(ocf_cache_t cache, ocf_core_t *core, uint32_t slot_id
 
 	/* Core configuration */
 	ocf_mngt_core_config_set_default(&core_cfg);
-	sprintf(core_cfg.name, "slot%u", slot_id);
+	sprintf(core_cfg.name, "slot%u-%u", slot_id, ++(priv->slot_core_id));
 	core_cfg.volume_type = CORE_VOL_TYPE;
 	ret = ocf_uuid_set_str(&core_cfg.uuid, core_cfg.name);
 	if (ret)
@@ -334,6 +341,9 @@ static int initialize_core(ocf_cache_t cache, ocf_core_t *core, uint32_t slot_id
 	/* Add core to cache */
 	ocf_mngt_cache_add_core(cache, &core_cfg, add_core_complete, &context);
 	sem_wait(&context.sem);
+
+	if (priv->slot_core_id == OCF_CORE_MAX)
+		priv->slot_core_id = 0;
 
 err_sem:
 	sem_destroy(&context.sem);
@@ -436,6 +446,7 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 
 int ocf_init(struct ocf_config *cfg)
 {
+	g_cfg = *cfg;
 	update_page_size();
 
 	if (g_adaptor.state != NONE) {
@@ -485,7 +496,7 @@ void ocf_exit()
 	ctx.ret = &ret;
 	sem_init(&ctx.sem, 0, 0);
 	unordered_map<uint32_t, slot_info_t> slot_info_table;
-	unordered_map<uint32_t, unordered_map<uint32_t, int>> region_remap_table;
+	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
 
 	/* clear slot hash table */
 	env_rwlock_write_lock(&g_adaptor.table_lock);
@@ -496,7 +507,7 @@ void ocf_exit()
 	/* Remove core from cache */
 	for (auto it: slot_info_table) {
 		slot_info_t info = it.second;
-		ocf_mngt_cache_remove_core(info->core, core_remove_complete, &ctx);
+		ocf_mngt_remove_core_skip_unmapping(info->core, core_remove_complete, &ctx);
 		env_free(info);
 	}
 	for (uint32_t i = 0; i < slot_info_table.size(); ++i) {
@@ -580,7 +591,7 @@ int ocf_add_core(uint32_t slot_id)
 
 	env_rwlock_write_lock(&table_lock);
 	info->core = core;
-	region_remap_table[slot_id] = unordered_map<uint32_t, int>();
+	region_remap_table[slot_id] = unordered_map<uint32_t, uint32_t>();
 	env_rwlock_write_unlock(&table_lock);
 	ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core(%u) add success\n", slot_id, ocf_core_get_id(core));
 	return STATE_SUCCESS;
@@ -601,9 +612,9 @@ int ocf_remove_core(uint32_t slot_id)
 	ocf_core_id_t core_id;
 	env_rwlock_write_lock(&table_lock);
 	if (slot_info_table.find(slot_id) == slot_info_table.end()) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "slot(%u) core is not exists\n", slot_id);
+		ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core is not exists\n", slot_id);
 		env_rwlock_write_unlock(&table_lock);
-		return STATE_CORE_NOT_EXIST;
+		return STATE_SUCCESS;
 	}
 	info = slot_info_table[slot_id];
 	if (!info->core) {
@@ -615,7 +626,19 @@ int ocf_remove_core(uint32_t slot_id)
 	/* remove core from cache */
 	core = info->core;
 	core_id = ocf_core_get_id(core);
-	int ret = ocf_mngt_remove_core(core, single_core_remove_complete, NULL);
+
+	int ret = 0;
+	auto &region_map = region_remap_table[slot_id];
+
+	if (region_map.size() * REGION_SIZE < g_cfg.cache_capacity / 4) {
+		for (auto it = region_map.begin(); it != region_map.end(); it++) {
+			ocf_mngt_cache_remove_corelines(core, it->second * REGION_SIZE, REGION_SIZE, region_remove_complete, NULL);
+		}
+		ret = ocf_mngt_remove_core_skip_unmapping(core, single_core_remove_complete, NULL);
+	} else {
+		ret = ocf_mngt_remove_core(core, single_core_remove_complete, NULL);
+	}
+
 	if (ret) {
 		env_rwlock_write_unlock(&table_lock);
 		return STATE_MEM_ALLOC_ERR;
@@ -665,6 +688,7 @@ int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 	region_map.erase(region_id);
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
+	ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) remove region_id(%u)-remap_id(%lu)\n", slot_id, region_id, remap_id);
 	return STATE_SUCCESS;
 }
 
@@ -915,6 +939,62 @@ struct ocf_dump_info *ocf_dump_cache_core_info()
 	return info;
 }
 
+struct node {
+	uint32_t slot_id;
+	uint32_t region_id;
+	uint32_t remap_id;
+	bool operator <(const node &r) {
+		if (slot_id != r.slot_id) {
+			return slot_id < r.slot_id;
+		}
+
+		return region_id < r.region_id;
+	}
+};
+
+struct ocf_dump_info *ocf_dump_region_info()
+{
+	struct ocf_dump_info *info = (struct ocf_dump_info *)env_zalloc(sizeof(struct ocf_dump_info) + sizeof(void *), 0);
+	if (!info) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "dump info memory malloc fail\n");
+		return NULL;
+	}
+
+	struct strbuf *b = new_strbuf();
+	if (!b) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "dump strbuf memory malloc fail\n");
+		env_free(info);
+		return NULL;
+	}
+
+	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
+	env_rwlock_write_lock(&g_adaptor.table_lock);
+	region_remap_table = g_adaptor.region_remap_table;
+	env_rwlock_write_unlock(&g_adaptor.table_lock);
+
+	vector<node> v;
+	for (auto &it: region_remap_table) {
+		uint32_t slot_id = it.first;
+		for (auto &kv: it.second) {
+			v.push_back({slot_id, kv.first, kv.second});
+		}
+	}
+	sort(v.begin(), v.end());
+
+	strbuf_write_str(b, "<slot_id>   <region_id>   <remap_id>\n");
+	for (auto &x: v) {
+		strbuf_write_format_str(b, "%-12u%-14u%u\n", x.slot_id, x.region_id, x.remap_id);
+	}
+	strbuf_write_char(b, '\n');
+
+	info->buf = b->buf;
+	info->len = b->cur;
+	struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
+	*tail = b;
+
+	return info;
+}
+
 struct ocf_dump_info *ocf_dump_cache_stats()
 {
 	struct ocf_dump_info *info = (struct ocf_dump_info *)env_zalloc(sizeof(struct ocf_dump_info) + sizeof(void *), 0);
@@ -940,7 +1020,9 @@ struct ocf_dump_info *ocf_dump_cache_stats()
 
 void ocf_release_dump_info(struct ocf_dump_info *info)
 {
-	struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
-	delete_strbuf(*tail);
-	env_free(info);
+	if (info) {
+		struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
+		delete_strbuf(*tail);
+		env_free(info);
+	}
 }

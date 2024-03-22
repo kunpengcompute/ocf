@@ -134,6 +134,11 @@ void ocf_pipeline_next(ocf_pipeline_t pipeline)
 	ocf_engine_push_req_front(pipeline->req, false);
 }
 
+void ocf_pipeline_stay_back(ocf_pipeline_t pipeline)
+{
+	ocf_engine_push_req_back(pipeline->req, false);
+}
+
 void ocf_pipeline_finish(ocf_pipeline_t pipeline, int error)
 {
 	pipeline->finish = true;

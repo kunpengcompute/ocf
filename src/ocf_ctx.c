@@ -293,10 +293,11 @@ void ocf_ctx_put(ocf_ctx_t ctx)
 static int dump_visitor(ocf_cache_t cache, void *cntx)
 {
 	struct strbuf *buf = cntx;
+	int print_core_count = 0;
 	struct ocf_cache_info info;
 	ocf_core_t core;
 	ocf_core_id_t core_id;
-	
+
 	if(ocf_cache_get_info(cache, &info)) {
 		return -1;
 	}
@@ -315,11 +316,19 @@ static int dump_visitor(ocf_cache_t cache, void *cntx)
 
 	strbuf_write_str(buf, "+--------------+----------------------------------+\n");
 	for_each_core(cache, core, core_id) {
+		/* core that is closed or being deleted will not be displayed */
+		if (!core->opened || env_atomic_read(&core->deleting))
+			continue;
+		++print_core_count;
 		strbuf_write_format_str(buf, "| core name    | %-*.*s |\n",
 					OCF_CORE_NAME_SIZE, OCF_CORE_NAME_SIZE, ocf_core_get_name(core));
 
 		strbuf_write_str(buf, "+--------------+----------------------------------+\n");
 	}
+	/* print border when displayed as empty */
+	if (unlikely(print_core_count == 0))
+		strbuf_write_str(buf, "+--------------+----------------------------------+\n");
+
 	strbuf_write_char(buf, '\n');
 
 	return 0;
