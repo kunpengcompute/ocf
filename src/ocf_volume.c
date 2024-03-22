@@ -393,3 +393,14 @@ uint64_t ocf_volume_get_length(ocf_volume_t volume)
 
 	return volume->type->properties->ops.get_length(volume);
 }
+
+void ocf_volume_cache_recovery(ocf_volume_t volume)
+{
+	ENV_BUG_ON(!volume->type->properties->ops.cache_recovery);
+
+	if (!volume->opened) {
+		return;
+	}
+
+	volume->type->properties->ops.cache_recovery(volume);
+}

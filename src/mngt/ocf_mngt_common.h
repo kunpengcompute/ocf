@@ -18,6 +18,9 @@ void cache_mngt_core_deinit_attached_meta(ocf_core_t core);
 uint64_t _ocf_mngt_cache_remove_corelines_mapping(ocf_core_t core,
 	uint64_t addr, uint64_t bytes);
 
+uint64_t _ocf_mngt_cache_remove_cachelines_mapping(ocf_cache_t cache,
+	uint64_t addr, uint64_t bytes);
+
 void cache_mngt_core_remove_from_cleaning_pol(ocf_core_t core);
 
 int _ocf_cleaning_thread(void *priv);

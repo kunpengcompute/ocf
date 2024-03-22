@@ -12,6 +12,10 @@
 
 #define LAVA_CHUNK_SIZE (128 * MiB)
 
+#define CHUNK_STATUS_VALID		0
+#define CHUNK_STATUS_INVALID	1
+#define CHUNK_STATUS_DELETING	(1 << 1)
+
 #ifdef __cplusplus
 extern "C" {
 #endif

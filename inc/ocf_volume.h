@@ -137,6 +137,13 @@ struct ocf_volume_ops {
 	 * @return Maximum io size in bytes
 	 */
 	unsigned int (*get_max_io_size)(ocf_volume_t volume);
+
+	/**
+	 * @brief Recovery cache
+	 *
+	 * @param[in] volume Volume
+	 */
+	uint64_t (*cache_recovery)(ocf_volume_t volume);
 };
 
 /**
@@ -342,5 +349,12 @@ unsigned int ocf_volume_get_max_io_size(ocf_volume_t volume);
  * @return Length of volume in bytes
  */
 uint64_t ocf_volume_get_length(ocf_volume_t volume);
+
+/**
+ * @brief Recovery cache
+ *
+ * @param[in] volume Volume
+ */
+void ocf_volume_cache_recovery(ocf_volume_t volume);
 
 #endif /* __OCF_VOLUME_H__ */

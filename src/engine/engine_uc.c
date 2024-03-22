@@ -11,6 +11,7 @@
 #include "../ocf_request.h"
 #include "../utils/utils_io.h"
 #include "../utils/utils_user_part.h"
+#include "../../inc/ocf_volume.h"
 
 #define OCF_ENGINE_DEBUG 0
 
@@ -23,7 +24,7 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 		req->cache);
 
 	if (error)
-		req->error |= error;
+		req->error = error;
 
 	/* calc backend latency */
 	ocf_engine_update_latency_stats(req, STATS_CLASS_BACKEND);
@@ -35,10 +36,14 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 	if (env_atomic_dec_return(&req->req_remaining) == 0) {
 		OCF_DEBUG_RQ(req, "HIT completion");
 
-		if (req->error) {
-			ocf_core_stats_cache_error_update(req->core, OCF_READ);
-			OCF_DEBUG_RQ(req, "read cache error: %d", req->error);
-			req->error = -OCF_ERR_UCACHE_IO;
+		if (unlikely(req->error)) {
+			if (req->error == -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL) {
+				ocf_volume_cache_recovery(&req->cache->device->volume);
+			} else {
+				ocf_core_stats_cache_error_update(req->core, OCF_READ);
+				OCF_DEBUG_RQ(req, "read cache error: %d", req->error);
+				req->error = -OCF_ERR_UCACHE_IO;
+			}
 		} else {
 			ocf_core_stats_cache_success_update(req->core, OCF_READ);
 		}
@@ -188,7 +193,7 @@ int ocf_read_ucache(struct ocf_request *req)
 static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 {
 	if (error) {
-		req->error = req->error ?: error;
+		req->error = error;
 	}
 	/* calc backend latency */
 	ocf_engine_update_latency_stats(req, STATS_CLASS_BACKEND);
@@ -200,9 +205,13 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 
 	req->backend_start_timestamp = 0;
 
-	if (req->error) {
+	if (unlikely(req->error)) {
 		/* An error occured */
 		OCF_DEBUG_RQ(req, "write cache error: %d", req->error);
+
+		if (req->error == -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL) {
+			ocf_volume_cache_recovery(&req->cache->device->volume);
+		}
 
 		ocf_core_stats_cache_error_update(req->core, OCF_WRITE);
 

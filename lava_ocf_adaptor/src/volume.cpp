@@ -16,6 +16,7 @@ using namespace std;
 struct lava_volume {
 	const char *name;
 	std::vector<uint64_t> chunk_ids;
+	std::vector<uint8_t> chunk_status;
 };
 
 struct no_io_volume {
@@ -35,6 +36,7 @@ static int lava_volume_open(ocf_volume_t volume, void *volume_params)
 
 	lava_volume->name = ocf_uuid_to_str(uuid);
 	ret = AllocChunks(param->chunk_num, &lava_volume->chunk_ids);
+	lava_volume->chunk_status.resize(param->chunk_num, CHUNK_STATUS_VALID);
 
 	if (ret) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "Lava chunk open faied with ret:%d\n", ret);
@@ -64,13 +66,21 @@ static void lava_volume_submit_io_cb(int ret, void *context)
 	struct ocf_io *io = (struct ocf_io*)req->user_ctx;
 	struct lava_volume_io *lava_volume_io = (struct lava_volume_io*)ocf_io_get_priv(io);
 
-	if (ret) {
+	if (unlikely(ret)) {
 		lava_volume_io->ret = ret;
+
+		if ((ret == WRITE_ERR || ret == READ_ERR)) { // chunk invalid err
+			struct lava_volume *lava_volume;
+			lava_volume = (struct lava_volume*)ocf_volume_get_priv(ocf_io_get_volume(io));
+			lava_volume_io->ret = -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL;
+			uint32_t bad_chunk = io->addr / LAVA_CHUNK_SIZE;
+			lava_volume->chunk_status[bad_chunk] |= CHUNK_STATUS_INVALID;
+		}
 	}
 
 	delete req;
 	if (env_atomic_dec_return(&lava_volume_io->req_cnt) == 0) {
-		io->end(io, ret);
+		io->end(io, lava_volume_io->ret);
  	}
 }
 
@@ -111,6 +121,11 @@ static void lava_volume_submit_io(struct ocf_io *io)
 		submitted_len += s.length;
 		env_atomic_inc(&lava_volume_io->req_cnt);
 
+		if (lava_volume->chunk_status[io->addr / LAVA_CHUNK_SIZE] != CHUNK_STATUS_VALID) {
+			lava_volume_submit_io_cb(-OCF_ERR_UCACHE_IO, req);
+			continue;
+		}
+
 		if (io->dir == OCF_WRITE) {
 			ret = AioWrite(req);
 		} else {
@@ -124,7 +139,7 @@ static void lava_volume_submit_io(struct ocf_io *io)
 	}
 
 	if (env_atomic_dec_return(&lava_volume_io->req_cnt) == 0) {
-		io->end(io, ret);
+		io->end(io, lava_volume_io->ret);
 	}
 
 	ocf_adaptor_log(OCF_LOG_DEBUG, "VOL: (name: %s), IO: (dir: %s, addr: %ld, bytes: %d)\n",
@@ -164,6 +179,47 @@ static uint64_t lava_volume_get_length(ocf_volume_t volume)
 	struct lava_volume *lava_volume = (struct lava_volume*)ocf_volume_get_priv(volume);
 
 	return lava_volume->chunk_ids.size() * LAVA_CHUNK_SIZE;
+}
+
+static void lava_volume_recovery_one_chunk_cb(ocf_cache_t cache, void *context, int chunk_id)
+{
+	struct lava_volume *lava_volume = (struct lava_volume*)context;
+
+	if (lava_volume->chunk_status[chunk_id] & CHUNK_STATUS_DELETING) {
+		std::vector<uint64_t> new_avail_chunk_ids;
+		AllocChunks(1, &new_avail_chunk_ids);
+
+		ocf_adaptor_log(OCF_LOG_INFO, "Recovery a chunk from %d to %d", lava_volume->chunk_ids[chunk_id], new_avail_chunk_ids[0]);
+
+		lava_volume->chunk_ids[chunk_id] = new_avail_chunk_ids[0];
+		lava_volume->chunk_status[chunk_id] = CHUNK_STATUS_VALID;
+		
+	}
+}
+
+/*
+ * Recovery all broken chunks.
+ */
+static uint64_t lava_volume_recovery_chunks(ocf_volume_t volume)
+{
+	struct lava_volume *lava_volume = (struct lava_volume*)ocf_volume_get_priv(volume);
+
+	uint32_t i, ret = 0;
+	for(i = 0; i < lava_volume->chunk_status.size(); i++) {
+		if (lava_volume->chunk_status[i] == CHUNK_STATUS_INVALID) {
+			lava_volume->chunk_status[i] |= CHUNK_STATUS_DELETING;
+			ret = ocf_mngt_cache_remove_cachelines(ocf_volume_get_cache(volume), i * LAVA_CHUNK_SIZE, LAVA_CHUNK_SIZE,
+				lava_volume_recovery_one_chunk_cb, lava_volume, i);
+			
+			if (ret) {
+				lava_volume->chunk_status[i] &= ~CHUNK_STATUS_DELETING;
+				ocf_adaptor_log(OCF_LOG_ERROR, "Recovery chunks failed on %d", lava_volume->chunk_ids[i]);
+				break;
+			}
+		}
+	}
+
+	return ret;
 }
 
 /*
@@ -263,6 +319,7 @@ int volume_init(ocf_ctx_t ocf_ctx)
 	volume_properties.ops.submit_discard = lava_volume_submit_discard;
 	volume_properties.ops.get_max_io_size = lava_volume_get_max_io_size;
 	volume_properties.ops.get_length = lava_volume_get_length;
+	volume_properties.ops.cache_recovery = lava_volume_recovery_chunks;
 
 	volume_properties.io_ops.set_data = lava_volume_io_set_data;
 	volume_properties.io_ops.get_data = lava_volume_io_get_data;
@@ -300,4 +357,5 @@ int volume_init(ocf_ctx_t ocf_ctx)
 void volume_cleanup(ocf_ctx_t ocf_ctx)
 {
 	ocf_ctx_unregister_volume_type(ocf_ctx, LAVA_VOL_TYPE);
+	ocf_ctx_unregister_volume_type(ocf_ctx, CORE_VOL_TYPE);
 }
