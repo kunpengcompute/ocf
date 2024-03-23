@@ -9,7 +9,11 @@
 #include <ocf/ocf_err.h>
 #include <../../src/ocf_cache_priv.h>
 #include <../../src/ocf_request.h>
+#include <../../src/concurrency/ocf_cache_line_concurrency.h>
+#include <../../src/engine/engine_inv.h>
+
 #include "check_queue_thread.h"
+#include "ocf_queue_utils.h"
 #include "log.h"
 
 #include <stdlib.h>
@@ -27,7 +31,7 @@ static void do_timeout_process(struct ocf_request **req, uint32_t cnt) {
 		if (req[i]->rw == OCF_WRITE) {
 			prev = env_atomic8_cmpxchg(&(req[i]->is_invalided), 0, 1);
 			if (prev == 0) { /* req has not been invalided */
-				ocf_engine_invalidate(req[i]);
+				ocf_engine_invalidate_without_flush(req[i]);
 			}
 		} else if (req[i]->rw == OCF_READ) {
 			prev = env_atomic8_cmpxchg(&(req[i]->is_invalided), 0, 1);
@@ -74,19 +78,16 @@ static void do_check(check_queue_t q, uint32_t max_check)
 			ocf_req_put(req);
 		} else {
 			past_time = now_time - req->ocf_start_timestamp;
-			if (past_time < 5000000) { // todo: 超时阈值可配置
+			if (past_time < get_ocf_global_status()) {
 				break;
-			} else if (past_time < 30000000) { // todo: 超时阈值可配置
+			} else { 
 				if (req->ready_to_cache) {
 					timeout_reqs[timeout_cnt++] = req;
 					list_del(now);
 				} else {
 					ignore_cnt++;
 				}
-			} else {
-				// todo: 设置ocf状态异常
-				break;
-			}
+			} // todo: 设置ocf状态异常
 		}
 		if (++cnt >= max_check) {
 			break;

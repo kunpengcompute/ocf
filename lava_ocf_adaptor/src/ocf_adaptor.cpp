@@ -18,6 +18,7 @@
 #include "utils_strbuf.h"
 #include "volume.h"
 #include "ocf_adaptor.h"
+#include "ocf_queue_utils.h"
 #include <../../src/ocf_lru_structs.h>
 
 using namespace std;
@@ -26,13 +27,22 @@ using namespace std;
 #define MAX_CQ_ENTRYS 16
 #define ALIGN_SIZE 4096
 
-#define NONE         0
-#define INITIALIZED  1
-#define DELETING     2
-
 extern "C" ocf_core_id_t ocf_core_get_id(ocf_core_t core);
 
 struct ocf_config g_cfg;
+
+struct ocf_adaptor_context {
+	ocf_ctx_t ctx;
+	ocf_cache_t cache;
+
+	env_rwlock table_lock = { PTHREAD_RWLOCK_INITIALIZER };
+	/* By default, same region or regions in the same slot don't support multi-thread concurrent
+	 * operations(that is, multi-thread concurrent operations such as get/put/invalid/lookup)
+	 * if it exists, it needs to be locked at the slot granularity
+	 */
+	unordered_map<uint32_t, slot_info_t> slot_info_table;
+	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
+} g_adaptor;
 
 /*
  * Queue ops providing interface for running queue thread in asynchronous
@@ -51,20 +61,6 @@ const struct ocf_queue_ops queue_ops = {
 	queue_thread_stop,
 };
 
-struct ocf_adaptor_context {
-	int state = NONE;
-	ocf_ctx_t ctx;
-	ocf_cache_t cache;
-
-	env_rwlock table_lock = { PTHREAD_RWLOCK_INITIALIZER };
-	/* By default, same region or regions in the same slot don't support multi-thread concurrent
-	 * operations(that is, multi-thread concurrent operations such as get/put/invalid/lookup)
-	 * if it exists, it needs to be locked at the slot granularity
-	 */
-	unordered_map<uint32_t, slot_info_t> slot_info_table;
-	unordered_map<uint32_t, unordered_map<uint32_t, uint32_t>> region_remap_table;
-} g_adaptor;
-
 struct cache_priv {
 	uint16_t slot_core_id;
 	ocf_queue_t mngt_queue;
@@ -78,6 +74,13 @@ struct simple_context {
 	sem_t sem;
 	int *ret;
 };
+
+int set_ocf_io_timeout_val(uint64_t val)
+{
+	set_ocf_check_timeout_val(val);
+
+	return STATE_SUCCESS;
+}
 
 static int check_ocf_config(struct ocf_config *cfg)
 {
@@ -449,7 +452,7 @@ int ocf_init(struct ocf_config *cfg)
 	g_cfg = *cfg;
 	update_page_size();
 
-	if (g_adaptor.state != NONE) {
+	if (get_ocf_global_status() != OCF_STATUS_NONE) {
 		ocf_adaptor_log(OCF_LOG_WARN, "ocf has been initialized\n");
 		return STATE_FAIL;
 	}
@@ -478,18 +481,18 @@ int ocf_init(struct ocf_config *cfg)
 		return STATE_FAIL;
 	}
 
-	g_adaptor.state = INITIALIZED;
+	set_ocf_global_status(OCF_STATUS_INITIALIZED);
 	ocf_adaptor_log(OCF_LOG_INFO, "ocf init complete\n");
 	return STATE_SUCCESS;
 }
 
 void ocf_exit()
 {
-	if (g_adaptor.state != INITIALIZED) {
+	if (get_ocf_global_status() != OCF_STATUS_INITIALIZED || get_ocf_global_status() != OCF_STATUS_ERROR) {
 		ocf_adaptor_log(OCF_LOG_WARN, "ocf is not initialized, not need to delete\n");
 		return;
 	}
-	g_adaptor.state = DELETING;
+	set_ocf_global_status(OCF_STATUS_DELETING);
 
 	int ret = STATE_SUCCESS;
 	simple_context ctx;
@@ -549,13 +552,13 @@ void ocf_exit()
 	/* Destroy completion semaphore */
 	sem_destroy(&ctx.sem);
 
-	g_adaptor.state = NONE;
+	set_ocf_global_status(OCF_STATUS_NONE);
 	ocf_adaptor_log(OCF_LOG_INFO, "ocf exit complete\n");
 }
 
 int ocf_add_core(uint32_t slot_id)
 {
-	if (unlikely(g_adaptor.state != INITIALIZED)) {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not add core\n");
 		return STATE_FAIL;
 	}
@@ -599,7 +602,7 @@ int ocf_add_core(uint32_t slot_id)
 
 int ocf_remove_core(uint32_t slot_id)
 {
-	if (unlikely(g_adaptor.state != INITIALIZED)) {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not remove core\n");
 		return STATE_FAIL;
 	}
@@ -656,7 +659,7 @@ int ocf_remove_core(uint32_t slot_id)
 
 int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 {
-	if (unlikely(g_adaptor.state != INITIALIZED)) {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit region_invalid io\n");
 		return STATE_FAIL;
 	}
@@ -694,7 +697,7 @@ int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 
 int ocf_invalid(struct req_context *ctx)
 {
-	if (unlikely(g_adaptor.state != INITIALIZED)) {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit range_invalid io\n");
 		return STATE_FAIL;
 	}
@@ -737,7 +740,7 @@ int ocf_invalid(struct req_context *ctx)
 
 int ocf_lookup(struct req_context *ctx)
 {
-	if (unlikely(g_adaptor.state != INITIALIZED)) {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit lookup io\n");
 		return STATE_FAIL;
 	}
@@ -788,7 +791,7 @@ int ocf_lookup(struct req_context *ctx)
 
 int ocf_get(struct req_context *ctx)
 {
-	if (unlikely(g_adaptor.state != INITIALIZED)) {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit read io\n");
 		return STATE_FAIL;
 	}
@@ -835,7 +838,7 @@ int ocf_get(struct req_context *ctx)
 
 int ocf_put(struct req_context *ctx)
 {
-	if (unlikely(g_adaptor.state != INITIALIZED)) {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit write io\n");
 		return STATE_FAIL;
 	}
@@ -918,6 +921,11 @@ int ocf_poll(uint32_t io_worker_id, int max_num)
 
 struct ocf_dump_info *ocf_dump_cache_core_info()
 {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not dump info\n");
+		return NULL;
+	}
+
 	struct ocf_dump_info *info = (struct ocf_dump_info *)env_zalloc(sizeof(struct ocf_dump_info) + sizeof(void *), 0);
 	if (!info) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "dump info memory malloc fail\n");

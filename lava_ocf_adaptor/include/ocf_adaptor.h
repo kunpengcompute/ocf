@@ -17,6 +17,14 @@
 extern "C" {
 #endif
 
+
+/**
+ * @brief set ocf timeout value
+ *
+ * @param[in] val: set g_adaptor.ocf_timeout value, unit is microsecond
+ */
+int set_ocf_io_timeout_val(uint64_t val);
+
 /**
  * @brief ocf module initialization
  *

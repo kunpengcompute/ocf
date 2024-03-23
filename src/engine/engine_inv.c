@@ -69,3 +69,27 @@ void ocf_engine_invalidate(struct ocf_request *req)
 {
 	ocf_engine_push_req_front_if(req, &_io_if_invalidate, true);
 }
+
+static int _ocf_invalidate_without_flush_do(struct ocf_request *req)
+{
+	ocf_hb_req_prot_lock_wr(req);
+	ocf_purge_map_info(req);
+	ocf_hb_req_prot_unlock_wr(req);
+
+	ocf_req_unlock_wr(ocf_cache_line_concurrency(req->cache), req);
+
+	/* Put OCF request - decrease reference counter */
+	ocf_req_put(req);
+
+	return 0;
+}
+
+static const struct ocf_io_if _io_if_invalidate_without_flush = {
+	.read = _ocf_invalidate_without_flush_do,
+	.write = _ocf_invalidate_without_flush_do,
+};
+
+void ocf_engine_invalidate_without_flush(struct ocf_request *req)
+{
+	ocf_engine_push_req_front_if(req, &_io_if_invalidate_without_flush, true);
+}
