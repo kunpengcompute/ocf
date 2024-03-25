@@ -29,13 +29,13 @@ struct ocf_seq_cutoff {
 };
 
 struct ocf_seq_cutoff_percore {
-	struct ocf_seq_cutoff base;
 	struct ocf_seq_cutoff_stream streams[OCF_SEQ_CUTOFF_PERCORE_STREAMS];
+	struct ocf_seq_cutoff base;
 };
 
 struct ocf_seq_cutoff_perqueue {
-	struct ocf_seq_cutoff base;
 	struct ocf_seq_cutoff_stream streams[OCF_SEQ_CUTOFF_PERQUEUE_STREAMS];
+	struct ocf_seq_cutoff base;
 };
 
 int ocf_core_seq_cutoff_init(ocf_core_t core);
