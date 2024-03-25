@@ -655,8 +655,6 @@ static void ocf_mngt_cache_remove_corelines_finish(ocf_pipeline_t pipeline,
 			context->corelines_removed, context->addr, context->bytes, corelines);
 	}
 
-	context->cmpl(cache, context->priv, error);
-
 	ocf_pipeline_destroy(context->pipeline);
 }
 
@@ -675,6 +673,8 @@ static void ocf_mngt_cache_remove_corelines_mapping(ocf_pipeline_t pipeline,
 			core, context->addr, context->bytes);
 	gettimeofday(&context->time_end, NULL);
 	
+	context->cmpl(cache, context->priv, error);
+
 	ocf_pipeline_next(pipeline);
 }
 
@@ -753,8 +753,6 @@ static void ocf_mngt_cache_remove_cachelines_finish(ocf_pipeline_t pipeline,
 			context->cachelines_removed, context->addr, context->bytes, cachelines);
 	ocf_cache_log(cache, log_info, "It cost %.3f sec \n", context->time_cost_us * 0.000001);
 
-	context->cmpl(cache, context->priv, context->priv_param);
-
 	ocf_pipeline_destroy(context->pipeline);
 }
 
@@ -775,6 +773,8 @@ static void ocf_mngt_cache_remove_cachelines_mapping(ocf_pipeline_t pipeline,
 
 	context->time_cost_us += get_us_time_cost(&time_start, &time_end);
 	
+	context->cmpl(cache, context->priv, context->priv_param);
+
 	ocf_pipeline_next(pipeline);
 }
 

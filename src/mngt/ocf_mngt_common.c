@@ -229,14 +229,14 @@ uint64_t _ocf_mngt_cache_remove_cachelines_mapping(ocf_cache_t cache,
 	unsigned lock_idx;
 	struct ocf_alock *alock = ocf_cache_line_concurrency(cache);
 	
-	for (; to_be_removed > 0; to_be_removed--){
-		lock_idx = ocf_metadata_concurrency_next_idx(cache->mngt_queue);
-
+	while (to_be_removed--){
 		/* lock all hash-locks at first may cause dead-lock 
 		** ex: req0 locked 0, request 1, but we locked 1, request 0
 		*/
 
 		while (true) {
+			lock_idx = ocf_metadata_concurrency_next_idx(cache->mngt_queue);
+
 			ocf_metadata_get_core_info(cache, curr_cline, &curr_core_id, &curr_coreline);
 			hash = ocf_metadata_hash_func(cache, curr_coreline, curr_core_id);
 			

@@ -37,13 +37,9 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 		OCF_DEBUG_RQ(req, "HIT completion");
 
 		if (unlikely(req->error)) {
-			if (req->error == -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL) {
-				ocf_volume_cache_recovery(&req->cache->device->volume);
-			} else {
-				ocf_core_stats_cache_error_update(req->core, OCF_READ);
-				OCF_DEBUG_RQ(req, "read cache error: %d", req->error);
-				req->error = -OCF_ERR_UCACHE_IO;
-			}
+			ocf_core_stats_cache_error_update(req->core, OCF_READ);
+			OCF_DEBUG_RQ(req, "read cache error: %d", req->error);
+			req->error = -OCF_ERR_UCACHE_IO;
 		} else {
 			ocf_core_stats_cache_success_update(req->core, OCF_READ);
 		}
@@ -208,10 +204,6 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 	if (unlikely(req->error)) {
 		/* An error occured */
 		OCF_DEBUG_RQ(req, "write cache error: %d", req->error);
-
-		if (req->error == -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL) {
-			ocf_volume_cache_recovery(&req->cache->device->volume);
-		}
 
 		ocf_core_stats_cache_error_update(req->core, OCF_WRITE);
 

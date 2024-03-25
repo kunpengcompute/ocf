@@ -23,6 +23,21 @@ struct no_io_volume {
 	uint64_t cache_line_size;
 };
 
+static int alloc_chunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
+{
+	int ret, _try = 3;
+	while(_try--) {
+		ret = AllocChunks(num, chunk_ids);
+		if (ret) {
+			env_msleep(100);
+		} else {
+			break;
+		}
+	}
+	
+	return ret;
+}
+
 /*
  * In open() function we store uuid data as volume name (for debug messages)
  * and allocate chunk to excute IO operation.
@@ -35,7 +50,7 @@ static int lava_volume_open(ocf_volume_t volume, void *volume_params)
 	struct lava_volume_param *param = (struct lava_volume_param*)volume_params;
 
 	lava_volume->name = ocf_uuid_to_str(uuid);
-	ret = AllocChunks(param->chunk_num, &lava_volume->chunk_ids);
+	ret = alloc_chunks(param->chunk_num, &lava_volume->chunk_ids);
 	lava_volume->chunk_status.resize(param->chunk_num, CHUNK_STATUS_VALID);
 
 	if (ret) {
@@ -60,6 +75,53 @@ static void lava_volume_close(ocf_volume_t volume)
 	ocf_adaptor_log(OCF_LOG_INFO, "VOL CLOSE: (name: %s)\n", lava_volume->name);
 }
 
+
+static void lava_volume_recovery_one_chunk_cb(ocf_cache_t cache, void *context, int chunk_id)
+{
+	int ret;
+	struct lava_volume *lava_volume = (struct lava_volume*)context;
+
+	std::vector<uint64_t> new_avail_chunk_ids;
+	ret = alloc_chunks(1, &new_avail_chunk_ids);
+
+	if (unlikely(ret)) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "Alloc chunk failed for chunk %d",
+			lava_volume->chunk_ids[chunk_id]);
+		lava_volume->chunk_status[chunk_id] |= CHUNK_STATUS_DELET_FAIL;
+		
+		// TODO:上报OCF不可用
+		
+		return;
+	}
+
+	ocf_adaptor_log(OCF_LOG_INFO, "Recoveried one chunk from %d to %d",
+		lava_volume->chunk_ids[chunk_id], new_avail_chunk_ids[0]);
+	
+	lava_volume->chunk_ids[chunk_id] = new_avail_chunk_ids[0];
+	lava_volume->chunk_status[chunk_id] = CHUNK_STATUS_VALID;
+}
+
+static void lava_volume_recovery_one_chunk(ocf_cache_t cache, struct lava_volume *lava_volume, uint32_t bad_chunk_idx)
+{
+	int ret;
+
+	if (lava_volume->chunk_status[bad_chunk_idx] &= CHUNK_STATUS_DELETING) {
+		return;
+	}
+
+	ocf_adaptor_log(OCF_LOG_ERROR, "Start recovery chunk %d", lava_volume->chunk_ids[bad_chunk_idx]);
+
+	lava_volume->chunk_status[bad_chunk_idx] |= CHUNK_STATUS_DELETING;
+	ret = ocf_mngt_cache_remove_cachelines(cache, bad_chunk_idx * LAVA_CHUNK_SIZE, LAVA_CHUNK_SIZE,
+		lava_volume_recovery_one_chunk_cb, lava_volume, bad_chunk_idx);
+	
+	if (ret) {
+		lava_volume->chunk_status[bad_chunk_idx] |= CHUNK_STATUS_DELET_FAIL;
+		ocf_adaptor_log(OCF_LOG_ERROR, "Recovery chunks failed on %d", lava_volume->chunk_ids[bad_chunk_idx]);
+	}
+}
+
+
 static void lava_volume_submit_io_cb(int ret, void *context)
 {
 	Request *req = (Request*)context;
@@ -69,12 +131,17 @@ static void lava_volume_submit_io_cb(int ret, void *context)
 	if (unlikely(ret)) {
 		lava_volume_io->ret = ret;
 
-		if ((ret == WRITE_ERR || ret == READ_ERR)) { // chunk invalid err
+		if ((ret == CHUNK_NOT_AVAIL)) {
 			struct lava_volume *lava_volume;
 			lava_volume = (struct lava_volume*)ocf_volume_get_priv(ocf_io_get_volume(io));
+
+			ocf_cache_t cache = ocf_volume_get_cache(ocf_io_get_volume(io));
+
 			lava_volume_io->ret = -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL;
+
 			uint32_t bad_chunk = io->addr / LAVA_CHUNK_SIZE;
 			lava_volume->chunk_status[bad_chunk] |= CHUNK_STATUS_INVALID;
+			lava_volume_recovery_one_chunk(cache, lava_volume, bad_chunk);
 		}
 	}
 
@@ -133,7 +200,7 @@ static void lava_volume_submit_io(struct ocf_io *io)
 		}
 
 		if (ret) {
-			ocf_adaptor_log(OCF_LOG_ERROR, "Chunk IO failed with ret:%d", ret);
+			ocf_adaptor_log(OCF_LOG_ERROR, "Chunk %d IO failed with ret:%d", req->chunk_id, ret);
 			lava_volume_submit_io_cb(ret, req);
 		}
 	}
@@ -179,47 +246,6 @@ static uint64_t lava_volume_get_length(ocf_volume_t volume)
 	struct lava_volume *lava_volume = (struct lava_volume*)ocf_volume_get_priv(volume);
 
 	return lava_volume->chunk_ids.size() * LAVA_CHUNK_SIZE;
-}
-
-static void lava_volume_recovery_one_chunk_cb(ocf_cache_t cache, void *context, int chunk_id)
-{
-	struct lava_volume *lava_volume = (struct lava_volume*)context;
-
-	if (lava_volume->chunk_status[chunk_id] & CHUNK_STATUS_DELETING) {
-		std::vector<uint64_t> new_avail_chunk_ids;
-		AllocChunks(1, &new_avail_chunk_ids);
-
-		ocf_adaptor_log(OCF_LOG_INFO, "Recovery a chunk from %d to %d", lava_volume->chunk_ids[chunk_id], new_avail_chunk_ids[0]);
-
-		lava_volume->chunk_ids[chunk_id] = new_avail_chunk_ids[0];
-		lava_volume->chunk_status[chunk_id] = CHUNK_STATUS_VALID;
-		
-	}
-}
-
-/*
- * Recovery all broken chunks.
- */
-static uint64_t lava_volume_recovery_chunks(ocf_volume_t volume)
-{
-	struct lava_volume *lava_volume = (struct lava_volume*)ocf_volume_get_priv(volume);
-
-	uint32_t i, ret = 0;
-	for(i = 0; i < lava_volume->chunk_status.size(); i++) {
-		if (lava_volume->chunk_status[i] == CHUNK_STATUS_INVALID) {
-			lava_volume->chunk_status[i] |= CHUNK_STATUS_DELETING;
-			ret = ocf_mngt_cache_remove_cachelines(ocf_volume_get_cache(volume), i * LAVA_CHUNK_SIZE, LAVA_CHUNK_SIZE,
-				lava_volume_recovery_one_chunk_cb, lava_volume, i);
-			
-			if (ret) {
-				lava_volume->chunk_status[i] &= ~CHUNK_STATUS_DELETING;
-				ocf_adaptor_log(OCF_LOG_ERROR, "Recovery chunks failed on %d", lava_volume->chunk_ids[i]);
-				break;
-			}
-		}
-	}
-
-	return ret;
 }
 
 /*
@@ -319,7 +345,6 @@ int volume_init(ocf_ctx_t ocf_ctx)
 	volume_properties.ops.submit_discard = lava_volume_submit_discard;
 	volume_properties.ops.get_max_io_size = lava_volume_get_max_io_size;
 	volume_properties.ops.get_length = lava_volume_get_length;
-	volume_properties.ops.cache_recovery = lava_volume_recovery_chunks;
 
 	volume_properties.io_ops.set_data = lava_volume_io_set_data;
 	volume_properties.io_ops.get_data = lava_volume_io_get_data;
