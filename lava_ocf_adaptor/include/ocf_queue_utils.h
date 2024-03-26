@@ -1,5 +1,4 @@
 /*
- * Copyright(c) 2012-2021 Intel Corporation
  * Copyright(c) 2024 Huawei Technologies
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -15,6 +14,8 @@ extern "C" {
 #define OCF_STATUS_DELETING     2
 #define OCF_STATUS_ERROR        3
 
+#define MAX_QUEUE_NUM 64
+
 /**
  * @brief get ocf status
  *
@@ -28,6 +29,13 @@ int get_ocf_global_status();
  * @param[in] status: set g_status.state
  */
 void set_ocf_global_status(int status);
+
+/**
+ * @brief get ocf timeout value
+ *
+ * @retval g_status.ocf_timeout
+ */
+uint64_t get_ocf_check_timeout_val();
 
 /**
  * @brief set ocf timeout val

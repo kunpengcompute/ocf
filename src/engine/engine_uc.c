@@ -204,6 +204,7 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 
 	req->backend_start_timestamp = 0;
 
+	uint8_t prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1);
 	if (req->error) {
 		/* An error occured */
 		OCF_DEBUG_RQ(req, "write cache error: %d", req->error);
@@ -213,7 +214,6 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 		/* Complete request */
 		req->complete(req, -OCF_ERR_UCACHE_IO);
 
-		uint8_t prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1);
 		if (prev == 0) { /* req has not been invalided */
 			ocf_engine_invalidate(req);
 		}
@@ -223,7 +223,9 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 		ocf_core_stats_cache_success_update(req->core, OCF_WRITE);
 	}
 
-	ocf_req_unlock_wr(ocf_cache_line_concurrency(req->cache), req);
+	if (prev == 0) { /* req has not been invalided */
+		ocf_req_unlock_wr(ocf_cache_line_concurrency(req->cache), req);
+	}
 
 	req->complete(req, 0);
 

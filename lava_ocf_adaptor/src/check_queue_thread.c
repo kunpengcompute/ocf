@@ -4,6 +4,7 @@
  */
 
 #define _GNU_SOURCE
+#define MAX_TIMEOUT_PROCESS 10240
 
 #include <ocf/ocf.h>
 #include <ocf/ocf_err.h>
@@ -25,6 +26,12 @@ static void do_timeout_process(struct ocf_request **req, uint32_t cnt) {
 	uint8_t prev;
 	
 	for (uint32_t i = 0; i < cnt; i++) {
+		/* ensure io timeout and normal io only be ended once */
+		prev = env_atomic8_cmpxchg(&(req[i]->ioi.io.is_ended), 0, 1);
+		if (prev == 1) { /* io has already been ended */
+			ocf_io_put(&req[i]->ioi.io);
+			continue;
+		}
 		// 超时返回
 		ocf_io_end(&req[i]->ioi.io, -OCF_ERR_TIMEOUT_IO);
 		// 根据io类型进行处理，write: invalid，read: unlock
@@ -32,6 +39,7 @@ static void do_timeout_process(struct ocf_request **req, uint32_t cnt) {
 			prev = env_atomic8_cmpxchg(&(req[i]->is_invalided), 0, 1);
 			if (prev == 0) { /* req has not been invalided */
 				ocf_engine_invalidate_without_flush(req[i]);
+				continue;
 			}
 		} else if (req[i]->rw == OCF_READ) {
 			prev = env_atomic8_cmpxchg(&(req[i]->is_invalided), 0, 1);
@@ -60,7 +68,7 @@ static void do_check(check_queue_t q, uint32_t max_check)
 	uint8_t is_ended;
 	uint64_t now_time = env_get_tick_count();
 	uint64_t past_time;
-	struct ocf_request *timeout_reqs[max_check]; // todo: 一次最多处理x个超时io
+	struct ocf_request *timeout_reqs[MAX_TIMEOUT_PROCESS];
 
 	/* LOCK */
 	env_spinlock_lock(&q->io_list_lock);
@@ -70,24 +78,27 @@ static void do_check(check_queue_t q, uint32_t max_check)
 	/* 若出现io超时，并且已经拿到锁，将io放入数组中，后续函数超时返回 */
 	/* 若没有拿到锁，超时阈值超过ocf异常阈值，设置ocf状态异常 */
 	list_for_each_safe(now, nxt, &q->io_list) {
-		/* Get the first request */
-		req = list_first_entry(&q->io_list, struct ocf_request, check_list);
+		req = list_entry(now, struct ocf_request, check_list);
 		is_ended = env_atomic8_read(&req->ioi.io.is_ended);
 		if (is_ended) {
 			list_del(now);
 			ocf_req_put(req);
 		} else {
 			past_time = now_time - req->ocf_start_timestamp;
-			if (past_time < get_ocf_global_status()) {
+			if (past_time < get_ocf_check_timeout_val()) {
 				break;
 			} else { 
 				if (req->ready_to_cache) {
 					timeout_reqs[timeout_cnt++] = req;
 					list_del(now);
+					if (timeout_cnt >= MAX_TIMEOUT_PROCESS) {
+						cnt++;
+						break;
+					}
 				} else {
 					ignore_cnt++;
 				}
-			} // todo: 设置ocf状态异常
+			}
 		}
 		if (++cnt >= max_check) {
 			break;
@@ -121,14 +132,13 @@ static void* check_run(void *arg)
 	qt->stop = false;
 
 	while (!qt->stop) {
-		// todo: do something
 		for (i = 0; i < queue_num; ++i) {
 			pending_io = check_queue_pending_io(io_queues[i]);
 			if (pending_io > 0) {
 				do_check(io_queues[i], pending_io);
 			}
 		}
-        usleep(500000);
+		usleep(500000);
 	}
 
 	pthread_exit(0);
@@ -254,6 +264,7 @@ int initialize_check_threads(check_queue_t *check_queues,
 {
 	uint8_t cpu_valid_core[MAX_QUEUE_NUM];
 	struct check_queue_thread* check_queue_threads[MAX_QUEUE_NUM];
+	uint16_t thread_num = queue_num < cpu_core_num ? queue_num : cpu_core_num;
 
 	int ret = select_valid_cpu_core(core_mask, cpu_valid_core);
 	if (ret < cpu_core_num) {
@@ -261,7 +272,7 @@ int initialize_check_threads(check_queue_t *check_queues,
 		return ret;
 	}
 
-	for (int i = 0; i < cpu_core_num; ++i) {
+	for (int i = 0; i < thread_num; ++i) {
 		check_queue_threads[i] = check_queue_thread_init();
 		if (check_queue_threads[i]) {
 			continue;
@@ -279,7 +290,7 @@ int initialize_check_threads(check_queue_t *check_queues,
 		ocf_check_queue_set_priv(check_queues[i], check_queue_threads[t]);
 	}
 
-	for (int i = 0; i < cpu_core_num; ++i) {
+	for (int i = 0; i < thread_num; ++i) {
 		ret = check_queue_thread_run(check_queue_threads[i], cpu_valid_core[i]);
 		if (ret) {
 			ocf_adaptor_log(OCF_LOG_ERROR, "failed to start check_queue_thread%d.\n", i);

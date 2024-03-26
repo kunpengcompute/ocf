@@ -7,6 +7,7 @@
 #define __CHECK_QUEUE_H__
 
 #include "ocf_env.h"
+#include "ocf_queue_utils.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -17,8 +18,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define MAX_QUEUE_NUM 64
 
 struct check_queue {
     struct list_head io_list;

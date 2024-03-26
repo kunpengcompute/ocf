@@ -962,6 +962,11 @@ struct node {
 
 struct ocf_dump_info *ocf_dump_region_info()
 {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not dump region info\n");
+		return NULL;
+	}
+
 	struct ocf_dump_info *info = (struct ocf_dump_info *)env_zalloc(sizeof(struct ocf_dump_info) + sizeof(void *), 0);
 	if (!info) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "dump info memory malloc fail\n");
@@ -1005,6 +1010,11 @@ struct ocf_dump_info *ocf_dump_region_info()
 
 struct ocf_dump_info *ocf_dump_cache_stats()
 {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not dump cache stats\n");
+		return NULL;
+	}
+
 	struct ocf_dump_info *info = (struct ocf_dump_info *)env_zalloc(sizeof(struct ocf_dump_info) + sizeof(void *), 0);
 	if (!info) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "dump info memory malloc fail\n");

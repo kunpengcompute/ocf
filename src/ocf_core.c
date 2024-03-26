@@ -231,8 +231,12 @@ static void ocf_req_complete(struct ocf_request *req, int error)
 				ocf_req_get_stats_type(req));
 	}
 
-	/* Complete IO */
-	ocf_io_end(&req->ioi.io, error);
+	/* ensure io timeout and normal io only be ended once */
+	uint8_t prev = env_atomic8_cmpxchg(&(req->ioi.io.is_ended), 0, 1);
+	if (prev == 0) { /* io has not been ended */
+		/* Complete IO */
+		ocf_io_end(&req->ioi.io, error);
+	}
 
 	dec_counter_if_req_was_dirty(req);
 

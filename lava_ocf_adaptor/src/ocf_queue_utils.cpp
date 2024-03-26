@@ -1,5 +1,4 @@
 /*
- * Copyright(c) 2012-2021 Intel Corporation
  * Copyright(c) 2024 Huawei Technologies
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -33,6 +32,11 @@ int get_ocf_global_status()
 void set_ocf_global_status(int status)
 {
 	g_status.state = status;
+}
+
+uint64_t get_ocf_check_timeout_val()
+{
+	return g_status.ocf_timeout;
 }
 
 void set_ocf_check_timeout_val(uint64_t val)
