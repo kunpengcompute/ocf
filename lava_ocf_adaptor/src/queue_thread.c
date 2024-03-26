@@ -143,6 +143,7 @@ int initialize_threads(struct ocf_queue **io_queues,
 {
 	uint8_t cpu_valid_core[MAX_QUEUE_NUM];
 	struct queue_thread* io_queue_threads[MAX_QUEUE_NUM];
+	uint16_t thread_num = queue_num < cpu_core_num ? queue_num : cpu_core_num;
 
 	int ret = select_valid_cpu_core(core_mask, cpu_valid_core);
 	if (ret < cpu_core_num) {
@@ -150,7 +151,7 @@ int initialize_threads(struct ocf_queue **io_queues,
 		return ret;
 	}
 
-	for (int i = 0; i < cpu_core_num; ++i) {
+	for (int i = 0; i < thread_num; ++i) {
 		io_queue_threads[i] = queue_thread_init();
 		if (io_queue_threads[i]) {
 			continue;
@@ -168,7 +169,7 @@ int initialize_threads(struct ocf_queue **io_queues,
 		ocf_queue_set_priv(io_queues[i], io_queue_threads[t]);
 	}
 
-	for (int i = 0; i < cpu_core_num; ++i) {
+	for (int i = 0; i < thread_num; ++i) {
 		ret = queue_thread_run(io_queue_threads[i], cpu_valid_core[i]);
 		if (ret) {
 			ocf_adaptor_log(OCF_LOG_ERROR, "failed to start io_queue_thread%d.\n", i);
