@@ -1007,25 +1007,7 @@ void ocf_release_dump_info(struct ocf_dump_info *info)
 	}
 }
 
-void ocf_check_metadata_alock()
-{
+void ocf_show_alock(){
 	ocf_cache_t cache = g_adaptor.cache;
-	struct ocf_alock *alock = ocf_cache_line_concurrency(cache);
-	uint64_t cacheline_total = cache->device->collision_table_entries;
-
-	ocf_core_id_t curr_core_id;
-	uint64_t curr_coreline;
-
-	ocf_cache_log(cache, log_info, "There are %d cachelines exist, only print abnormal alocks\n", cacheline_total);
-	for (int curr_cline = 0; curr_cline < cacheline_total; curr_cline++) {
-		if (!ocf_cache_line_try_lock_wr(alock, curr_cline)) {
-			locked++;
-			ocf_alock_unlock_one_wr(alock, curr_cline);
-		} else {
-			ocf_metadata_get_core_info(cache, curr_cline, &curr_core_id, &curr_coreline);
-			ocf_cache_log(cache, log_err, "%d cannot be locked! It belongs to core:%d coreline:%d\n",
-				curr_cline, curr_core_id, curr_coreline);
-		}
-	}
-	ocf_cache_log(cache, log_err, "There are %d cachelines that cannot be locked! \n", locked);
+	ocf_check_metadata_alock(cache);
 }

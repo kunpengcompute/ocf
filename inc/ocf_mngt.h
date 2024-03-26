@@ -1394,4 +1394,9 @@ int ocf_mngt_core_pool_visit(ocf_ctx_t ctx,
  */
 void ocf_mngt_core_pool_remove(ocf_ctx_t ctx, ocf_volume_t volume);
 
+/**
+ * @brief Show metadata alocks
+ */
+void ocf_check_metadata_alock(ocf_cache_t cache);
+
 #endif /* __OCF_CACHE_H__ */

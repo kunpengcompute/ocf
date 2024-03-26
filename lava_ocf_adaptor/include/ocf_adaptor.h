@@ -171,7 +171,7 @@ void ocf_release_dump_info(struct ocf_dump_info *info);
  *
  * @param[in] cache Cache handle
  */
-void ocf_check_metadata_alock();
+void ocf_show_alock();
 
 #ifdef __cplusplus
 }
