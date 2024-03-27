@@ -284,7 +284,7 @@ void ocf_volume_submit_io(struct ocf_io *io)
 
 	ENV_BUG_ON(!volume->type->properties->ops.submit_io);
 
-	if (!volume->opened) {
+	if (unlikely(!volume->opened)) {
 		io->end(io, -OCF_ERR_IO);
 		return;
 	}

@@ -85,15 +85,15 @@ struct ocf_io *ocf_io_new(ocf_volume_t volume, ocf_queue_t queue,
 	struct ocf_io_internal *ioi;
 	uint32_t sector_size = SECTORS_TO_BYTES(1);
 
-	if ((addr % sector_size) || (bytes % sector_size))
+	if (unlikely((addr % sector_size) || (bytes % sector_size)))
 		return NULL;
 
-	if (!ocf_refcnt_inc(&volume->refcnt))
+	if (unlikely(!ocf_refcnt_inc(&volume->refcnt)))
 		return NULL;
 
 	ioi = ocf_io_allocator_new(&volume->type->allocator, volume, queue,
 			addr, bytes, dir);
-	if (!ioi) {
+	if (unlikely(!ioi)) {
 		ocf_refcnt_dec(&volume->refcnt);
 		return NULL;
 	}

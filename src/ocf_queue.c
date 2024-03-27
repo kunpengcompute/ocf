@@ -99,7 +99,7 @@ void ocf_queue_run_single(ocf_queue_t q)
 
 	io_req = ocf_engine_pop_req(q);
 
-	if (!io_req)
+	if (unlikely(!io_req))
 		return;
 
 	if (io_req->ioi.io.handle)
