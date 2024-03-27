@@ -563,12 +563,12 @@ static inline long env_atomic64_inc_return(env_atomic64 *a)
 	return __sync_add_and_fetch(&a->counter, 1);
 }
 
-static inline long env_atomic64_add_return(int i, env_atomic64 *a)
+static inline long env_atomic64_add_return(long i, env_atomic64 *a)
 {
 	return __sync_add_and_fetch(&a->counter, i);
 }
 
-static inline long env_atomic64_sub_return(int i, env_atomic64 *a)
+static inline long env_atomic64_sub_return(long i, env_atomic64 *a)
 {
 	return __sync_sub_and_fetch(&a->counter, i);
 }

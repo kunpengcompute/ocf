@@ -61,13 +61,17 @@ void ocf_metadata_concurrency_deinit(struct ocf_metadata_lock *metadata_lock)
 		env_rwsem_destroy(&metadata_lock->global[i].sem);
 }
 
+#define HASH_LOCK 1
+#define HASH_UNLOCK 0
+
 static inline int hash_lock_do_lock(struct ocf_cache *cache, ocf_cache_line_t index, int try)
 {
 	uint32_t step = 0;
 	while (true) {
 		ocf_cache_line_t line = ocf_metadata_get_hash(cache, index);
 
-		if (env_atomic_cl_cmpxchg((env_atomic_cl*)ocf_metadata_get_hash_p(cache, index), line, (line | 1ULL<<HASH_LOCK_BIT)) == line)
+		if (env_atomic8_cmpxchg((env_atomic8*)ocf_metadata_get_hash_lock(cache, index),
+				HASH_UNLOCK, HASH_LOCK) == HASH_UNLOCK)
 			return 0;
 		
 		if (try)
@@ -89,7 +93,8 @@ static inline int hash_lock_trylock(struct ocf_cache *cache, ocf_cache_line_t in
 
 static inline void hash_lock_unlock(struct ocf_cache *cache, ocf_cache_line_t index)
 {
-	*ocf_metadata_get_hash_p(cache, index) = ocf_metadata_get_hash(cache, index);
+	env_atomic8_set((env_atomic8*)ocf_metadata_get_hash_lock(cache, index),
+				HASH_UNLOCK);
 }
 
 int ocf_metadata_concurrency_attached_init(
