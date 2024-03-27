@@ -171,7 +171,7 @@ static int64_t ocf_metadata_get_element_size(
 		break;
 
 	case metadata_segment_hash:
-		size = sizeof(ocf_cache_line_t);
+		size = sizeof(struct ocf_metadata_hash);
 		break;
 
 	case metadata_segment_core_config:
@@ -431,6 +431,73 @@ static void ocf_metadata_raw_info(struct ocf_cache *cache,
 #else
 #define ocf_metadata_raw_info(cache, ctrl)
 #endif
+
+/*
+ * NOTE Hash table is specific for hash table metadata service implementation
+ * and should be used internally by metadata service.
+ * At the moment there is no high level metadata interface because of that
+ * temporary defined in this file.
+ */
+/*******************************************************************************
+ * Hash Table
+ ******************************************************************************/
+/*
+ * Hash Table - Get
+ */
+ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
+		ocf_cache_line_t index)
+{
+	struct ocf_metadata_ctrl *ctrl
+		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	const struct ocf_metadata_hash *info =
+			ocf_metadata_raw_rd_access(cache,
+			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	
+	return info->cache_line;
+}
+
+uint8_t *ocf_metadata_get_hash_lock(struct ocf_cache *cache,
+		ocf_cache_line_t index)
+{
+	struct ocf_metadata_ctrl *ctrl
+		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	struct ocf_metadata_hash *info =
+			ocf_metadata_raw_wr_access(cache,
+			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	
+	return &(info->hash_lock);
+}
+
+/*
+ * Hash Table - Set
+ */
+void ocf_metadata_set_hash(struct ocf_cache *cache, ocf_cache_line_t index,
+		ocf_cache_line_t line)
+{
+	struct ocf_metadata_ctrl *ctrl
+		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	struct ocf_metadata_hash *info =
+			ocf_metadata_raw_wr_access(cache,
+			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	
+	info->cache_line = line;
+}
+
+void ocf_metadata_set_hash_lock(struct ocf_cache *cache, ocf_cache_line_t index,
+		uint8_t lock)
+{
+	struct ocf_metadata_ctrl *ctrl
+		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	struct ocf_metadata_hash *info =
+			ocf_metadata_raw_wr_access(cache,
+			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	
+	info->hash_lock = lock;
+}
 
 /*
  * Deinitialize hash metadata interface
@@ -1444,42 +1511,6 @@ void ocf_metadata_get_core_and_part_id(struct ocf_cache *cache,
 		*core_id = collision->core_id;
 	if (part_id)
 		*part_id = info->partition_id;
-}
-/*******************************************************************************
- * Hash Table
- ******************************************************************************/
-
-/*
- * Hash Table - Get
- */
-ocf_cache_line_t *ocf_metadata_get_hash_p(struct ocf_cache *cache,
-		ocf_cache_line_t index)
-{
-	struct ocf_metadata_ctrl *ctrl
-		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
-
-	return (ocf_cache_line_t *)ocf_metadata_raw_rd_access(cache,
-			&(ctrl->raw_desc[metadata_segment_hash]), index);
-}
-
-ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
-		ocf_cache_line_t index)
-{
-	return *ocf_metadata_get_hash_p(cache, index) & ~(1ULL << HASH_LOCK_BIT);
-}
-
-/*
- * Hash Table - Set
- */
-void ocf_metadata_set_hash(struct ocf_cache *cache, ocf_cache_line_t index,
-		ocf_cache_line_t line)
-{
-	struct ocf_metadata_ctrl *ctrl
-		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
-
-	line |= (*ocf_metadata_get_hash_p(cache, index) & (1ULL << HASH_LOCK_BIT));
-	*(ocf_cache_line_t *)ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_hash]), index) = line;
 }
 
 /*******************************************************************************
