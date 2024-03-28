@@ -1006,3 +1006,8 @@ void ocf_release_dump_info(struct ocf_dump_info *info)
 		env_free(info);
 	}
 }
+
+void ocf_show_alock(){
+	ocf_cache_t cache = g_adaptor.cache;
+	ocf_check_metadata_alock(cache);
+}

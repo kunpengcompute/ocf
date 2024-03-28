@@ -7,8 +7,9 @@
 
 #define THREAD_NUMS 4 /* 读写处理线程的数量 */
 #define ALLOC_CHUNK_ERR 1
-#define WRITE_ERR 1
-#define READ_ERR 1
+#define CHUNK_NOT_AVAIL 1
+#define WRITE_ERR -1
+#define READ_ERR -1
 
 enum {
     DEVICE_READ,

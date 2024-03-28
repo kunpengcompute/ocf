@@ -10,7 +10,14 @@
 #include "ocf_env.h"
 #include "ctx.h"
 
+#define ALLOC_CHUNK_RETRY 3
+
 #define LAVA_CHUNK_SIZE (128 * MiB)
+
+#define CHUNK_STATUS_VALID		0
+#define CHUNK_STATUS_INVALID	1
+#define CHUNK_STATUS_DELETING	(1 << 1)
+#define CHUNK_STATUS_DELET_FAIL	(1 << 2)
 
 #ifdef __cplusplus
 extern "C" {

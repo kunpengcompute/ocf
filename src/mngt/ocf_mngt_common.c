@@ -216,6 +216,67 @@ uint64_t _ocf_mngt_cache_remove_corelines_mapping(ocf_core_t core,
 	return corelines_removed;
 }
 
+uint64_t _ocf_mngt_cache_remove_cachelines_mapping(ocf_cache_t cache,
+	uint64_t addr, uint64_t bytes)
+{
+	ocf_cache_line_t hash;
+	ocf_cache_line_t curr_cline = ocf_bytes_2_lines(cache, addr);
+	ocf_cache_line_t cline_eidx = curr_cline + ocf_bytes_2_lines_round_up(cache, bytes) - 1;
+	ocf_cache_line_t removed = 0;
+	ocf_core_id_t curr_core_id, core_id_check;
+	uint64_t curr_coreline, curr_coreline_check;
+
+	unsigned lock_idx;
+	struct ocf_alock *alock = ocf_cache_line_concurrency(cache);
+	
+	while (curr_cline <= cline_eidx){
+		/* lock all hash-locks at first may cause dead-lock 
+		** ex: req0 locked 0, request 1, but we locked 1, request 0
+		*/
+		
+		while (true) {
+			lock_idx = ocf_metadata_concurrency_next_idx(cache->mngt_queue);
+
+			ocf_metadata_get_core_info(cache, curr_cline, &curr_core_id, &curr_coreline);
+			hash = ocf_metadata_hash_func(cache, curr_coreline, curr_core_id);
+			
+			ocf_hb_id_prot_lock_wr(&cache->metadata.lock, lock_idx, hash);
+
+			/* variable core_id_check and curr_coreline_check is for that
+			** the first time we use ocf_metadata_get_core_info is not safe
+			*/
+			ocf_metadata_get_core_info(cache, curr_cline, &core_id_check, &curr_coreline_check);
+			if (likely((curr_core_id == core_id_check) && (curr_coreline == curr_coreline_check))) {
+				break;
+			} else {
+				ocf_hb_id_prot_unlock_wr(&cache->metadata.lock, lock_idx, hash);
+				env_msleep(10);
+			}
+		}
+
+		if(curr_core_id == OCF_CORE_ID_INVALID) {
+			ocf_hb_id_prot_unlock_wr(&cache->metadata.lock, lock_idx, hash);
+
+			curr_cline++;
+			continue;
+		}
+
+		if (!ocf_cache_line_try_lock_wr(alock, curr_cline)) {
+			ocf_hb_id_prot_unlock_wr(&cache->metadata.lock, lock_idx, hash);
+			env_msleep(10);
+		} else {
+			ocf_metadata_sparse_cache_line(cache, curr_cline);
+
+			ocf_cache_line_unlock_wr(alock, curr_cline);
+			ocf_hb_id_prot_unlock_wr(&cache->metadata.lock, lock_idx, hash);
+
+			removed++;
+			curr_cline++;
+		}
+	}
+
+	return removed;
+}
 
 /* Mark core as removed in metadata */
 void cache_mngt_core_remove_from_meta(ocf_core_t core)

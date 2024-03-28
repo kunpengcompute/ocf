@@ -11,6 +11,7 @@
 #include "../ocf_request.h"
 #include "../utils/utils_io.h"
 #include "../utils/utils_user_part.h"
+#include "../../inc/ocf_volume.h"
 
 #define OCF_ENGINE_DEBUG 0
 
@@ -23,7 +24,7 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 		req->cache);
 
 	if (error)
-		req->error |= error;
+		req->error = error;
 
 	/* Handle callback-caller race to let only one of the two complete the
 	 * request. Also, complete original request only if this is the last
@@ -32,7 +33,7 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 	if (env_atomic_dec_return(&req->req_remaining) == 0) {
 		OCF_DEBUG_RQ(req, "HIT completion");
 
-		if (req->error) {
+		if (unlikely(req->error)) {
 			ocf_core_stats_cache_error_update(req->core, OCF_READ);
 			OCF_DEBUG_RQ(req, "read cache error: %d", req->error);
 			req->error = -OCF_ERR_UCACHE_IO;
@@ -182,7 +183,7 @@ int ocf_read_ucache(struct ocf_request *req)
 static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 {
 	if (error) {
-		req->error = req->error ?: error;
+		req->error = error;
 	}
 
 	if (env_atomic_dec_return(&req->req_remaining))
@@ -192,7 +193,7 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 
 	req->backend_start_timestamp = 0;
 
-	if (req->error) {
+	if (unlikely(req->error)) {
 		/* An error occured */
 		OCF_DEBUG_RQ(req, "write cache error: %d", req->error);
 
