@@ -4,8 +4,16 @@
  */
 
 #include <ocf/ocf.h>
+#include "ocf/ocf_cache.h"
+#include "ocf_space.h"
+#include "ocf_stats_priv.h"
+#include "utils_request.h"
+#include "utils_refcnt.h"
+#include "ocf_request.h"
+#include <algorithm>
 #include <vector>
 #include <functional>
+#include <numeric>
 #include "device.h"
 #include "volume.h"
 #include "ctx.h"
@@ -130,6 +138,238 @@ static void lava_volume_submit_io(struct ocf_io *io)
 	ocf_adaptor_log(OCF_LOG_DEBUG, "VOL: (name: %s), IO: (dir: %s, addr: %ld, bytes: %d)\n",
 			lava_volume->name, io->dir == OCF_READ ? "read" : "write",
 			io->addr, io->bytes);
+}
+
+static void _ocf_engine_update_latency_stats_int_adaptor(struct ocf_request *req, int c)
+{
+	uint64_t start_timestamp, end_timestamp;
+	switch (c) {
+		case STATS_CLASS_OCF:
+			start_timestamp = req->ocf_start_timestamp;
+			break;
+		case STATS_CLASS_BACKEND:
+			start_timestamp = req->backend_start_timestamp;
+			break;
+		default:
+			ENV_BUG();
+	}
+
+	/* return if start timestamp is zero */
+	if (start_timestamp == 0) {
+		return;
+	}
+
+	/*end timestamp */
+	end_timestamp = env_get_tick_count();
+
+	if (start_timestamp > end_timestamp) {
+		/* clock drift may cause this situation */
+		ocf_adaptor_log(OCF_LOG_ERROR, "Timestamp error start: %lu, end: %lu\n",
+				start_timestamp, end_timestamp);
+		return;
+	}
+
+	ocf_core_stats_latency_update(req->core, req->part_id,
+			c, ocf_req_get_stats_type(req), end_timestamp-start_timestamp);
+}
+
+static void lava_volume_submit_req_cb(int ret, void *context)
+{
+	Request *chunk_req = (Request*)context;
+	struct ocf_request *ocf_req = (struct ocf_request*)chunk_req->user_ctx;
+	ocf_req_end_t callback = (ocf_req_end_t)ocf_req->backend_complete;
+	ocf_volume_t volume = ocf_cache_get_volume(ocf_req->cache);
+
+	delete chunk_req;
+
+	/* calc backend latency */
+	_ocf_engine_update_latency_stats_int_adaptor(ocf_req, STATS_CLASS_BACKEND);
+	ocf_refcnt_dec(&volume->refcnt);
+	callback(ocf_req, ret);
+}
+
+static void _get_offset_dict(vector<uint64_t> &offset_dict,
+		struct ocf_request *req, uint64_t cacheline_size)
+{
+	uint64_t seek, total_bytes = 0;
+
+	/* first coreline does not need to be shifted by offset */
+	offset_dict.push_back(0);
+
+	seek = req->byte_position % cacheline_size;
+	total_bytes += (cacheline_size - seek);
+
+	for (uint32_t i = 1; i < req->core_line_count; i++) {
+		offset_dict.push_back(total_bytes);
+		total_bytes += cacheline_size;
+	}
+}
+
+static void _do_send_chunk_request(ocf_request *ocf_req, Request *chunk_req, int dir, uint64_t blocksize)
+{
+	int ret;
+	ocf_volume_t volume = ocf_cache_get_volume(ocf_req->cache);
+
+	/* all segments are treated as one request, so we increment the conter here */
+	env_atomic_add(1, &ocf_req->req_remaining);
+	/* add ref cnt of cache volume */
+	if (!ocf_refcnt_inc(&volume->refcnt)) {
+		delete chunk_req;
+		/* directly callback */
+		ocf_req_end_t callback = (ocf_req_end_t)ocf_req->backend_complete;
+		callback(ocf_req, -OCF_ERR_NO_MEM);
+		return;
+	}
+
+	if (!volume->opened) {
+		ret = -OCF_ERR_IO;
+		goto done;
+	}
+
+	if (dir == OCF_WRITE) {
+		ret = AioWrite(chunk_req);
+	} else {
+		ret = AioRead(chunk_req);
+	}
+
+	/* update block stats */
+	ocf_core_stats_cache_block_update(ocf_req->core, ocf_req->ioi.io.io_class,
+			dir, blocksize);
+
+done:
+	if (ret) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "Chunk IO failed with ret: %d\n", ret);
+		lava_volume_submit_req_cb(ret, chunk_req);
+	}
+}
+
+static void lava_volume_submit_req(uint64_t cacheline_size,
+		uint64_t metadata_offset, void *req_p, int dir, void *callback_p)
+{
+	struct ocf_request *req = (struct ocf_request*)req_p;
+	ocf_req_end_t callback = (ocf_req_end_t)callback_p;
+	struct volume_data *data = NULL;
+	Request *chunk_req = NULL;
+	vector<uint64_t> offset_dict;
+
+	uint64_t addr, bytes, pre_chunk_id, chunk_id, blocksize = 0, total_bytes = 0;
+	uint32_t size, cur = 0;
+
+	/*
+	 * get offset dict. This means that different corelines correspond
+	 * to different start positions of the data pointer in the request
+	 */
+	_get_offset_dict(offset_dict, req, cacheline_size);
+	size = req->byte_length;
+	data = (struct volume_data*)req->data;
+	req->backend_complete = callback;
+	pre_chunk_id = UINT64_MAX;
+
+	/* sort req by coll_idx in map */
+	vector<uint32_t> indices(req->core_line_count);
+	/* fille with index */
+	iota(indices.begin(), indices.end(), 0);
+	/* sort by coll_idx */
+	sort(indices.begin(), indices.end(), [&](uint32_t x, uint32_t y){
+		return req->map[x].coll_idx < req->map[y].coll_idx;
+	});
+
+	/*
+	 * set the counter to 1 to prevent ocf request from being
+	 * freed before the for loop completes
+	 */
+	env_atomic_set(&req->req_remaining, 1);
+	
+	/* calc io handle latency */
+	_ocf_engine_update_latency_stats_int_adaptor(req, STATS_CLASS_OCF);
+	req->backend_start_timestamp = env_get_tick_count();
+
+	for (uint32_t i = 0; i<indices.size(); i++) {
+		if (i == 0) {
+			/* calc io handle latency */
+			_ocf_engine_update_latency_stats_int_adaptor(req, STATS_CLASS_OCF);
+			req->backend_start_timestamp = env_get_tick_count();
+		}
+		cur = indices[i];
+		/* get address */
+		addr = req->map[cur].coll_idx;
+		addr *= cacheline_size;
+		addr += metadata_offset;
+		bytes = cacheline_size;
+
+		if (cur == 0) {
+			uint64_t seek = req->byte_position % cacheline_size;
+			
+			addr += seek;
+			/*
+			 * when only one cacheline is accessed and the access size is smaller than
+			 * the cache line size, bytes need to be directly set to size
+			 */
+			bytes = ocf_min(bytes - seek, size);
+		} else if (cur == (req->core_line_count - 1)) {
+			uint64_t skip = (cacheline_size -
+				((req->byte_position + size) % cacheline_size))
+				% cacheline_size;
+
+			bytes -= skip;
+		}
+
+		chunk_id = addr / LAVA_CHUNK_SIZE;
+		/* send previous request when chunk ids are not consecutive */
+		if (chunk_req != NULL && chunk_id != pre_chunk_id) {
+			_do_send_chunk_request(req, chunk_req, dir, blocksize);
+			/* reset block size stats */
+			blocksize = 0;
+			chunk_req = NULL;
+		}
+		pre_chunk_id = chunk_id;
+
+		/* create a new chunk request when loop begin or previous request was sended */
+		if (chunk_req == NULL) {
+			chunk_req = new Request();
+			chunk_req->chunk_id = chunk_id;
+			chunk_req->user_ctx = req;
+			chunk_req->cb = lava_volume_submit_req_cb;
+		}
+
+		/* check whether the addresses are consecutive */
+		if (chunk_req->segments.size() > 0 && i > 0) {
+			uint32_t pre_cur = indices[i - 1];
+			auto &pre_s = chunk_req->segments.back();
+			/* coreline and cacheline are both consecutive */
+			if ((pre_s.offset + pre_s.length == addr) &&
+					(req->map[cur].core_id == req->map[pre_cur].core_id) &&
+					(req->map[cur].core_line > req->map[pre_cur].core_line) &&
+					(req->map[cur].core_line == req->map[pre_cur].core_line + 1)) {
+				/* merge io */
+				pre_s.length += bytes;
+				total_bytes += bytes;
+				blocksize += bytes;
+				continue;
+			}
+		}
+
+		/* create a new segment when requests are not consecutive */
+		Segment s;
+		s.offset = addr % LAVA_CHUNK_SIZE;
+		s.length = bytes;
+		/* locate the start position of the buffer */
+		s.data = data->ptr + offset_dict[cur];
+
+		chunk_req->segments.push_back(s);
+		total_bytes += bytes;
+		blocksize += bytes;
+	}
+
+	/* last chunk request */
+	if (chunk_req != NULL) {
+		_do_send_chunk_request(req, chunk_req, dir, blocksize);
+	}
+	
+	/* callback for free req_remaining */
+	callback(req, 0);
+
+	ENV_BUG_ON(total_bytes != size);
 }
 
 /*
@@ -259,6 +499,7 @@ int volume_init(ocf_ctx_t ocf_ctx)
 	volume_properties.ops.open = lava_volume_open;
 	volume_properties.ops.close = lava_volume_close;
 	volume_properties.ops.submit_io = lava_volume_submit_io;
+	volume_properties.ops.submit_req = lava_volume_submit_req;
 	volume_properties.ops.submit_flush = lava_volume_submit_flush;
 	volume_properties.ops.submit_discard = lava_volume_submit_discard;
 	volume_properties.ops.get_max_io_size = lava_volume_get_max_io_size;
