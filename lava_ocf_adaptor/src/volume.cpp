@@ -33,10 +33,11 @@ struct no_io_volume {
 
 static int alloc_chunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
 {
-	int ret, _try = 3;
+	int ret, _try = ALLOC_CHUNK_RETRY;
 	while(_try--) {
 		ret = AllocChunks(num, chunk_ids);
 		if (ret) {
+			ocf_adaptor_log(OCF_LOG_ERROR, "Alloc chunk faied, maybe network is disconnect\n");
 			env_msleep(100);
 		} else {
 			break;
@@ -97,7 +98,7 @@ static void lava_volume_recovery_one_chunk_cb(ocf_cache_t cache, void *context, 
 			lava_volume->chunk_ids[chunk_id]);
 		lava_volume->chunk_status[chunk_id] |= CHUNK_STATUS_DELET_FAIL;
 		
-		// TODO:上报OCF不可用
+		// TODO:无法申请新的chunk，上报OCF不可用
 		
 		return;
 	}
@@ -113,7 +114,7 @@ static void lava_volume_recovery_one_chunk(ocf_cache_t cache, struct lava_volume
 {
 	int ret;
 
-	if (lava_volume->chunk_status[bad_chunk_idx] &= CHUNK_STATUS_DELETING) {
+	if (lava_volume->chunk_status[bad_chunk_idx] & CHUNK_STATUS_DELETING) {
 		return;
 	}
 
@@ -125,7 +126,10 @@ static void lava_volume_recovery_one_chunk(ocf_cache_t cache, struct lava_volume
 	
 	if (ret) {
 		lava_volume->chunk_status[bad_chunk_idx] |= CHUNK_STATUS_DELET_FAIL;
-		ocf_adaptor_log(OCF_LOG_ERROR, "Recovery chunks failed on %d", lava_volume->chunk_ids[bad_chunk_idx]);
+		
+		// TODO:管理队列的IO下不了，说明有异常，上报OCF不可用
+		
+		ocf_adaptor_log(OCF_LOG_ERROR, "Recovery chunk failed on %d", lava_volume->chunk_ids[bad_chunk_idx]);
 	}
 }
 
@@ -138,19 +142,6 @@ static void lava_volume_submit_io_cb(int ret, void *context)
 
 	if (unlikely(ret)) {
 		lava_volume_io->ret = ret;
-
-		if ((ret == CHUNK_NOT_AVAIL)) {
-			struct lava_volume *lava_volume;
-			lava_volume = (struct lava_volume*)ocf_volume_get_priv(ocf_io_get_volume(io));
-
-			ocf_cache_t cache = ocf_volume_get_cache(ocf_io_get_volume(io));
-
-			lava_volume_io->ret = -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL;
-
-			uint32_t bad_chunk = io->addr / LAVA_CHUNK_SIZE;
-			lava_volume->chunk_status[bad_chunk] |= CHUNK_STATUS_INVALID;
-			lava_volume_recovery_one_chunk(cache, lava_volume, bad_chunk);
-		}
 	}
 
 	delete req;
@@ -291,6 +282,8 @@ static void _do_send_chunk_request(ocf_request *ocf_req, Request *chunk_req, int
 {
 	int ret;
 	ocf_volume_t volume = ocf_cache_get_volume(ocf_req->cache);
+	struct lava_volume *lava_volume = (struct lava_volume*)ocf_volume_get_priv(volume);
+	uint64_t chunk_idx = chunk_req->chunk_id;
 
 	/* all segments are treated as one request, so we increment the conter here */
 	env_atomic_add(1, &ocf_req->req_remaining);
@@ -308,6 +301,14 @@ static void _do_send_chunk_request(ocf_request *ocf_req, Request *chunk_req, int
 		goto done;
 	}
 
+	if (lava_volume->chunk_status[chunk_idx] != CHUNK_STATUS_VALID) {
+		lava_volume_submit_req_cb(-OCF_ERR_UCACHE_IO, chunk_req);
+		return;
+	}	
+
+	/* transfer chunk_id to true chunk_id backend */
+	chunk_req->chunk_id = lava_volume->chunk_ids[chunk_idx];
+
 	if (dir == OCF_WRITE) {
 		ret = AioWrite(chunk_req);
 	} else {
@@ -321,6 +322,15 @@ static void _do_send_chunk_request(ocf_request *ocf_req, Request *chunk_req, int
 done:
 	if (ret) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "Chunk IO failed with ret: %d\n", ret);
+		
+		if (ret == CHUNK_NOT_AVAIL) {
+			/* redirect lava err to ocf internal err */
+			ret = -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL;
+
+			lava_volume->chunk_status[chunk_idx] |= CHUNK_STATUS_INVALID;
+			lava_volume_recovery_one_chunk(ocf_req->cache, lava_volume, chunk_idx);
+		}
+
 		lava_volume_submit_req_cb(ret, chunk_req);
 	}
 }

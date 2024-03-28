@@ -10,6 +10,8 @@
 #include "ocf_env.h"
 #include "ctx.h"
 
+#define ALLOC_CHUNK_RETRY 3
+
 #define LAVA_CHUNK_SIZE (128 * MiB)
 
 #define CHUNK_STATUS_VALID		0
