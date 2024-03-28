@@ -8,6 +8,10 @@
 
 #include "ocf_env.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef void (*ocf_refcnt_cb_t)(void *priv);
 
 struct ocf_refcnt
@@ -45,5 +49,9 @@ bool ocf_refcnt_frozen(struct ocf_refcnt *rc);
  * Cannot be called until previously regsitered callback had fired. */
 void ocf_refcnt_register_zero_cb(struct ocf_refcnt *rc, ocf_refcnt_cb_t cb,
 		void *priv);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __OCF_REFCNT_H__

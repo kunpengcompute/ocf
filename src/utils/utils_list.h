@@ -99,14 +99,14 @@ static inline void ocf_lst_add_after(struct ocf_lst *lst,
 {
 	struct ocf_lst_entry *after = lst->getter(lst->cache, at);
 	struct ocf_lst_entry *next = lst->getter(lst->cache, after->next);
-	struct ocf_lst_entry *this = lst->getter(lst->cache, idx);
+	struct ocf_lst_entry *curr = lst->getter(lst->cache, idx);
 
-	OCF_LST_DBG_ON(lst, ocf_lst_is_entry(lst, this));
+	OCF_LST_DBG_ON(lst, ocf_lst_is_entry(lst, curr));
 	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, after));
 	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, next));
 
-	this->next = after->next;
-	this->prev = at;
+	curr->next = after->next;
+	curr->prev = at;
 	after->next = idx;
 	next->prev = idx;
 }
@@ -116,60 +116,60 @@ static inline void ocf_lst_add_before(struct ocf_lst *lst,
 {
 	struct ocf_lst_entry *before = lst->getter(lst->cache, at);
 	struct ocf_lst_entry *prev = lst->getter(lst->cache, before->prev);
-	struct ocf_lst_entry *this = lst->getter(lst->cache, idx);
+	struct ocf_lst_entry *curr = lst->getter(lst->cache, idx);
 
-	OCF_LST_DBG_ON(lst, ocf_lst_is_entry(lst, this));
+	OCF_LST_DBG_ON(lst, ocf_lst_is_entry(lst, curr));
 	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, before));
 	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, prev));
 
-	this->next = at;
-	this->prev = before->prev;
+	curr->next = at;
+	curr->prev = before->prev;
 	before->prev = idx;
 	prev->next = idx;
 }
 
 static inline void ocf_lst_add(struct ocf_lst *lst, ocf_cache_line_t idx)
 {
-	struct ocf_lst_entry *this = lst->getter(lst->cache, idx);
+	struct ocf_lst_entry *curr = lst->getter(lst->cache, idx);
 	struct ocf_lst_entry *next = lst->getter(lst->cache, lst->head->next);
 
-	OCF_LST_DBG_ON(lst, ocf_lst_is_entry(lst, this));
+	OCF_LST_DBG_ON(lst, ocf_lst_is_entry(lst, curr));
 	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, next));
 
-	this->next = lst->head->next;
+	curr->next = lst->head->next;
 	next->prev = idx;
 	lst->head->next = idx;
-	this->prev = lst->invalid;
+	curr->prev = lst->invalid;
 }
 
 static inline void ocf_lst_add_tail(struct ocf_lst *lst, ocf_cache_line_t idx)
 {
-	struct ocf_lst_entry *this = lst->getter(lst->cache, idx);
+	struct ocf_lst_entry *curr = lst->getter(lst->cache, idx);
 	struct ocf_lst_entry *prev = lst->getter(lst->cache, lst->head->prev);
 
-	OCF_LST_DBG_ON(lst, ocf_lst_is_entry(lst, this));
+	OCF_LST_DBG_ON(lst, ocf_lst_is_entry(lst, curr));
 	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, prev));
 
-	this->next = lst->invalid;
-	this->prev = lst->head->prev;
+	curr->next = lst->invalid;
+	curr->prev = lst->head->prev;
 	prev->next = idx;
 	lst->head->prev = idx;
 }
 
 static inline void ocf_lst_del(struct ocf_lst *lst, ocf_cache_line_t idx)
 {
-	struct ocf_lst_entry *this = lst->getter(lst->cache, idx);
-	struct ocf_lst_entry *next = lst->getter(lst->cache, this->next);
-	struct ocf_lst_entry *prev = lst->getter(lst->cache, this->prev);
+	struct ocf_lst_entry *curr = lst->getter(lst->cache, idx);
+	struct ocf_lst_entry *next = lst->getter(lst->cache, curr->next);
+	struct ocf_lst_entry *prev = lst->getter(lst->cache, curr->prev);
 
-	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, this));
+	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, curr));
 	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, next));
 	OCF_LST_DBG_ON(lst, !ocf_lst_is_entry(lst, prev));
 
-	prev->next = this->next;
-	next->prev = this->prev;
+	prev->next = curr->next;
+	next->prev = curr->prev;
 
-	ocf_lst_init_entry(lst, this);
+	ocf_lst_init_entry(lst, curr);
 }
 
 static inline ocf_cache_line_t ocf_lst_head(struct ocf_lst *lst)

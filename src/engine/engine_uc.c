@@ -26,9 +26,6 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 	if (error)
 		req->error = error;
 
-	/* calc backend latency */
-	ocf_engine_update_latency_stats(req, STATS_CLASS_BACKEND);
-
 	/* Handle callback-caller race to let only one of the two complete the
 	 * request. Also, complete original request only if this is the last
 	 * sub-request to complete
@@ -60,10 +57,7 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 
 static void ocf_read_ucache_submit_hit(struct ocf_request *req)
 {
-	env_atomic_set(&req->req_remaining, ocf_engine_io_count(req));
-
-	ocf_submit_cache_reqs(req->cache, req, OCF_READ, 0, req->byte_length,
-		ocf_engine_io_count(req), _ocf_read_ucache_hit_complete);
+	ocf_volume_submit_req(req->cache, req, OCF_READ, _ocf_read_ucache_hit_complete);
 }
 
 static int _ocf_read_ucache_do(struct ocf_request *req)
@@ -191,8 +185,6 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 	if (error) {
 		req->error = error;
 	}
-	/* calc backend latency */
-	ocf_engine_update_latency_stats(req, STATS_CLASS_BACKEND);
 
 	if (env_atomic_dec_return(&req->req_remaining))
 		return;
@@ -231,12 +223,8 @@ static inline void _ocf_write_uc_submit(struct ocf_request *req)
 	/* Submit IOs */
 	OCF_DEBUG_RQ(req, "Submit");
 
-	/* Calculate how many IOs need to be submited */
-	env_atomic_set(&req->req_remaining, ocf_engine_io_count(req)); /* Cache IO */
-
 	/* To cache */
-	ocf_submit_cache_reqs(cache, req, OCF_WRITE, 0, req->byte_length,
-			ocf_engine_io_count(req), _ocf_write_uc_cache_complete);
+	ocf_volume_submit_req(cache, req, OCF_WRITE, _ocf_write_uc_cache_complete);
 }
 
 static void _ocf_write_uc_update_bits(struct ocf_request *req)

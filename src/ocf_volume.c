@@ -4,10 +4,12 @@
  */
 
 #include "ocf/ocf.h"
+#include "ocf_request.h"
 #include "ocf_priv.h"
 #include "ocf_volume_priv.h"
 #include "ocf_io_priv.h"
 #include "ocf_env.h"
+#include "ocf_cache_priv.h"
 
 int ocf_uuid_set_str(ocf_uuid_t uuid, char *str)
 {
@@ -284,12 +286,33 @@ void ocf_volume_submit_io(struct ocf_io *io)
 
 	ENV_BUG_ON(!volume->type->properties->ops.submit_io);
 
-	if (!volume->opened) {
+	if (unlikely(!volume->opened)) {
 		io->end(io, -OCF_ERR_IO);
 		return;
 	}
 
 	volume->type->properties->ops.submit_io(io);
+}
+
+void ocf_volume_submit_req(void *cache_p,
+		void *req_p, int dir, void *callback_p)
+{
+	ocf_cache_t cache = (ocf_cache_t)cache_p;
+	ocf_volume_t volume = ocf_cache_get_volume(cache);
+	struct ocf_request *req = (struct ocf_request *)req_p;
+
+	ENV_BUG_ON(!volume->type->properties->ops.submit_req);
+
+	if (!volume->opened) {
+		/* add for ocf request callbak */
+		env_atomic_set(&req->req_remaining, 1);
+		ocf_req_end_t callback = (ocf_req_end_t)callback_p;
+		callback(req, -OCF_ERR_IO);
+		return;
+	}
+
+	volume->type->properties->ops.submit_req(cache->metadata.line_size, cache->device->metadata_offset,
+			req_p, dir, callback_p);
 }
 
 void ocf_volume_submit_flush(struct ocf_io *io)
