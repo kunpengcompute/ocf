@@ -1565,19 +1565,19 @@ int ocf_mngt_core_get_seq_cutoff_promote_on_threshold(ocf_core_t core,
 void ocf_check_metadata_alock(ocf_cache_t cache)
 {
 	struct ocf_alock *alock = ocf_cache_line_concurrency(cache);
-	ocf_cache_line_t cacheline_total = ocf_metadata_collision_table_entries(cache);
+	uint64_t cacheline_total = ocf_metadata_collision_table_entries(cache);
 
 	ocf_core_id_t curr_core_id;
 	uint64_t curr_coreline, unlocked = 0;
 
-	ocf_cache_log(cache, log_info, "There are %ld cachelines exist, only print abnormal alocks\n", cacheline_total);
-	for (int curr_cline = 0; curr_cline < cacheline_total; curr_cline++) {
+	ocf_cache_log(cache, log_info, "There are %lu cachelines exist, only print abnormal alocks\n", cacheline_total);
+	for (uint64_t curr_cline = 0; curr_cline < cacheline_total; curr_cline++) {
 		if (ocf_cache_line_try_lock_wr(alock, curr_cline)) {
 			ocf_cache_line_unlock_wr(alock, curr_cline);
 		} else {
 			unlocked++;
 			ocf_metadata_get_core_info(cache, curr_cline, &curr_core_id, &curr_coreline);
-			ocf_cache_log(cache, log_err, "%ld cannot be locked! It belongs to core:%ld coreline:%ld\n",
+			ocf_cache_log(cache, log_err, "%lu cannot be locked! It belongs to core:%u coreline:%lu\n",
 				curr_cline, curr_core_id, curr_coreline);
 		}
 	}
