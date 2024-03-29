@@ -59,7 +59,7 @@ static inline void ocf_io_start(struct ocf_io *io)
 }
 
 static inline void ocf_io_end(struct ocf_io *io, int error)
-{
+{	
 	if (io->end)
 		io->end(io, error);
 

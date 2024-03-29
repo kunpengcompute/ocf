@@ -41,7 +41,10 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 			ocf_core_stats_cache_success_update(req->core, OCF_READ);
 		}
 
-		ocf_req_unlock(c, req);
+		uint8_t prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1);
+		if (prev == 0) { /* req has not been unlock */
+			ocf_req_unlock(c, req);
+		}
 
 		req->backend_start_timestamp = 0;
 
@@ -57,6 +60,8 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 
 static void ocf_read_ucache_submit_hit(struct ocf_request *req)
 {
+	req->ready_to_cache = 1;
+	
 	ocf_volume_submit_req(req->cache, req, OCF_READ, _ocf_read_ucache_hit_complete);
 }
 
@@ -117,7 +122,6 @@ static void _ocf_lookup_ucache(struct ocf_request *req)
 	ocf_engine_update_latency_stats(req, STATS_CLASS_OCF);
 	/* update request statistics */
 	ocf_engine_update_lookup_req_stats(req);
-	req->ocf_start_timestamp = 0;
 
 	if (ocf_engine_is_hit(req)) {
 		req->complete(req, 0);
@@ -193,6 +197,7 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 
 	req->backend_start_timestamp = 0;
 
+	uint8_t prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1);
 	if (unlikely(req->error)) {
 		/* An error occured */
 		OCF_DEBUG_RQ(req, "write cache error: %d", req->error);
@@ -202,14 +207,18 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 		/* Complete request */
 		req->complete(req, -OCF_ERR_UCACHE_IO);
 
-		ocf_engine_invalidate(req);
+		if (prev == 0) { /* req has not been invalided */
+			ocf_engine_invalidate(req);
+		}
 
 		return;
 	} else {
 		ocf_core_stats_cache_success_update(req->core, OCF_WRITE);
 	}
 
-	ocf_req_unlock_wr(ocf_cache_line_concurrency(req->cache), req);
+	if (prev == 0) { /* req has not been invalided */
+		ocf_req_unlock_wr(ocf_cache_line_concurrency(req->cache), req);
+	}
 
 	req->complete(req, 0);
 
@@ -222,6 +231,8 @@ static inline void _ocf_write_uc_submit(struct ocf_request *req)
 
 	/* Submit IOs */
 	OCF_DEBUG_RQ(req, "Submit");
+
+	req->ready_to_cache = 1;
 
 	/* To cache */
 	ocf_volume_submit_req(cache, req, OCF_WRITE, _ocf_write_uc_cache_complete);
@@ -259,7 +270,6 @@ static int _ocf_invalid_write_do(struct ocf_request *req)
 	ocf_engine_update_latency_stats(req, STATS_CLASS_OCF);
 	ocf_core_stats_invalid_req_update(req->core, req->part_id);
 
-	req->ocf_start_timestamp = 0;
 	req->complete(req, 0);
 	ocf_engine_invalidate(req);
 	return 0;

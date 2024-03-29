@@ -4,6 +4,8 @@
  */
 
 #include <ocf/ocf.h>
+#include "check_queue_thread.h"
+#include "ocf_queue_utils.h"
 #include "queue_thread.h"
 #include "log.h"
 
@@ -123,21 +125,7 @@ static void* run(void *arg)
 	pthread_exit(0);
 }
 
-static int select_valid_cpu_core(__uint128_t core_mask, uint8_t *cpu_valid_core)
-{
-	int i = 0;
-	uint8_t idx = 0;
-
-	for (; idx < 128; ++idx) {
-		if (((__uint128_t)1 << (idx)) & core_mask) {
-			cpu_valid_core[i++] = idx;
-		}
-	}
-
-	return i;
-}
-
-/* initialize I/O queue and management queue thread */
+/* initialize I/O queue thread */
 int initialize_threads(struct ocf_queue **io_queues,
 	uint16_t queue_num, uint16_t cpu_core_num, __uint128_t core_mask)
 {

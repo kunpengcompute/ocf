@@ -6,11 +6,13 @@
 #ifndef __QUEUE_THREAD_H__
 #define __QUEUE_THREAD_H__
 
+#include <stdlib.h>
+#include <sched.h>
+#include <pthread.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define MAX_QUEUE_NUM 64
 
 int initialize_threads(struct ocf_queue **io_queues,
     uint16_t queue_num, uint16_t cpu_core_num, __uint128_t core_mask);

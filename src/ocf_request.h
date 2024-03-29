@@ -125,6 +125,9 @@ struct ocf_request {
 	env_atomic master_remaining;
 	/*!< Atomic counter for core device */
 
+	env_atomic8 is_invalided;
+	/* !< Flag indicates request has already been invalided */
+
 	const struct ocf_engine_callbacks *engine_cbs;
 	/*!< Engine owning the request */
 
@@ -203,6 +206,9 @@ struct ocf_request {
 	uint8_t lock_idx : OCF_METADATA_GLOBAL_LOCK_IDX_BITS;
 	/* !< Selected global metadata read lock */
 
+	uint8_t ready_to_cache : 1;
+	/* !< Flag indicates that request is ready to be submitted */
+
 	ocf_req_cache_mode_t cache_mode;
 
 	uint64_t timestamp;
@@ -213,6 +219,9 @@ struct ocf_request {
 
 	struct list_head list;
 	/*!< List item for OCF IO thread workers */
+
+	struct list_head check_list;
+	/*!< List item for OCF check IO thread workers */
 
 	struct ocf_req_info info;
 	/*!< Detailed request info */

@@ -7,5 +7,6 @@
 #define ENGINE_INV_H_
 
 void ocf_engine_invalidate(struct ocf_request *req);
+void ocf_engine_invalidate_without_flush(struct ocf_request *req);
 
 #endif /* ENGINE_INV_H_ */
