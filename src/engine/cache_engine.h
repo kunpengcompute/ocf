@@ -46,7 +46,7 @@ void ocf_resolve_effective_cache_mode(ocf_cache_t cache,
 
 const struct ocf_io_if *ocf_get_io_if(ocf_req_cache_mode_t cache_mode);
 
-static inline const char *ocf_get_io_iface_name(ocf_cache_mode_t cache_mode)
+static inline const char *ocf_get_io_iface_name(ocf_req_cache_mode_t cache_mode)
 {
 	const struct ocf_io_if *iface = ocf_get_io_if(cache_mode);
 

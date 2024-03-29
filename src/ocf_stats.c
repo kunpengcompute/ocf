@@ -167,12 +167,12 @@ static void _ocf_stats_latency_update(struct ocf_counters_latency *counters,
 }
 
 void ocf_core_stats_latency_update(ocf_core_t core, ocf_part_id_t part_id,
-		int class, int type, uint64_t latency)
+		int class_type, int type, uint64_t latency)
 {
 	struct ocf_counters_latency *counters = NULL;
 
 	/* get counters */
-	switch (class) {
+	switch (class_type) {
 	case STATS_CLASS_OCF:
 		counters = core->counters->part_counters[part_id].ocf_latency;
 		break;

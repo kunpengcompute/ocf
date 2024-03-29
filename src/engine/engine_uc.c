@@ -11,6 +11,7 @@
 #include "../ocf_request.h"
 #include "../utils/utils_io.h"
 #include "../utils/utils_user_part.h"
+#include "../../inc/ocf_volume.h"
 
 #define OCF_ENGINE_DEBUG 0
 
@@ -23,10 +24,7 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 		req->cache);
 
 	if (error)
-		req->error |= error;
-
-	/* calc backend latency */
-	ocf_engine_update_latency_stats(req, STATS_CLASS_BACKEND);
+		req->error = error;
 
 	/* Handle callback-caller race to let only one of the two complete the
 	 * request. Also, complete original request only if this is the last
@@ -35,7 +33,7 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 	if (env_atomic_dec_return(&req->req_remaining) == 0) {
 		OCF_DEBUG_RQ(req, "HIT completion");
 
-		if (req->error) {
+		if (unlikely(req->error)) {
 			ocf_core_stats_cache_error_update(req->core, OCF_READ);
 			OCF_DEBUG_RQ(req, "read cache error: %d", req->error);
 			req->error = -OCF_ERR_UCACHE_IO;
@@ -62,12 +60,9 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 
 static void ocf_read_ucache_submit_hit(struct ocf_request *req)
 {
-	env_atomic_set(&req->req_remaining, ocf_engine_io_count(req));
-
 	req->ready_to_cache = 1;
-
-	ocf_submit_cache_reqs(req->cache, req, OCF_READ, 0, req->byte_length,
-		ocf_engine_io_count(req), _ocf_read_ucache_hit_complete);
+	
+	ocf_volume_submit_req(req->cache, req, OCF_READ, _ocf_read_ucache_hit_complete);
 }
 
 static int _ocf_read_ucache_do(struct ocf_request *req)
@@ -192,10 +187,8 @@ int ocf_read_ucache(struct ocf_request *req)
 static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 {
 	if (error) {
-		req->error = req->error ?: error;
+		req->error = error;
 	}
-	/* calc backend latency */
-	ocf_engine_update_latency_stats(req, STATS_CLASS_BACKEND);
 
 	if (env_atomic_dec_return(&req->req_remaining))
 		return;
@@ -205,7 +198,7 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 	req->backend_start_timestamp = 0;
 
 	uint8_t prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1);
-	if (req->error) {
+	if (unlikely(req->error)) {
 		/* An error occured */
 		OCF_DEBUG_RQ(req, "write cache error: %d", req->error);
 
@@ -239,14 +232,10 @@ static inline void _ocf_write_uc_submit(struct ocf_request *req)
 	/* Submit IOs */
 	OCF_DEBUG_RQ(req, "Submit");
 
-	/* Calculate how many IOs need to be submited */
-	env_atomic_set(&req->req_remaining, ocf_engine_io_count(req)); /* Cache IO */
-
 	req->ready_to_cache = 1;
 
 	/* To cache */
-	ocf_submit_cache_reqs(cache, req, OCF_WRITE, 0, req->byte_length,
-			ocf_engine_io_count(req), _ocf_write_uc_cache_complete);
+	ocf_volume_submit_req(cache, req, OCF_WRITE, _ocf_write_uc_cache_complete);
 }
 
 static void _ocf_write_uc_update_bits(struct ocf_request *req)

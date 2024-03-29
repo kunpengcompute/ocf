@@ -11,6 +11,10 @@
 #include "engine/cache_engine.h"
 #include "metadata/metadata_structs.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ocf_req_allocator;
 
 struct ocf_req_info {
@@ -92,6 +96,8 @@ struct ocf_req_discard_info {
 	sector_t handled;
 		/*!< Number of processed sector during discard operation */
 };
+
+typedef void (*ocf_req_end_t)(struct ocf_request *req, int error);
 
 /**
  * @brief OCF IO request
@@ -223,6 +229,9 @@ struct ocf_request {
 	void (*complete)(struct ocf_request *ocf_req, int error);
 	/*!< Request completion function */
 
+	ocf_req_end_t backend_complete;
+	/*!< Completion function for backend request done */
+
 	struct ocf_req_discard_info discard;
 
 	uint64_t ocf_start_timestamp;
@@ -241,8 +250,6 @@ struct ocf_request {
 
 	struct ocf_map_info __map[0];
 };
-
-typedef void (*ocf_req_end_t)(struct ocf_request *req, int error);
 
 /**
  * @brief Initialize OCF request allocation utility
@@ -443,5 +450,9 @@ static inline bool ocf_req_is_4k(uint64_t addr, uint32_t bytes)
 {
 	return !((addr % PAGE_SIZE) || (bytes % PAGE_SIZE));
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __OCF_REQUEST_H__ */

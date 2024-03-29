@@ -54,6 +54,12 @@ struct ocf_volume_ops {
 	void (*submit_io)(struct ocf_io *io);
 
 	/**
+	 * @brief Submit OCF request on this volume
+	 */
+	void (*submit_req)(uint64_t cacheline_size,
+		uint64_t metadata_offset, void *req, int dir, void *callback);
+
+	/**
 	 * @brief Submit IO with flush command
 	 *
 	 * @param[in] io IO to be submitted
@@ -293,6 +299,12 @@ struct ocf_io *ocf_volume_new_io(ocf_volume_t volume, ocf_queue_t queue,
  * @param[in] io IO
  */
 void ocf_volume_submit_io(struct ocf_io *io);
+
+/**
+ * @brief Submit OCF request to volume
+ */
+void ocf_volume_submit_req(void *cache,
+		void *req, int dir, void *callback);
 
 /**
  * @brief Submit flush to volume

@@ -762,7 +762,7 @@ int ocf_lookup(struct req_context *ctx)
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	env_rwlock_read_lock(&g_adaptor.table_lock);
-	if (region_remap_table.find(ctx->slot_id) == region_remap_table.end()) {
+	if (unlikely(region_remap_table.find(ctx->slot_id) == region_remap_table.end())) {
 		env_rwlock_read_unlock(&g_adaptor.table_lock);
 		return STATE_CORE_NOT_EXIST;
 	}
@@ -813,7 +813,7 @@ int ocf_get(struct req_context *ctx)
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	env_rwlock_read_lock(&g_adaptor.table_lock);
-	if (region_remap_table.find(ctx->slot_id) == region_remap_table.end()) {
+	if (unlikely(region_remap_table.find(ctx->slot_id) == region_remap_table.end())) {
 		env_rwlock_read_unlock(&g_adaptor.table_lock);
 		return STATE_CORE_NOT_EXIST;
 	}
@@ -848,7 +848,7 @@ int ocf_put(struct req_context *ctx)
 		return STATE_PRRAM_INVALID;
 	}
 
-	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
+	if (unlikely((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE))) {
 		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf_put is not 4k aligned\n");
 		if (ctx->cb) {
 			ctx->cb(STATE_SUCCESS, ctx);
@@ -860,7 +860,7 @@ int ocf_put(struct req_context *ctx)
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
 	env_rwlock_read_lock(&g_adaptor.table_lock);
-	if (region_remap_table.find(ctx->slot_id) == region_remap_table.end()) {
+	if (unlikely(region_remap_table.find(ctx->slot_id) == region_remap_table.end())) {
 		env_rwlock_read_unlock(&g_adaptor.table_lock);
 		return STATE_CORE_NOT_EXIST;
 	}
@@ -1043,4 +1043,9 @@ void ocf_release_dump_info(struct ocf_dump_info *info)
 		delete_strbuf(*tail);
 		env_free(info);
 	}
+}
+
+void ocf_show_alock(){
+	ocf_cache_t cache = g_adaptor.cache;
+	ocf_check_metadata_alock(cache);
 }

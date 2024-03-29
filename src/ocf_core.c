@@ -193,28 +193,28 @@ static inline int ocf_core_validate_io(struct ocf_io *io)
 	ocf_volume_t volume = ocf_io_get_volume(io);
 	ocf_core_t core = ocf_volume_to_core(volume);
 
-	if (io->addr + io->bytes > ocf_volume_get_length(volume))
+	if (unlikely(io->addr + io->bytes > ocf_volume_get_length(volume)))
 		return -OCF_ERR_INVAL;
 
-	if (io->io_class >= OCF_USER_IO_CLASS_MAX)
+	if (unlikely(io->io_class >= OCF_USER_IO_CLASS_MAX))
 		return -OCF_ERR_INVAL;
 
 	if (io->dir != OCF_READ && io->dir != OCF_WRITE) {
-		if (io->dir != OCF_LOOKUP && io->dir != OCF_INVALID) {
+		if (unlikely(io->dir != OCF_LOOKUP && io->dir != OCF_INVALID)) {
 			return -OCF_ERR_INVAL;
 		}
 	}
 
-	if (!io->io_queue)
+	if (unlikely(!io->io_queue))
 		return -OCF_ERR_INVAL;
 
-	if (!io->end)
+	if (unlikely(!io->end))
 		return -OCF_ERR_INVAL;
 
 	/* Core volume I/O must not be queued on management queue - this would
 	 * break I/O accounting code, resulting in use-after-free type of errors
 	 * after cache detach, core remove etc. */
-	if (io->io_queue == ocf_core_get_cache(core)->mngt_queue)
+	if (unlikely(io->io_queue == ocf_core_get_cache(core)->mngt_queue))
 		return -OCF_ERR_INVAL;
 
 	return 0;
@@ -284,12 +284,12 @@ static int ocf_core_submit_io_fast(struct ocf_io *io, struct ocf_request *req,
 static bool ocf_ucache_req_info_valid(ocf_cache_t cache,
 		struct ocf_request *req)
 {
-	if (cache->pt_unaligned_io && !ocf_req_is_4k(req->byte_position,
-						     req->byte_length)) {
+	if (unlikely(cache->pt_unaligned_io && !ocf_req_is_4k(req->byte_position,
+						     req->byte_length))) {
 		return false;
 	}
 
-	if (req->core_line_count > cache->conf_meta->cachelines) {
+	if (unlikely(req->core_line_count > cache->conf_meta->cachelines)) {
 		return false;
 	}
 
@@ -301,7 +301,7 @@ static bool ocf_core_submit_ucache_io(ocf_cache_t cache,
 {
 	ocf_req_cache_mode_t tmp_mode = cache->conf_meta->cache_mode;
 
-	if (tmp_mode != ocf_req_cache_mode_uc) {
+	if (unlikely(tmp_mode != ocf_req_cache_mode_uc)) {
 		if (io->dir != OCF_READ && io->dir != OCF_WRITE) {
 			ocf_io_end(io, -OCF_ERR_REQ_INFO);
 			return true;
@@ -353,7 +353,7 @@ void ocf_core_volume_submit_io(struct ocf_io *io)
 	OCF_CHECK_NULL(io);
 
 	ret = ocf_core_validate_io(io);
-	if (ret < 0) {
+	if (unlikely(ret < 0)) {
 		ocf_io_end(io, ret);
 		return;
 	}
@@ -374,7 +374,7 @@ void ocf_core_volume_submit_io(struct ocf_io *io)
 	}
 
 	ret = ocf_req_alloc_map(req);
-	if (ret) {
+	if (unlikely(ret)) {
 		ocf_io_end(io, ret);
 		return;
 	}
@@ -554,7 +554,7 @@ static int ocf_core_io_set_data(struct ocf_io *io,
 
 	OCF_CHECK_NULL(io);
 
-	if (!data || offset)
+	if (unlikely(!data || offset))
 		return -OCF_ERR_INVAL;
 
 	req = ocf_io_to_req(io);
@@ -615,7 +615,7 @@ static void *ocf_core_io_allocator_new(ocf_io_allocator_t allocator,
 	struct ocf_request *req;
 
 	req = ocf_req_new(queue, NULL, addr, bytes, dir);
-	if (!req)
+	if (unlikely(!req))
 		return NULL;
 
 	return &req->ioi;

@@ -307,9 +307,9 @@ int ocf_hndl_ucache_engine(struct ocf_request *req)
 	ocf_cache_t cache = req->cache;
 
 	OCF_CHECK_NULL(cache);
-	
+
 	req->io_if = ocf_get_io_if(req->cache_mode);
-	if (!req->io_if)
+	if (unlikely(!req->io_if))
 		return -OCF_ERR_INVAL;
 
 	ocf_req_get(req);

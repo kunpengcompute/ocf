@@ -643,7 +643,7 @@ void ocf_engine_update_latency_stats(struct ocf_request *req, int class)
 	/* end timestamp */
 	end_timestamp = env_get_tick_count();
 
-	if (start_timestamp > end_timestamp) {
+	if (unlikely(start_timestamp > end_timestamp)) {
 		/* clock drift may cause this situation */
 		ocf_core_log(req->core, log_debug,
 				"timestamp error start: %lu, end: %lu\n",

@@ -6,6 +6,10 @@
 #ifndef __OCF_STATS_PRIV_H__
 #define __OCF_STATS_PRIV_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ocf_counters_block {
 	env_atomic64 read_bytes;
 	env_atomic64 write_bytes;
@@ -285,7 +289,7 @@ void ocf_core_stats_lookup_req_update(ocf_core_t core, ocf_part_id_t part_id,
 void ocf_core_stats_invalid_req_update(ocf_core_t core, ocf_part_id_t part_id);
 
 void ocf_core_stats_latency_update(ocf_core_t core, ocf_part_id_t part_id,
-		int class, int type, uint64_t latency);
+		int class_type, int type, uint64_t latency);
 
 void ocf_core_stats_ocf_input_req_update(ocf_core_t core, ocf_part_id_t part_id,
 		int type);
@@ -332,5 +336,9 @@ int ocf_core_get_stats(ocf_core_t core, struct ocf_stats_core *stats);
  * @param[in] io request for which stats are being updated
  */
 void ocf_core_update_stats(ocf_core_t core, struct ocf_io *io);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

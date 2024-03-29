@@ -13,6 +13,7 @@
 #include "../ocf_stats_priv.h"
 #include "../ocf_def_priv.h"
 #include "../cleaning/cleaning_ops.h"
+#include "../concurrency/ocf_cache_line_concurrency.h"
 #include <sys/time.h>
 
 
@@ -641,21 +642,12 @@ static void ocf_mngt_cache_remove_corelines_finish(ocf_pipeline_t pipeline,
 	struct ocf_mngt_cache_remove_corelines_context *context = priv;
 	ocf_cache_t cache = context->cache;
 	uint64_t corelines = ocf_cache_bytes_2_lines(cache, context->bytes);
-	if (!error) {
-		ocf_cache_log(cache, log_info, 
-			"%ld corelines of addr: %ld bytes: %ld (%ld lines) successfully removed.\n",
-			context->corelines_removed, context->addr, context->bytes, corelines);
+	ocf_cache_log(cache, log_info, 
+		"%ld corelines of addr: %ld bytes: %ld (%ld lines) successfully removed.\n",
+		context->corelines_removed, context->addr, context->bytes, corelines);
 
-		uint64_t us_time = get_us_time_cost(&context->time_start, &context->time_end);
-		ocf_cache_log(cache, log_info, "It cost %.3f sec \n", us_time * 0.000001);
-
-	} else {
-		ocf_cache_log(cache, log_err, 
-			"Removing %ld corelines of addr: %ld bytes: %ld (%ld lines)	failed.\n",
-			context->corelines_removed, context->addr, context->bytes, corelines);
-	}
-
-	context->cmpl(cache, context->priv, error);
+	uint64_t us_time = get_us_time_cost(&context->time_start, &context->time_end);
+	ocf_cache_log(cache, log_info, "It cost %.3f sec \n", us_time * 0.000001);
 
 	ocf_pipeline_destroy(context->pipeline);
 }
@@ -675,6 +667,8 @@ static void ocf_mngt_cache_remove_corelines_mapping(ocf_pipeline_t pipeline,
 			core, context->addr, context->bytes);
 	gettimeofday(&context->time_end, NULL);
 	
+	context->cmpl(cache, context->priv, 0);
+
 	ocf_pipeline_next(pipeline);
 }
 
@@ -723,6 +717,102 @@ int ocf_mngt_cache_remove_corelines(ocf_core_t core, uint64_t addr, uint64_t byt
 	context->core = core;
 	context->addr = addr;
 	context->bytes = bytes;
+
+	ocf_pipeline_next(pipeline);
+	
+	return 0;
+}
+
+struct ocf_mngt_cache_remove_cachelines_context {
+	ocf_mngt_cache_remove_cachelines_end_t cmpl;
+	void *priv;
+	int priv_param;
+	ocf_pipeline_t pipeline;
+	ocf_cache_t cache;
+	uint64_t addr;
+	uint64_t bytes;
+	uint64_t time_cost_us;
+	uint64_t cachelines_removed;
+};
+
+static void ocf_mngt_cache_remove_cachelines_finish(ocf_pipeline_t pipeline,
+		void *priv, int error)
+{
+	struct ocf_mngt_cache_remove_cachelines_context *context = priv;
+	ocf_cache_t cache = context->cache;
+	uint64_t cachelines = ocf_cache_bytes_2_lines(cache, context->bytes);
+
+	ocf_cache_log(cache, log_info, 
+			"%ld cachelines of addr: %ld bytes: %ld (%ld lines) successfully removed.\n",
+			context->cachelines_removed, context->addr, context->bytes, cachelines);
+	ocf_cache_log(cache, log_info, "It cost %.3f sec \n", context->time_cost_us * 0.000001);
+
+	ocf_pipeline_destroy(context->pipeline);
+}
+
+static void ocf_mngt_cache_remove_cachelines_mapping(ocf_pipeline_t pipeline,
+		void *priv, ocf_pipeline_arg_t arg)
+{
+	struct ocf_mngt_cache_remove_cachelines_context *context = priv;
+	ocf_cache_t cache = context->cache;
+
+	if (!ocf_cache_is_device_attached(cache))
+		OCF_PL_NEXT_RET(pipeline);
+	
+	struct timeval time_start, time_end;
+	gettimeofday(&time_start, NULL);
+	context->cachelines_removed = _ocf_mngt_cache_remove_cachelines_mapping(
+			cache, context->addr, context->bytes);
+	gettimeofday(&time_end, NULL);
+
+	context->time_cost_us += get_us_time_cost(&time_start, &time_end);
+	
+	context->cmpl(cache, context->priv, context->priv_param);
+
+	ocf_pipeline_next(pipeline);
+}
+
+struct ocf_pipeline_properties ocf_mngt_cache_remove_cachelines_pipeline_props = {
+	.priv_size = sizeof(struct ocf_mngt_cache_remove_cachelines_context),
+	.finish = ocf_mngt_cache_remove_cachelines_finish,
+	.steps = {
+		OCF_PL_STEP(ocf_mngt_cache_remove_cachelines_mapping),
+		OCF_PL_STEP_TERMINATOR(),
+	},
+};
+
+int ocf_mngt_cache_remove_cachelines(ocf_cache_t cache, uint64_t addr, uint64_t bytes,
+		ocf_mngt_cache_remove_cachelines_end_t cmpl, void *priv, int priv_param)
+{
+	struct ocf_mngt_cache_remove_cachelines_context *context;
+	ocf_pipeline_t pipeline;
+	int result;
+
+	if (ocf_cache_is_standby(cache))
+		return -OCF_ERR_CACHE_STANDBY;
+
+	if (!cache->mngt_queue)
+		return -OCF_ERR_INVAL;
+
+	if (!ocf_req_is_4k(addr, bytes))
+		return -OCF_ERR_INVAL;
+
+	result = ocf_pipeline_create(&pipeline, cache,
+			&ocf_mngt_cache_remove_cachelines_pipeline_props);
+
+	if (result)
+		return -OCF_ERR_NO_MEM;
+
+	context = ocf_pipeline_get_priv(pipeline);
+
+	context->cmpl = cmpl;
+	context->priv = priv;
+	context->pipeline = pipeline;
+	context->cache = cache;
+	context->addr = addr;
+	context->bytes = bytes;
+	context->time_cost_us = 0;
+	context->priv_param = priv_param;
 
 	ocf_pipeline_next(pipeline);
 	
@@ -1470,4 +1560,31 @@ int ocf_mngt_core_get_seq_cutoff_promote_on_threshold(ocf_core_t core,
 	*promote = ocf_core_get_seq_cutoff_promote_on_threshold(core);
 
 	return 0;
+}
+
+void ocf_check_metadata_alock(ocf_cache_t cache)
+{
+	struct ocf_alock *alock = ocf_cache_line_concurrency(cache);
+	ocf_cache_line_t cacheline_total = ocf_metadata_collision_table_entries(cache);
+
+	ocf_core_id_t curr_core_id;
+	uint64_t curr_coreline, unlocked = 0;
+
+	ocf_cache_log(cache, log_info, "There are %ld cachelines exist, only print abnormal alocks\n", cacheline_total);
+	for (int curr_cline = 0; curr_cline < cacheline_total; curr_cline++) {
+		if (ocf_cache_line_try_lock_wr(alock, curr_cline)) {
+			ocf_cache_line_unlock_wr(alock, curr_cline);
+		} else {
+			unlocked++;
+			ocf_metadata_get_core_info(cache, curr_cline, &curr_core_id, &curr_coreline);
+			ocf_cache_log(cache, log_err, "%ld cannot be locked! It belongs to core:%ld coreline:%ld\n",
+				curr_cline, curr_core_id, curr_coreline);
+		}
+	}
+	if (unlocked) {
+		ocf_cache_log(cache, log_err, "There are %ld cachelines that cannot be locked! \n", unlocked);
+	} else {
+		ocf_cache_log(cache, log_info, "Cachelines are healthy! \n");
+	}
+	
 }

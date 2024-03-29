@@ -174,6 +174,13 @@ struct ocf_dump_info *ocf_dump_cache_stats();
  */
 void ocf_release_dump_info(struct ocf_dump_info *info);
 
+/**
+ * @brief Check cacheline alocks from cache instance
+ *
+ * @param[in] cache Cache handle
+ */
+void ocf_show_alock();
+
 #ifdef __cplusplus
 }
 #endif
