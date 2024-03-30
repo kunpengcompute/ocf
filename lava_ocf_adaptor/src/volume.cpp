@@ -5,6 +5,7 @@
 
 #include <ocf/ocf.h>
 #include "ocf/ocf_cache.h"
+#include "ocf_queue_utils.h"
 #include "ocf_space.h"
 #include "ocf_stats_priv.h"
 #include "utils_request.h"
@@ -98,7 +99,7 @@ static void lava_volume_recovery_one_chunk_cb(ocf_cache_t cache, void *context, 
 			lava_volume->chunk_ids[chunk_id]);
 		lava_volume->chunk_status[chunk_id] |= CHUNK_STATUS_DELET_FAIL;
 		
-		// TODO:无法申请新的chunk，上报OCF不可用
+		set_ocf_global_status(OCF_STATUS_ERROR);
 		
 		return;
 	}
@@ -125,9 +126,8 @@ static void lava_volume_recovery_one_chunk(ocf_cache_t cache, struct lava_volume
 		lava_volume_recovery_one_chunk_cb, lava_volume, bad_chunk_idx);
 	
 	if (ret) {
-		lava_volume->chunk_status[bad_chunk_idx] |= CHUNK_STATUS_DELET_FAIL;
-		
-		// TODO:管理队列的IO下不了，说明有异常，上报OCF不可用
+		/* set valid, wait for next process */
+		lava_volume->chunk_status[bad_chunk_idx] = CHUNK_STATUS_VALID;
 		
 		ocf_adaptor_log(OCF_LOG_ERROR, "Recovery chunk failed on %d", lava_volume->chunk_ids[bad_chunk_idx]);
 	}
