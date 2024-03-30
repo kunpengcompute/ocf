@@ -416,3 +416,13 @@ uint64_t ocf_volume_get_length(ocf_volume_t volume)
 
 	return volume->type->properties->ops.get_length(volume);
 }
+
+void ocf_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
+{
+	ENV_BUG_ON(!volume->type->properties->ops.submit_dummy_io);
+
+	if (!volume->opened)
+		return;
+
+	volume->type->properties->ops.submit_dummy_io(volume, period);
+}

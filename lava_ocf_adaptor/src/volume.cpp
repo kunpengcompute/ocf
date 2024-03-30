@@ -335,6 +335,62 @@ done:
 	}
 }
 
+static void lava_volume_submit_dummy_io_cb(int ret, void *context)
+{
+	Request *req = (Request*)context;
+	free(req->segments[0].data);
+	delete req;
+}
+
+static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
+{
+	static uint32_t prev_time = env_ticks_to_secs(env_get_tick_count());
+	static uint8_t is_submitting_io = false;
+
+	if (is_submitting_io) {
+		return;
+	}
+	
+	is_submitting_io = true;
+	
+	uint32_t now_time = env_ticks_to_secs(env_get_tick_count());
+	struct lava_volume *lava_volume = (struct lava_volume*)ocf_volume_get_priv(volume);
+
+	uint32_t time_hash_sidx = prev_time % period;
+	uint32_t time_hash_eidx = now_time % period;
+	uint64_t i, total_io = lava_volume->chunk_ids.size();
+	
+	for(i = total_io * time_hash_sidx / period; i != total_io * time_hash_eidx / period;) {
+		if (likely(lava_volume->chunk_status[i] == CHUNK_STATUS_VALID)) {
+			Request *req = new Request();
+			Segment s = {
+				.offset = 0,
+				.length = 4 * KiB,
+				.data = (char*)malloc(4 * KiB)
+			};
+
+			req->chunk_id = lava_volume->chunk_ids[i];
+			req->segments.push_back(s);
+			req->user_ctx = lava_volume;
+			req->cb = lava_volume_submit_dummy_io_cb;
+
+			if (unlikely(AioRead(req) == CHUNK_NOT_AVAIL)) {
+				lava_volume->chunk_status[i] |= CHUNK_STATUS_INVALID;
+				lava_volume_recovery_one_chunk(volume->cache, lava_volume, i);
+				ocf_adaptor_log(OCF_LOG_ERROR, "Dummy IO discovery bad chunk %d, auto recovery \n",
+						lava_volume->chunk_ids[i]);
+				free(s.data);
+				delete req;
+			}
+		}
+		i++;
+		i %= total_io;
+	}
+
+	prev_time = now_time;
+	is_submitting_io = false;
+}
+
 static void lava_volume_submit_req(uint64_t cacheline_size,
 		uint64_t metadata_offset, void *req_p, int dir, void *callback_p)
 {
@@ -596,6 +652,7 @@ int volume_init(ocf_ctx_t ocf_ctx)
 	volume_properties.ops.submit_discard = lava_volume_submit_discard;
 	volume_properties.ops.get_max_io_size = lava_volume_get_max_io_size;
 	volume_properties.ops.get_length = lava_volume_get_length;
+	volume_properties.ops.submit_dummy_io = lava_volume_submit_dummy_io;
 
 	volume_properties.io_ops.set_data = lava_volume_io_set_data;
 	volume_properties.io_ops.get_data = lava_volume_io_get_data;
