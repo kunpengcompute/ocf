@@ -140,8 +140,9 @@ static void* check_run(void *arg)
 			}
 		}
 		env_msleep(500);
-		
-		ocf_volume_submit_dummy_io(&cache->device->volume, HEARTBEAT_IO_PERIOD);
+		if (likely(get_ocf_global_status() == OCF_STATUS_INITIALIZED)) {
+			ocf_volume_submit_dummy_io(&cache->device->volume, HEARTBEAT_IO_PERIOD);
+		}
 	}
 
 	pthread_exit(0);

@@ -489,10 +489,13 @@ int ocf_init(struct ocf_config *cfg)
 void ocf_exit()
 {
 	if (get_ocf_global_status() != OCF_STATUS_INITIALIZED && get_ocf_global_status() != OCF_STATUS_ERROR) {
-		ocf_adaptor_log(OCF_LOG_WARN, "ocf is not initialized, not need to delete\n");
+		ocf_adaptor_log(OCF_LOG_WARN, "ocf is not initialized or error, not need to delete\n");
 		return;
 	}
 	set_ocf_global_status(OCF_STATUS_DELETING);
+
+	ocf_adaptor_log(OCF_LOG_INFO, "ocf exiting, wait for a while\n");
+	env_msleep(500);
 
 	int ret = STATE_SUCCESS;
 	simple_context ctx;
