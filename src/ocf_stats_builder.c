@@ -895,3 +895,23 @@ end:
 
 	return b;
 }
+
+static int _reset_stats(ocf_core_t core, void *cntx)
+{
+	ocf_core_stats_reset(core);
+	return 0;
+}
+
+int ocf_stats_reset_cache(ocf_ctx_t ctx, const char *cache_name)
+{
+	ocf_cache_t cache;
+
+	if(ocf_mngt_cache_get_by_name(ctx, cache_name, OCF_CACHE_NAME_SIZE, &cache)) {
+		return -OCF_ERR_CACHE_NOT_EXIST;
+	}
+
+	if (ocf_cache_is_standby(cache))
+		return -OCF_ERR_CACHE_STANDBY;
+
+	return ocf_core_visit(cache, _reset_stats, NULL, true);
+}

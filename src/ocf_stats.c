@@ -37,6 +37,16 @@ static void ocf_stats_debug_init(struct ocf_counters_debug *stats)
 		type.samples = 0; \
 	} while (0)
 
+#define RESET_LATENCY(type) \
+	do { \
+		env_mutex_lock(&(type.mutex)); \
+		type.max = 0; \
+		type.min = UINT64_MAX; \
+		type.avg = 0.0; \
+		type.samples = 0; \
+		env_mutex_unlock(&(type.mutex)); \
+	} while (0)
+
 static void ocf_stats_req_init(struct ocf_counters_req *stats)
 {
 	env_atomic64_set(&stats->full_miss, 0);
@@ -59,6 +69,14 @@ static void ocf_stats_latencys_init(struct ocf_counters_latency stats[])
 	INIT_LATENCY(stats[STATS_TYPE_INVALID]);
 }
 
+static void ocf_stats_latencys_reset(struct ocf_counters_latency stats[])
+{
+	RESET_LATENCY(stats[STATS_TYPE_READ]);
+	RESET_LATENCY(stats[STATS_TYPE_WRITE]);
+	RESET_LATENCY(stats[STATS_TYPE_LOOKUP]);
+	RESET_LATENCY(stats[STATS_TYPE_INVALID]);
+}
+
 static void ocf_stats_frequencys_init(struct ocf_counters_frequency stats[], int size)
 {
 	for (int i = 0; i<size; i++) {
@@ -66,7 +84,7 @@ static void ocf_stats_frequencys_init(struct ocf_counters_frequency stats[], int
 	}
 }
 
-static void ocf_stats_part_init(struct ocf_counters_part *stats)
+static void _do_ocf_stats_part1_init(struct ocf_counters_part *stats)
 {
 	ocf_stats_req_init(&stats->read_reqs);
 	ocf_stats_req_init(&stats->write_reqs);
@@ -78,11 +96,24 @@ static void ocf_stats_part_init(struct ocf_counters_part *stats)
 	ocf_stats_req_init(&stats->lookup_reqs);
 	env_atomic64_set(&stats->invalid_reqs.total, 0);
 
-	ocf_stats_latencys_init(stats->ocf_latency);
-	ocf_stats_latencys_init(stats->backend_latency);
-
 	ocf_stats_frequencys_init(stats->ocf_in_reqs, STATS_TYPE_MAX);
 	ocf_stats_frequencys_init(stats->ocf_out_reqs, STATS_TYPE_MAX);
+}
+
+static void ocf_stats_part_init(struct ocf_counters_part *stats)
+{
+	_do_ocf_stats_part1_init(stats);
+
+	ocf_stats_latencys_init(stats->ocf_latency);
+	ocf_stats_latencys_init(stats->backend_latency);
+}
+
+static void ocf_stats_part_reset(struct ocf_counters_part *stats)
+{
+	_do_ocf_stats_part1_init(stats);
+
+	ocf_stats_latencys_reset(stats->ocf_latency);
+	ocf_stats_latencys_reset(stats->backend_latency);
 }
 
 static void ocf_stats_rw_init(struct ocf_counters_rw *stats)
@@ -331,6 +362,15 @@ void ocf_core_stats_cache_success_update(ocf_core_t core, uint8_t dir)
 }
 
 
+static void _ocf_core_stats_init_part1(struct ocf_counters_core *exp_obj_stats)
+{
+	ocf_stats_rw_init(&exp_obj_stats->cache_errors);
+	ocf_stats_rw_init(&exp_obj_stats->core_errors);
+	ocf_stats_rw_init(&exp_obj_stats->cache_success);
+	ocf_stats_rw_init(&exp_obj_stats->core_success);
+	ocf_stats_frequencys_init(exp_obj_stats->ocf_errors, STATS_TYPE_MAX);
+}
+
 /********************************************************************
  * Function that resets stats, debug and breakdown counters.
  * If reset is set the following stats won't be reset:
@@ -352,11 +392,7 @@ void ocf_core_stats_initialize(ocf_core_t core)
 
 	exp_obj_stats = core->counters;
 
-	ocf_stats_rw_init(&exp_obj_stats->cache_errors);
-	ocf_stats_rw_init(&exp_obj_stats->core_errors);
-	ocf_stats_rw_init(&exp_obj_stats->cache_success);
-	ocf_stats_rw_init(&exp_obj_stats->core_success);
-	ocf_stats_frequencys_init(exp_obj_stats->ocf_errors, STATS_TYPE_MAX);
+	_ocf_core_stats_init_part1(exp_obj_stats);
 
 	for (i = 0; i != OCF_USER_IO_CLASS_MAX; i++)
 		ocf_stats_part_init(&exp_obj_stats->part_counters[i]);
@@ -364,6 +400,21 @@ void ocf_core_stats_initialize(ocf_core_t core)
 #ifdef OCF_DEBUG_STATS
 	ocf_stats_debug_init(&exp_obj_stats->debug_stats);
 #endif
+}
+
+void ocf_core_stats_reset(ocf_core_t core)
+{
+	struct ocf_counters_core *exp_obj_stats;
+	int i;
+
+	OCF_CHECK_NULL(core);
+
+	exp_obj_stats = core->counters;
+
+	_ocf_core_stats_init_part1(exp_obj_stats);
+
+	for (i = 0; i != OCF_USER_IO_CLASS_MAX; i++)
+		ocf_stats_part_reset(&exp_obj_stats->part_counters[i]);
 }
 
 int ocf_core_stats_initialize_all(ocf_cache_t cache)

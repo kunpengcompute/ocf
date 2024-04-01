@@ -308,6 +308,16 @@ int ocf_stats_collect_cache(ocf_cache_t cache,
 		struct ocf_stats_ocf_inout_reqs *inout_reqs);
 
 /**
+ * @param Reset statistics for given cache
+ *
+ * @param cache Cache instance for which statistics will be collected
+ *
+ * @retval 0 Success
+ * @retval Non-zero Error
+ */
+int ocf_stats_reset_cache(ocf_ctx_t ctx, const char *cache_name);
+
+/**
  * @param Collect statistics for given core
  *
  * @param core Core for which statistics will be collected
@@ -368,6 +378,15 @@ int ocf_stats_collect_part_cache(ocf_cache_t cache, ocf_part_id_t part_id,
  * @param[in] core Core handle
  */
 void ocf_core_stats_initialize(ocf_core_t core);
+
+/**
+ * @brief reset core statistics
+ *
+ * reset counters used for statistics.
+ *
+ * @param[in] core Core handle
+ */
+void ocf_core_stats_reset(ocf_core_t core);
 
 /**
  * @brief Initialize or reset statistics of all cores in cache

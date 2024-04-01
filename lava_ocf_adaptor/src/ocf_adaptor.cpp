@@ -1044,6 +1044,16 @@ struct ocf_dump_info *ocf_dump_cache_stats()
 	return info;
 }
 
+int ocf_reset_cache_stats()
+{
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not dump cache stats\n");
+		return -1;
+	}
+
+	return ocf_stats_reset_cache(g_adaptor.ctx, ocf_cache_get_name(g_adaptor.cache));
+}
+
 void ocf_release_dump_info(struct ocf_dump_info *info)
 {
 	if (info) {
