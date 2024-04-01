@@ -243,7 +243,7 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 	}
 
 	for (i = 0; i < cfg->io_worker_num; ++i) {
-		ret = check_queue_create(&cache_priv->check_queues[i]);
+		ret = check_queue_create(*cache, &cache_priv->check_queues[i]);
 		if (ret)
 			goto err_cache;
 	}

@@ -127,6 +127,7 @@ static void* check_run(void *arg)
 	int i;
 	struct check_queue_thread *qt = arg;
 	check_queue_t *io_queues = qt->io_queues;
+	ocf_cache_t cache = io_queues[0]->cache;
 	uint16_t queue_num = qt->queue_num;
 	uint32_t pending_io = 0;
 	qt->stop = false;
@@ -138,7 +139,9 @@ static void* check_run(void *arg)
 				do_check(io_queues[i], pending_io);
 			}
 		}
-		usleep(500000);
+		env_msleep(500);
+		
+		ocf_volume_submit_dummy_io(&cache->device->volume, HEARTBEAT_IO_PERIOD);
 	}
 
 	pthread_exit(0);
@@ -156,7 +159,7 @@ int check_queue_thread_run(struct check_queue_thread *qt, int cpu)
 	return ret;
 }
 
-int check_queue_create(check_queue_t *check_queue)
+int check_queue_create(ocf_cache_t cache, check_queue_t *check_queue)
 {
 	check_queue_t tmp_queue;
 	int result;
@@ -176,6 +179,8 @@ int check_queue_create(check_queue_t *check_queue)
 	INIT_LIST_HEAD(&tmp_queue->io_list);
 	env_atomic_set(&tmp_queue->ref_count, 1);
 
+	tmp_queue->cache = cache;
+	
 	*check_queue = tmp_queue;
 
 	return 0;

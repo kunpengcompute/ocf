@@ -8,6 +8,7 @@
 
 #include "ocf_env.h"
 #include "ocf_queue_utils.h"
+#include "../../inc/ocf_types.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -20,6 +21,7 @@ extern "C" {
 #endif
 
 struct check_queue {
+    ocf_cache_t cache;
     struct list_head io_list;
     void *priv;
     env_atomic io_no;
@@ -44,7 +46,7 @@ struct check_queue_thread {
 };
 
 int check_queue_thread_run(struct check_queue_thread *qt, int cpu);
-int check_queue_create(check_queue_t *check_queue);
+int check_queue_create(ocf_cache_t cache, check_queue_t *check_queue);
 void *ocf_check_queue_get_priv(check_queue_t q);
 void ocf_check_queue_set_priv(check_queue_t q, void *priv);
 void check_queue_thread_destroy(struct check_queue_thread *qt);

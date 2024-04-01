@@ -143,6 +143,15 @@ struct ocf_volume_ops {
 	 * @return Maximum io size in bytes
 	 */
 	unsigned int (*get_max_io_size)(ocf_volume_t volume);
+
+	/**
+	 * @brief Submit some non-sense reading IO to backend
+	 *
+	 * @param[in] volume Volume
+	 * @param[in] period Period
+	 *
+	 */
+	void (*submit_dummy_io)(ocf_volume_t volume, uint32_t period);
 };
 
 /**
@@ -354,5 +363,14 @@ unsigned int ocf_volume_get_max_io_size(ocf_volume_t volume);
  * @return Length of volume in bytes
  */
 uint64_t ocf_volume_get_length(ocf_volume_t volume);
+
+/**
+ * @brief Submit some non-sense reading IO to backend
+ *
+ * @param[in] volume Volume
+ * @param[in] period Period
+ *
+ */
+void ocf_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period);
 
 #endif /* __OCF_VOLUME_H__ */
