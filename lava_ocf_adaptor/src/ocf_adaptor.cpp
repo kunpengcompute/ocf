@@ -488,7 +488,7 @@ int ocf_init(struct ocf_config *cfg)
 
 void ocf_exit()
 {
-	if (get_ocf_global_status() != OCF_STATUS_INITIALIZED || get_ocf_global_status() != OCF_STATUS_ERROR) {
+	if (get_ocf_global_status() != OCF_STATUS_INITIALIZED && get_ocf_global_status() != OCF_STATUS_ERROR) {
 		ocf_adaptor_log(OCF_LOG_WARN, "ocf is not initialized, not need to delete\n");
 		return;
 	}
@@ -698,7 +698,7 @@ int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 int ocf_invalid(struct req_context *ctx)
 {
 	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit range_invalid io\n");
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not initialized, can not submit range_invalid io\n");
 		return STATE_FAIL;
 	}
 
@@ -741,7 +741,7 @@ int ocf_invalid(struct req_context *ctx)
 int ocf_lookup(struct req_context *ctx)
 {
 	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit lookup io\n");
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not initialized, can not submit lookup io\n");
 		return STATE_FAIL;
 	}
 
@@ -792,7 +792,7 @@ int ocf_lookup(struct req_context *ctx)
 int ocf_get(struct req_context *ctx)
 {
 	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit read io\n");
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not initialized, can not submit read io\n");
 		return STATE_FAIL;
 	}
 
@@ -839,7 +839,7 @@ int ocf_get(struct req_context *ctx)
 int ocf_put(struct req_context *ctx)
 {
 	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not submit write io\n");
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not initialized, can not submit write io\n");
 		return STATE_FAIL;
 	}
 
@@ -893,6 +893,11 @@ int ocf_put(struct req_context *ctx)
 
 int ocf_poll(uint32_t io_worker_id, int max_num)
 {
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not initialized, can not poll\n");
+		return STATE_SUCCESS;
+	}
+
 	struct cache_priv *priv = (struct cache_priv *)ocf_cache_get_priv(g_adaptor.cache);
 	if (unlikely(io_worker_id >= priv->queue_num)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io_work_id(%u) can not exceed %u\n", io_worker_id, priv->queue_num);
@@ -1048,4 +1053,17 @@ void ocf_release_dump_info(struct ocf_dump_info *info)
 void ocf_show_alock(){
 	ocf_cache_t cache = g_adaptor.cache;
 	ocf_check_metadata_alock(cache);
+}
+
+int ocf_recovery(struct ocf_config *cfg)
+{
+	if (get_ocf_global_status() != OCF_STATUS_NONE && get_ocf_global_status() != OCF_STATUS_ERROR) {
+		ocf_adaptor_log(OCF_LOG_WARN, "ocf is not error or none, not need recovery\n");
+		return STATE_FAIL;
+	}
+
+	ocf_exit();
+	int ret = ocf_init(cfg);
+
+	return ret;
 }

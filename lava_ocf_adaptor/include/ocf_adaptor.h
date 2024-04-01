@@ -19,6 +19,13 @@ extern "C" {
 
 
 /**
+ * @brief recovery ocf status
+ *
+ * @retval ocf_init() result
+ */
+int ocf_recovery(struct ocf_config *cfg);
+
+/**
  * @brief set ocf timeout value
  *
  * @param[in] val: set g_adaptor.ocf_timeout value, unit is microsecond
