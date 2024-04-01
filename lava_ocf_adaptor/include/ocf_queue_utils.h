@@ -16,8 +16,8 @@ extern "C" {
 
 #define MAX_QUEUE_NUM 64
 
-/* send heart-beat io for each 600 sec */
-#define HEARTBEAT_IO_PERIOD 600
+/* send heart-beat io for each hour */
+#define HEARTBEAT_IO_PERIOD 3600
 
 /**
  * @brief get ocf status

@@ -360,7 +360,7 @@ static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
 	uint32_t time_hash_eidx = now_time % period;
 	uint64_t i, total_io = lava_volume->chunk_ids.size();
 	
-	for(i = total_io * time_hash_sidx / period; i != total_io * time_hash_eidx / period;) {
+	for (i = total_io * time_hash_sidx / period; i != total_io * time_hash_eidx / period;) {
 		if (likely(lava_volume->chunk_status[i] == CHUNK_STATUS_VALID)) {
 			Request *req = new Request();
 			Segment s = {
