@@ -15,6 +15,7 @@
 #include "ocf_cache_priv.h"
 #include "ocf_request.h"
 #include "engine/engine_common.h"
+#include "metadata/metadata_internal.h"
 
 static const ocf_cache_line_t end_marker = (ocf_cache_line_t)((1ULL << CACHE_LINE_BITS) - 1);
 
@@ -884,35 +885,73 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 	ocf_cache_t cache = context->cache;
 	ocf_cache_line_t cnt, cline;
 	ocf_cache_line_t entries = ocf_metadata_collision_table_entries(cache);
-	struct ocf_generator_bisect_state generator;
 	struct ocf_lru_list *list;
 	unsigned lru_list = shard_id;
-	unsigned step = 0;
 	ocf_cache_line_t portion, offset;
 	ocf_cache_line_t i, idx;
 
 	portion = OCF_DIV_ROUND_UP((uint64_t)entries, shards_cnt);
 	offset = shard_id * portion / shards_cnt;
-	ocf_generator_bisect_init(&generator, portion, offset);
 
 	list = ocf_lru_get_list(&cache->free, lru_list, true);
 
 	cnt = 0;
-	for (i = 0; i < portion; i++) {
-		OCF_COND_RESCHED_DEFAULT(step);
 
-		idx = ocf_generator_bisect_next(&generator);
+	struct ocf_metadata_ctrl *ctrl = 
+		(struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	struct ocf_metadata_raw *raw =
+		&(ctrl->raw_desc[metadata_segment_lru]);
+
+	struct ocf_lru_meta *node, *curr_head;
+
+	ocf_cache_line_t curr_head_index;
+
+	for (i = 0; i < portion; i++) {
+
+		idx = offset + i;
 		cline = idx * shards_cnt + shard_id;
 		if (cline >= entries)
 			continue;
 
-		ocf_metadata_set_partition_id(cache, cline, PARTITION_FREELIST);
+		ENV_BUG_ON(cline == end_marker);
 
-		add_lru_head_nobalance(cache, list, cline);
+		node =(struct ocf_lru_meta *)(raw->mem_pool + (uint64_t)raw->entry_size * cline);
+		node->hot = false;
+
+		/* First node to be added/ */
+		if (!list->num_nodes) {
+			list->head = cline;
+			list->tail = cline;
+
+			node->next = end_marker;
+			node->prev = end_marker;
+
+			list->num_nodes = 1;
+		} else {
+			curr_head_index = list->head;
+
+			curr_head = (struct ocf_lru_meta *)(raw->mem_pool + (uint64_t)raw->entry_size * curr_head_index);
+
+			node->next = curr_head_index;
+			node->prev = end_marker;
+
+			curr_head->prev = cline;
+			if (list->track_hot) {
+				node->hot = true;
+				if (!curr_head->hot)
+					list->last_hot = cline;
+				++list->num_hot;
+			}
+
+			list->head = cline;
+
+			++list->num_nodes;
+		}
 
 		cnt++;
 
-		if (i % (portion / 10) == 0) {
+		if ((i + 1) % (portion / 10) == 0) {
 			uint64_t process_bar = 10 * i / portion;
 			ocf_cache_log(cache, log_info, "Init lru process : %lu0 %%", process_bar);
 		}

@@ -913,15 +913,39 @@ static inline void _ocf_init_collision_entry(struct ocf_cache *cache,
 void ocf_metadata_init_collision(struct ocf_cache *cache)
 {
 	ocf_cache_line_t i;
-	ocf_cache_line_t step = 0;
-	ocf_cache_line_t entries = cache->device->collision_table_entries;
-	for (i = 0; i < entries; i++) {
-		_ocf_init_collision_entry(cache, i);
-		OCF_COND_RESCHED_DEFAULT(step);
+	ocf_cache_line_t total_entries = cache->device->collision_table_entries;
 
-		if (i % (entries / 10) == 0) {
-			uint64_t process_bar = 10 * i / entries;
-			ocf_cache_log(cache, log_info, "Init collision process : %lu0 %%", process_bar);
+	struct ocf_metadata_ctrl *ctrl = 
+		(struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	struct ocf_metadata_raw *raw =
+		&(ctrl->raw_desc[metadata_segment_list_info]);
+
+	struct ocf_metadata_list_info *info;
+
+	for (i = 0; i < total_entries; i++) {
+		info =(struct ocf_metadata_list_info *)(raw->mem_pool + (uint64_t)raw->entry_size * i);
+		info->next_col = total_entries;
+		info->partition_id = PARTITION_FREELIST;
+	}
+
+	raw = &(ctrl->raw_desc[metadata_segment_collision]);
+
+	if (ocf_line_size(cache) <= 16 * KiB) {
+		struct ocf_metadata_map_u8 *coll_map_u8 = raw->mem_pool;
+		for (i = 0; i < total_entries; i++) {
+			coll_map_u8[i].map.core_line = (1ULL << CORE_LINE_BITS) - 1;
+			coll_map_u8[i].map.core_id = OCF_CORE_MAX;
+			coll_map_u8[i].valid = 0;
+			coll_map_u8[i].dirty = 0;
+		}
+	} else {
+		struct ocf_metadata_map_u16 *coll_map_u16 = raw->mem_pool;
+		for (i = 0; i < total_entries; i++) {
+			coll_map_u16[i].map.core_line = (1ULL << CORE_LINE_BITS) - 1;
+			coll_map_u16[i].map.core_id = OCF_CORE_MAX;
+			coll_map_u16[i].valid = 0;
+			coll_map_u16[i].dirty = 0;
 		}
 	}
 }
@@ -943,7 +967,7 @@ void ocf_metadata_init_hash_table(struct ocf_cache *cache)
 		 **/
 		ocf_metadata_set_hash(cache, i, invalid_idx);
 
-		if (i % (hash_table_entries / 10) == 0) {
+		if ((i + 1) % (hash_table_entries / 10) == 0) {
 			uint64_t process_bar = 10 * i / hash_table_entries;
 			ocf_cache_log(cache, log_info, "Init hash table process : %lu0 %%", process_bar);
 		}
