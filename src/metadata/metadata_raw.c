@@ -522,7 +522,7 @@ int _raw_ram_flush_do_page_cmp(const void *item1, const void *item2)
 }
 
 static void __raw_ram_flush_do_asynch_add_pages(struct ocf_request *req,
-		uint32_t *pages_tab, struct ocf_metadata_raw *raw,
+		uint64_t *pages_tab, struct ocf_metadata_raw *raw,
 		int *pages_to_flush) {
 	int i, j = 0;
 	int line_no = req->core_line_count;

@@ -1089,7 +1089,7 @@ int ocf_mngt_remove_core_skip_unmapping(ocf_core_t core,
 	context->core_name = ocf_core_get_name(core);
 	env_atomic_set(&core->deleting, 1);
 
-	ocf_pipeline_stay_back(pipeline);
+	ocf_pipeline_next(pipeline);
 
 	return 0;
 }

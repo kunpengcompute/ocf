@@ -296,11 +296,11 @@ int ocf_engine_check(struct ocf_request *req)
 }
 
 void ocf_map_cache_line(struct ocf_request *req,
-		unsigned int idx, ocf_cache_line_t cache_line)
+		ocf_cache_line_t idx, ocf_cache_line_t cache_line)
 {
 	ocf_cache_t cache = req->cache;
 	ocf_core_id_t core_id = ocf_core_get_id(req->core);
-	unsigned int hash_index = req->map[idx].hash;
+	ocf_cache_line_t hash_index = req->map[idx].hash;
 	uint64_t core_line = req->core_line_first + idx;
 
 	/* Add the block to the corresponding collision list */

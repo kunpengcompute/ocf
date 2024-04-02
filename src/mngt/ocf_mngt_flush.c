@@ -378,7 +378,7 @@ static void _ocf_mngt_flush_portion_end(void *private_data, int error)
 	ocf_core_t core = &cache->core[fc->core_id];
 	bool first_interrupt;
 
-	env_atomic_set(&core->flushed, fc->iter);
+	env_atomic_cl_set(&core->flushed, fc->iter);
 
 	fc->ticks2 = env_get_tick_count();
 

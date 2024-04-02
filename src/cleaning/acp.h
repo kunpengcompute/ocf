@@ -21,12 +21,12 @@ void cleaning_policy_acp_perform_cleaning(ocf_cache_t cache,
 		ocf_cleaner_end_t cmpl);
 
 void cleaning_policy_acp_init_cache_block(ocf_cache_t cache,
-		uint32_t cache_line);
+		ocf_cache_line_t cache_line);
 
 void cleaning_policy_acp_set_hot_cache_line(ocf_cache_t cache,
-		uint32_t cache_line);
+		ocf_cache_line_t cache_line);
 
-void cleaning_policy_acp_purge_block(ocf_cache_t cache, uint32_t cache_line);
+void cleaning_policy_acp_purge_block(ocf_cache_t cache, ocf_cache_line_t cache_line);
 
 int cleaning_policy_acp_purge_range(ocf_cache_t cache,
 		int core_id, uint64_t start_byte, uint64_t end_byte);

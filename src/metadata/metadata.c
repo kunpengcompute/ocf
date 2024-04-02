@@ -912,12 +912,17 @@ static inline void _ocf_init_collision_entry(struct ocf_cache *cache,
  */
 void ocf_metadata_init_collision(struct ocf_cache *cache)
 {
-	unsigned int i;
-	unsigned int step = 0;
-
-	for (i = 0; i < cache->device->collision_table_entries; i++) {
+	ocf_cache_line_t i;
+	ocf_cache_line_t step = 0;
+	ocf_cache_line_t entries = cache->device->collision_table_entries;
+	for (i = 0; i < entries; i++) {
 		_ocf_init_collision_entry(cache, i);
 		OCF_COND_RESCHED_DEFAULT(step);
+
+		if (i % (entries / 10) == 0) {
+			uint64_t process_bar = 10 * i / entries;
+			ocf_cache_log(cache, log_info, "Init collision process : %lu0 %%", process_bar);
+		}
 	}
 }
 
@@ -926,8 +931,8 @@ void ocf_metadata_init_collision(struct ocf_cache *cache)
  */
 void ocf_metadata_init_hash_table(struct ocf_cache *cache)
 {
-	unsigned int i;
-	unsigned int hash_table_entries = cache->device->hash_table_entries;
+	ocf_cache_line_t i;
+	ocf_cache_line_t hash_table_entries = cache->device->hash_table_entries;
 	ocf_cache_line_t invalid_idx = cache->device->collision_table_entries;
 
 	/* Init hash table */
@@ -937,6 +942,11 @@ void ocf_metadata_init_hash_table(struct ocf_cache *cache)
 		 * from collision_table
 		 **/
 		ocf_metadata_set_hash(cache, i, invalid_idx);
+
+		if (i % (hash_table_entries / 10) == 0) {
+			uint64_t process_bar = 10 * i / hash_table_entries;
+			ocf_cache_log(cache, log_info, "Init hash table process : %lu0 %%", process_bar);
+		}
 	}
 
 }

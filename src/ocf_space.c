@@ -52,7 +52,7 @@ static inline uint32_t ocf_evict_user_partitions(ocf_cache_t cache,
 	uint32_t to_evict = 0, evicted = 0;
 	struct ocf_user_part *user_part;
 	ocf_part_id_t part_id;
-	unsigned overflow_size;
+	uint64_t overflow_size;
 
 	/* For each partition from the lowest priority to highest one */
 	for_each_user_part(cache, user_part, part_id) {

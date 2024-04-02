@@ -19,11 +19,11 @@ struct cleaning_policy_ops {
 	void (*deinitialize)(ocf_cache_t cache);
 	int (*add_core)(ocf_cache_t cache, ocf_core_id_t core_id);
 	void (*remove_core)(ocf_cache_t cache, ocf_core_id_t core_id);
-	void (*init_cache_block)(ocf_cache_t cache, uint32_t cache_line);
-	void (*purge_cache_block)(ocf_cache_t cache, uint32_t cache_line);
+	void (*init_cache_block)(ocf_cache_t cache, ocf_cache_line_t cache_line);
+	void (*purge_cache_block)(ocf_cache_t cache, ocf_cache_line_t cache_line);
 	int (*purge_range)(ocf_cache_t cache, int core_id,
 			uint64_t start_byte, uint64_t end_byte);
-	void (*set_hot_cache_line)(ocf_cache_t cache, uint32_t cache_line);
+	void (*set_hot_cache_line)(ocf_cache_t cache, ocf_cache_line_t cache_line);
 	int (*set_cleaning_param)(ocf_cache_t cache, uint32_t param_id,
 			uint32_t param_value);
 	int (*get_cleaning_param)(ocf_cache_t cache, uint32_t param_id,

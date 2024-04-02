@@ -18,7 +18,7 @@ void ocf_mio_async_unlock(struct ocf_alock *alock,
 		struct metadata_io_request *m_req);
 
 int ocf_mio_concurrency_init(struct ocf_alock **self,
-		unsigned first_page, unsigned num_pages,
+		uint64_t first_page, uint64_t num_pages,
 		ocf_cache_t cache);
 
 void ocf_mio_concurrency_deinit(struct ocf_alock **self);

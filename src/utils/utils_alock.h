@@ -61,15 +61,15 @@ uint32_t ocf_alock_waitlist_count(struct ocf_alock *alock);
 
 size_t ocf_alock_obj_size(void);
 
-int ocf_alock_init_inplace(struct ocf_alock *self, unsigned num_entries,
+int ocf_alock_init_inplace(struct ocf_alock *self, ocf_cache_line_t num_entries,
 		const char* name, struct ocf_alock_lock_cbs *cbs, ocf_cache_t cache);
 
-int ocf_alock_init(struct ocf_alock **self, unsigned num_entries,
+int ocf_alock_init(struct ocf_alock **self, ocf_cache_line_t num_entries,
 		const char* name, struct ocf_alock_lock_cbs *cbs, ocf_cache_t cache);
 
 void ocf_alock_deinit(struct ocf_alock **self);
 
-size_t ocf_alock_size(unsigned num_entries);
+size_t ocf_alock_size(ocf_cache_line_t num_entries);
 
 bool ocf_alock_is_index_locked(struct ocf_alock *alock,
 		struct ocf_request *req, unsigned index);

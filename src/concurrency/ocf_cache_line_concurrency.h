@@ -23,7 +23,7 @@
  * @return 0 - Initialization successful, otherwise ERROR
  */
 int ocf_cache_line_concurrency_init(struct ocf_alock **self,
-		unsigned num_clines, struct ocf_cache *cache);
+		ocf_cache_line_t num_clines, struct ocf_cache *cache);
 
 /**
  * @biref De-Initialize  OCF cache concurrency module

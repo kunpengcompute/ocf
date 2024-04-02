@@ -28,7 +28,7 @@
  * @retval Non-zero Error which will bee finally returned to the caller
  */
 typedef int (*ocf_metadata_io_event_t)(ocf_cache_t cache,
-		ctx_data_t *data, uint32_t page, void *context);
+		ctx_data_t *data, uint64_t page, void *context);
 
 /**
  * @brief Metadata write end callback
@@ -123,7 +123,7 @@ int metadata_io_read_i_atomic(ocf_cache_t cache, ocf_queue_t queue,
  * @return 0 - No errors, otherwise error occurred
  */
 int metadata_io_write_i_asynch(ocf_cache_t cache, ocf_queue_t queue,
-		void *context, uint32_t page, uint32_t count, int flags,
+		void *context, uint64_t page, uint64_t count, int flags,
 		ocf_metadata_io_event_t fill_hndl,
 		ocf_metadata_io_end_t compl_hndl,
 		struct ocf_alock *mio_conc);
@@ -142,7 +142,7 @@ int metadata_io_write_i_asynch(ocf_cache_t cache, ocf_queue_t queue,
  * @return 0 - No errors, otherwise error occurred
  */
 int metadata_io_read_i_asynch(ocf_cache_t cache, ocf_queue_t queue,
-		void *context, uint32_t page, uint32_t count, int flags,
+		void *context, uint64_t page, uint64_t count, int flags,
 		ocf_metadata_io_event_t drain_hndl,
 		ocf_metadata_io_end_t compl_hndl);
 

@@ -68,8 +68,6 @@ static inline int hash_lock_do_lock(struct ocf_cache *cache, ocf_cache_line_t in
 {
 	uint32_t step = 0;
 	while (true) {
-		ocf_cache_line_t line = ocf_metadata_get_hash(cache, index);
-
 		if (env_atomic8_cmpxchg((env_atomic8*)ocf_metadata_get_hash_lock(cache, index),
 				HASH_UNLOCK, HASH_LOCK) == HASH_UNLOCK)
 			return 0;
@@ -130,8 +128,8 @@ int ocf_metadata_concurrency_attached_init(
 	metadata_lock->num_hash_entries = hash_table_entries;
 	metadata_lock->num_collision_pages = colision_table_pages;
 
-	ocf_cache_log(cache, log_info, "Metadata lock collision_pages size: %llu kiB\n",
-		(long long unsigned)(sizeof(env_rwsem) * colision_table_pages) / 1024);
+	ocf_cache_log(cache, log_info, "Metadata lock collision_pages size: %lu KiB\n",
+		(uint64_t)(sizeof(env_rwsem) * colision_table_pages) / 1024);
 
 	return 0;
 }

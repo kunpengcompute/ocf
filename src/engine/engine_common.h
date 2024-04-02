@@ -115,7 +115,7 @@ static inline uint32_t ocf_engine_unmapped_count(struct ocf_request *req)
 }
 
 void ocf_map_cache_line(struct ocf_request *req,
-		unsigned int idx, ocf_cache_line_t cache_line);
+		ocf_cache_line_t idx, ocf_cache_line_t cache_line);
 
 /**
  * @brief Get number of cache lines to repart

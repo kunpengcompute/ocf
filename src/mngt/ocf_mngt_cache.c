@@ -558,11 +558,11 @@ static int ocf_mngt_rebuild_metadata_handle(ocf_parallelize_t parallelize,
 	}
 
 	for_each_core(cache, core, core_id) {
-		env_atomic_add(context->shard[shard_id].core[core_id].lines,
+		env_atomic_cl_add(context->shard[shard_id].core[core_id].lines,
 				&context->core[core_id].lines);
 	}
 
-	env_atomic_add(free_lines, &context->free_lines);
+	env_atomic_cl_add(free_lines, &context->free_lines);
 
 	return 0;
 }

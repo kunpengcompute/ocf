@@ -90,7 +90,7 @@ size_t ocf_alock_obj_size(void)
 	return sizeof(struct ocf_alock);
 }
 
-int ocf_alock_init_inplace(struct ocf_alock *self, unsigned num_entries,
+int ocf_alock_init_inplace(struct ocf_alock *self, ocf_cache_line_t num_entries,
 		const char* name, struct ocf_alock_lock_cbs *cbs, ocf_cache_t cache)
 {
 	uint32_t i;
@@ -152,7 +152,7 @@ rwsem_err:
 	return -1;
 }
 
-int ocf_alock_init(struct ocf_alock **self, unsigned num_entries,
+int ocf_alock_init(struct ocf_alock **self, ocf_cache_line_t num_entries,
 		const char* name, struct ocf_alock_lock_cbs *cbs, ocf_cache_t cache)
 {
 	struct ocf_alock *alock;
@@ -201,7 +201,7 @@ void ocf_alock_deinit(struct ocf_alock **self)
 	*self = NULL;
 }
 
-size_t ocf_alock_size(unsigned num_entries)
+size_t ocf_alock_size(ocf_cache_line_t num_entries)
 {
 	size_t size;
 

@@ -21,7 +21,7 @@ static const ocf_cache_line_t end_marker = (ocf_cache_line_t)((1ULL << CACHE_LIN
 /* update list last_hot index. returns pivot element (the one for which hot
  * status effectively changes during balancing). */
 static inline ocf_cache_line_t balance_update_last_hot(ocf_cache_t cache,
-		struct ocf_lru_list *list, int change)
+		struct ocf_lru_list *list, long change)
 {
 	ocf_cache_line_t last_hot_new, last_hot_old;
 
@@ -60,8 +60,8 @@ static inline ocf_cache_line_t balance_update_last_hot(ocf_cache_t cache,
  */
 static void balance_lru_list(ocf_cache_t cache, struct ocf_lru_list *list)
 {
-	unsigned target_hot_count = list->num_nodes / OCF_LRU_HOT_RATIO;
-	int change = target_hot_count - list->num_hot;
+	ocf_cache_line_t target_hot_count = list->num_nodes / OCF_LRU_HOT_RATIO;
+	long change = target_hot_count - list->num_hot;
 	ocf_cache_line_t pivot;
 
 	if (!list->track_hot)
@@ -81,10 +81,10 @@ static void balance_lru_list(ocf_cache_t cache, struct ocf_lru_list *list)
 /* Adds the given collision_index to the _head_ of the LRU list */
 static void add_lru_head_nobalance(ocf_cache_t cache,
 		struct ocf_lru_list *list,
-		unsigned int collision_index)
+		ocf_cache_line_t collision_index)
 {
 	struct ocf_lru_meta *node;
-	unsigned int curr_head_index;
+	ocf_cache_line_t curr_head_index;
 
 	ENV_BUG_ON(collision_index == end_marker);
 
@@ -911,6 +911,11 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 		add_lru_head_nobalance(cache, list, cline);
 
 		cnt++;
+
+		if (i % (portion / 10) == 0) {
+			uint64_t process_bar = 10 * i / portion;
+			ocf_cache_log(cache, log_info, "Init lru process : %lu0 %%", process_bar);
+		}
 	}
 
 	env_atomic_cl_add(cnt, &context->curr_size);
@@ -1002,7 +1007,7 @@ int ocf_metadata_actor(struct ocf_cache *cache,
 	int clean;
 	struct ocf_lru_list *list;
 	struct ocf_part *part;
-	unsigned i, cline;
+	ocf_cache_line_t i, cline;
 	struct ocf_lru_meta *node;
 
 	start_line = ocf_bytes_2_lines(cache, start_byte);
