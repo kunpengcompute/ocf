@@ -28,15 +28,9 @@ static inline uint32_t bitreverse32(register uint32_t x)
  */
 void ocf_generator_bisect_init(
 		struct ocf_generator_bisect_state *generator,
-		uint32_t limit, uint32_t offset)
+		ocf_cache_line_t limit, ocf_cache_line_t offset)
 {
-	unsigned clz;
-	uint32_t maplen;
-
-	clz = __builtin_clz(limit - 1);
-	maplen = 1 << (32 - clz);
-
-	generator->curr = (uint64_t)offset * maplen / limit;
+	generator->curr = offset;
 	generator->limit = limit;
 }
 
@@ -168,20 +162,11 @@ void ocf_generator_bisect_init(
  *
  * @return Generated value
  */
-uint32_t ocf_generator_bisect_next(
+ocf_cache_line_t ocf_generator_bisect_next(
 		struct ocf_generator_bisect_state *generator)
 {
-	unsigned clz;
-	uint32_t maplen;
-	uint32_t value;
-
-	clz = __builtin_clz(generator->limit - 1);
-	maplen = 1 << (32 - clz);
-
-	do {
-		value = generator->curr;
-		generator->curr = (generator->curr + 1) % maplen;
-	} while (value >= generator->limit);
+	ocf_cache_line_t value = generator->curr;
+	generator->curr++;
 
 	return value;
 }

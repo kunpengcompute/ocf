@@ -1057,7 +1057,7 @@ struct ocf_mngt_io_class_config {
 	/**
 	 * @brief IO class maximum size
 	 */
-	uint32_t max_size;
+	ocf_cache_line_t max_size;
 
 	/**
 	 * @brief IO class name

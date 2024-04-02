@@ -12,17 +12,17 @@
 
 struct ocf_mio_alock
 {
-	unsigned first_page;
-	unsigned num_pages;
+	uint64_t first_page;
+	uint64_t num_pages;
 };
 
 static ocf_cache_line_t ocf_mio_lock_get_entry(
 		struct ocf_alock *alock, struct ocf_request *req,
-		unsigned index)
+		uint64_t index)
 {
 	struct ocf_mio_alock *mio_alock = (void*)alock + ocf_alock_obj_size();
 	struct metadata_io_request *m_req = (struct metadata_io_request *)req;
-	unsigned page = m_req->page + index;
+	uint64_t page = m_req->page + index;
 
 	ENV_BUG_ON(page < mio_alock->first_page);
 	ENV_BUG_ON(page >= mio_alock->first_page + mio_alock->num_pages);
@@ -142,7 +142,7 @@ void ocf_mio_async_unlock(struct ocf_alock *alock,
 #define ALLOCATOR_NAME_MAX (sizeof(ALLOCATOR_NAME_FMT) + OCF_CACHE_NAME_SIZE)
 
 int ocf_mio_concurrency_init(struct ocf_alock **self,
-		unsigned first_page, unsigned num_pages,
+		uint64_t first_page, uint64_t num_pages,
 		ocf_cache_t cache)
 {
 	struct ocf_alock *alock;

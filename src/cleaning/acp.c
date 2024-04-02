@@ -157,7 +157,7 @@ static struct acp_context *_acp_get_ctx_from_cache(struct ocf_cache *cache)
 }
 
 static struct acp_cleaning_policy_meta* _acp_meta_get(
-		struct ocf_cache *cache, uint32_t cache_line)
+		struct ocf_cache *cache, ocf_cache_line_t cache_line)
 {
 	return &ocf_metadata_get_cleaning_policy(cache, cache_line)->meta.acp;
 }
@@ -172,7 +172,7 @@ static struct acp_core_line_info _acp_core_line_info(struct ocf_cache *cache,
 }
 
 static struct acp_chunk_info *_acp_get_chunk(struct ocf_cache *cache,
-		uint32_t cache_line)
+		ocf_cache_line_t cache_line)
 {
 	struct acp_context *acp = _acp_get_ctx_from_cache(cache);
 	struct acp_core_line_info core_line =
@@ -214,7 +214,7 @@ static int _acp_load_cores(struct ocf_cache *cache)
 }
 
 void cleaning_policy_acp_init_cache_block(struct ocf_cache *cache,
-		uint32_t cache_line)
+		ocf_cache_line_t cache_line)
 {
 	struct acp_cleaning_policy_meta *acp_meta;
 
@@ -802,7 +802,7 @@ static void _acp_update_bucket(struct acp_context *acp,
 }
 
 void cleaning_policy_acp_set_hot_cache_line(struct ocf_cache *cache,
-		uint32_t cache_line)
+		ocf_cache_line_t cache_line)
 {
 	struct acp_context *acp = _acp_get_ctx_from_cache(cache);
 	struct acp_cleaning_policy_meta *acp_meta;
@@ -824,7 +824,7 @@ void cleaning_policy_acp_set_hot_cache_line(struct ocf_cache *cache,
 }
 
 void cleaning_policy_acp_purge_block(struct ocf_cache *cache,
-		uint32_t cache_line)
+		ocf_cache_line_t cache_line)
 {
 	struct acp_context *acp = _acp_get_ctx_from_cache(cache);
 	struct acp_cleaning_policy_meta *acp_meta;

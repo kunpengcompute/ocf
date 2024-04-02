@@ -184,23 +184,28 @@ void ocf_metadata_load_recovery(ocf_cache_t cache,
  */
 uint64_t ocf_metadata_get_reserved_lba(ocf_cache_t cache);
 
+struct ocf_metadata_hash {
+	ocf_cache_line_t cache_line : CACHE_LINE_BITS;
+	uint8_t hash_lock;
+} __attribute__((packed));
+
 /*
- * NOTE Hash table is specific for hash table metadata service implementation
- * and should be used internally by metadata service.
- * At the moment there is no high level metadata interface because of that
- * temporary defined in this file.
+ * Hash Table - Get
  */
+ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
+		ocf_cache_line_t index);
 
-#define HASH_LOCK_BIT	(31)
+uint8_t *ocf_metadata_get_hash_lock(struct ocf_cache *cache,
+		ocf_cache_line_t index);
 
-ocf_cache_line_t *
-ocf_metadata_get_hash_p(struct ocf_cache *cache, ocf_cache_line_t index);
+/*
+ * Hash Table - Set
+ */
+void ocf_metadata_set_hash(struct ocf_cache *cache, ocf_cache_line_t index,
+		ocf_cache_line_t line);
 
-ocf_cache_line_t
-ocf_metadata_get_hash(struct ocf_cache *cache, ocf_cache_line_t index);
-
-void ocf_metadata_set_hash(struct ocf_cache *cache,
-		ocf_cache_line_t index, ocf_cache_line_t line);
+void ocf_metadata_set_hash_lock(struct ocf_cache *cache, ocf_cache_line_t index,
+		uint8_t lock);
 
 struct ocf_metadata_load_properties {
 	enum ocf_metadata_shutdown_status shutdown_status;

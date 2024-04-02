@@ -61,9 +61,12 @@ typedef uint64_t sector_t;
 
 /* SETTINGS */
 static uint32_t PAGE_SIZE = 4096;
-static inline void update_page_size()
+static uint32_t CACHELINE_SIZE = 8192;
+
+static inline void ocf_update_metadata_cfg(uint32_t cacheline_size)
 {
 	PAGE_SIZE = getpagesize();
+	CACHELINE_SIZE = cacheline_size;
 }
 
 /* MEMORY MANAGEMENT */
@@ -376,6 +379,23 @@ static inline void env_completion_destroy(env_completion *completion)
 }
 
 /* ATOMIC VARIABLES */
+#define ATOMIC_DEFINE_(TYPE, MODE) TYPE##_##MODE
+#define ATOMIC_DEFINE(TYPE, MODE) ATOMIC_DEFINE_(TYPE, MODE)
+#define env_atomic_cl				env_atomic64
+#define env_atomic_cl_read			ATOMIC_DEFINE(env_atomic_cl, read)
+#define env_atomic_cl_set			ATOMIC_DEFINE(env_atomic_cl, set)
+#define env_atomic_cl_add			ATOMIC_DEFINE(env_atomic_cl, add)
+#define env_atomic_cl_sub			ATOMIC_DEFINE(env_atomic_cl, sub)
+#define env_atomic_cl_inc			ATOMIC_DEFINE(env_atomic_cl, inc)
+#define env_atomic_cl_dec			ATOMIC_DEFINE(env_atomic_cl, dec)
+#define env_atomic_cl_dec_and_test	ATOMIC_DEFINE(env_atomic_cl, dec_and_test)
+#define env_atomic_cl_add_return	ATOMIC_DEFINE(env_atomic_cl, add_return)
+#define env_atomic_cl_sub_return	ATOMIC_DEFINE(env_atomic_cl, sub_return)
+#define env_atomic_cl_inc_return	ATOMIC_DEFINE(env_atomic_cl, inc_return)
+#define env_atomic_cl_dec_return	ATOMIC_DEFINE(env_atomic_cl, dec_return)
+#define env_atomic_cl_cmpxchg		ATOMIC_DEFINE(env_atomic_cl, cmpxchg)
+#define env_atomic_cl_add_unless	ATOMIC_DEFINE(env_atomic_cl, add_unless)
+
 typedef struct {
 	volatile int counter;
 } env_atomic;
@@ -533,14 +553,49 @@ static inline void env_atomic64_dec(env_atomic64 *a)
 	env_atomic64_sub(1, a);
 }
 
+static inline bool env_atomic64_dec_and_test(env_atomic64 *a)
+{
+	return __sync_sub_and_fetch(&a->counter, 1) == 0;
+}
+
 static inline long env_atomic64_inc_return(env_atomic64 *a)
 {
 	return __sync_add_and_fetch(&a->counter, 1);
 }
 
+static inline long env_atomic64_add_return(long i, env_atomic64 *a)
+{
+	return __sync_add_and_fetch(&a->counter, i);
+}
+
+static inline long env_atomic64_sub_return(long i, env_atomic64 *a)
+{
+	return __sync_sub_and_fetch(&a->counter, i);
+}
+
 static inline long env_atomic64_cmpxchg(env_atomic64 *a, long old_v, long new_v)
 {
 	return __sync_val_compare_and_swap(&a->counter, old_v, new_v);
+}
+
+static inline long env_atomic64_dec_return(env_atomic64 *a)
+{
+	return env_atomic64_sub_return(1, a);
+}
+
+static inline long env_atomic64_add_unless(env_atomic64 *a, long i, long u)
+{
+	long c, old;
+	c = env_atomic64_read(a);
+	for (;;) {
+		if (unlikely(c == (u)))
+			break;
+		old = env_atomic64_cmpxchg((a), c, c + (i));
+		if (likely(old == c))
+			break;
+		c = old;
+	}
+	return c != (u);
 }
 
 /* SPIN LOCKS */

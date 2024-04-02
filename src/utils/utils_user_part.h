@@ -51,12 +51,12 @@ static inline ocf_part_id_t ocf_user_part_class2id(ocf_cache_t cache, uint64_t c
 	return PARTITION_DEFAULT;
 }
 
-static inline uint32_t ocf_part_get_occupancy(struct ocf_part *part)
+static inline ocf_cache_line_t ocf_part_get_occupancy(struct ocf_part *part)
 {
-	return env_atomic_read(&part->runtime->curr_size);
+	return env_atomic_cl_read(&part->runtime->curr_size);
 }
 
-static inline uint32_t ocf_user_part_get_min_size(ocf_cache_t cache,
+static inline uint64_t ocf_user_part_get_min_size(ocf_cache_t cache,
 		struct ocf_user_part *user_part)
 {
 	uint64_t ioclass_size;
@@ -66,11 +66,11 @@ static inline uint32_t ocf_user_part_get_min_size(ocf_cache_t cache,
 
 	ioclass_size /= 100;
 
-	return (uint32_t)ioclass_size;
+	return ioclass_size;
 }
 
 
-static inline uint32_t ocf_user_part_get_max_size(ocf_cache_t cache,
+static inline uint64_t ocf_user_part_get_max_size(ocf_cache_t cache,
 		struct ocf_user_part *user_part)
 {
 	uint64_t ioclass_size, max_size, cache_size;
@@ -81,7 +81,7 @@ static inline uint32_t ocf_user_part_get_max_size(ocf_cache_t cache,
 	ioclass_size =  max_size * cache_size;
 	ioclass_size = OCF_DIV_ROUND_UP(ioclass_size, 100);
 
-	return (uint32_t)ioclass_size;
+	return ioclass_size;
 }
 
 void ocf_user_part_move(struct ocf_request *req);
@@ -100,11 +100,11 @@ static inline bool ocf_user_part_is_enabled(struct ocf_user_part *user_part)
 	return user_part->config->max_size != 0;
 }
 
-static inline uint32_t ocf_user_part_overflow_size(struct ocf_cache *cache,
+static inline uint64_t ocf_user_part_overflow_size(struct ocf_cache *cache,
 		struct ocf_user_part *user_part)
 {
-	uint32_t part_occupancy = ocf_part_get_occupancy(&user_part->part);
-	uint32_t part_occupancy_limit = ocf_user_part_get_max_size(cache,
+	uint64_t part_occupancy = ocf_part_get_occupancy(&user_part->part);
+	uint64_t part_occupancy_limit = ocf_user_part_get_max_size(cache,
 			user_part);
 
 	if (part_occupancy > part_occupancy_limit)

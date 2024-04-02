@@ -31,7 +31,7 @@ struct ocf_cache_info {
 	uint8_t state;
 		/*!< Cache state (running/flushing/stopping etc...) */
 
-	uint32_t size;
+	ocf_cache_line_t size;
 		/*!< Actual cache size (in cache lines) */
 
 	/* Statistics of inactive cores */
@@ -46,16 +46,16 @@ struct ocf_cache_info {
 			/*!< Dirty blocks within cache (in cache lines) */
 	} inactive;
 
-	uint32_t occupancy;
+	ocf_cache_line_t occupancy;
 		/*!< Actual cache occupancy (in cache lines) */
 
-	uint32_t dirty;
+	ocf_cache_line_t dirty;
 		/*!< Dirty blocks within cache (in cache lines) */
 
 	uint64_t dirty_for;
 		/*!< How long there are dirty cache lines (in seconds) */
 
-	uint32_t dirty_initial;
+	ocf_cache_line_t dirty_initial;
 		/*!< Dirty blocks within cache that where there when switching
 		 * out of WB mode
 		 */
@@ -82,7 +82,7 @@ struct ocf_cache_info {
 	ocf_cache_line_size_t cache_line_size;
 		/*!< Cache line size in KiB */
 
-	uint32_t flushed;
+	ocf_cache_line_t flushed;
 		/*!< Number of block flushed in ongoing flush operation */
 
 	uint32_t core_count;

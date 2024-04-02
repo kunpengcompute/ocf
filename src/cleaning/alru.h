@@ -15,13 +15,13 @@ void cleaning_policy_alru_recovery(ocf_cache_t cache,
                 ocf_cleaning_recovery_end_t cmpl, void *priv);
 void cleaning_policy_alru_deinitialize(ocf_cache_t cache);
 void cleaning_policy_alru_init_cache_block(ocf_cache_t cache,
-		uint32_t cache_line);
+		ocf_cache_line_t cache_line);
 void cleaning_policy_alru_purge_cache_block(ocf_cache_t cache,
-		uint32_t cache_line);
+		ocf_cache_line_t cache_line);
 int cleaning_policy_alru_purge_range(ocf_cache_t cache, int core_id,
 		uint64_t start_byte, uint64_t end_byte);
 void cleaning_policy_alru_set_hot_cache_line(ocf_cache_t cache,
-		uint32_t cache_line);
+		ocf_cache_line_t cache_line);
 int cleaning_policy_alru_set_cleaning_param(ocf_cache_t cache,
 		uint32_t param_id, uint32_t param_value);
 int cleaning_policy_alru_get_cleaning_param(ocf_cache_t cache,

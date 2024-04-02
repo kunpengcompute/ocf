@@ -27,10 +27,10 @@ static int ocf_user_part_lst_cmp_valid(struct ocf_cache *cache,
 	struct ocf_user_part *p2 = container_of(e2, struct ocf_user_part,
 			lst_valid);
 	size_t p1_size = ocf_cache_is_device_attached(cache) ?
-				env_atomic_read(&p1->part.runtime->curr_size)
+				env_atomic_cl_read(&p1->part.runtime->curr_size)
 				: 0;
 	size_t p2_size = ocf_cache_is_device_attached(cache) ?
-				env_atomic_read(&p2->part.runtime->curr_size)
+				env_atomic_cl_read(&p2->part.runtime->curr_size)
 				: 0;
 	int v1 = p1->config->priority;
 	int v2 = p2->config->priority;
@@ -152,15 +152,15 @@ void ocf_user_part_move(struct ocf_request *req)
 			/* Add cline back to cleaning policy */
 			ocf_cleaning_set_hot_cache_line(cache, line);
 
-			env_atomic_inc(&req->core->runtime_meta->
+			env_atomic_cl_inc(&req->core->runtime_meta->
 					part_counters[id_new].dirty_clines);
-			env_atomic_dec(&req->core->runtime_meta->
+			env_atomic_cl_dec(&req->core->runtime_meta->
 					part_counters[id_old].dirty_clines);
 		}
 
-		env_atomic_inc(&req->core->runtime_meta->
+		env_atomic_cl_inc(&req->core->runtime_meta->
 				part_counters[id_new].cached_clines);
-		env_atomic_dec(&req->core->runtime_meta->
+		env_atomic_cl_dec(&req->core->runtime_meta->
 				part_counters[id_old].cached_clines);
 
 		/* DONE */

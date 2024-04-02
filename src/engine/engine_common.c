@@ -229,12 +229,12 @@ void ocf_engine_lookup(struct ocf_request *req)
 
 		if (entry->status != LOOKUP_HIT) {
 			/* There is miss then lookup for next map entry */
-			OCF_DEBUG_PARAM(cache, "Miss, core line = %llu",
+			OCF_DEBUG_PARAM(cache, "Miss, core line = %lu",
 					entry->core_line);
 			continue;
 		}
 
-		OCF_DEBUG_PARAM(cache, "Hit, cache line %u, core line = %llu",
+		OCF_DEBUG_PARAM(cache, "Hit, cache line %lu, core line = %lu",
 				entry->coll_idx, entry->core_line);
 
 		ocf_engine_update_req_info(cache, req, i);
@@ -275,14 +275,14 @@ int ocf_engine_check(struct ocf_request *req)
 			/* Mapping is invalid */
 			entry->invalid = true;
 
-			OCF_DEBUG_PARAM(cache, "Invalid, Cache line %u",
+			OCF_DEBUG_PARAM(cache, "Invalid, Cache line %lu",
 					entry->coll_idx);
 
 			result = -1;
 		} else {
 			entry->invalid = false;
 
-			OCF_DEBUG_PARAM(cache, "Valid, Cache line %u",
+			OCF_DEBUG_PARAM(cache, "Valid, Cache line %lu",
 					entry->coll_idx);
 
 			ocf_engine_update_req_info(cache, req, i);
@@ -296,11 +296,11 @@ int ocf_engine_check(struct ocf_request *req)
 }
 
 void ocf_map_cache_line(struct ocf_request *req,
-		unsigned int idx, ocf_cache_line_t cache_line)
+		ocf_cache_line_t idx, ocf_cache_line_t cache_line)
 {
 	ocf_cache_t cache = req->cache;
 	ocf_core_id_t core_id = ocf_core_get_id(req->core);
-	unsigned int hash_index = req->map[idx].hash;
+	ocf_cache_line_t hash_index = req->map[idx].hash;
 	uint64_t core_line = req->core_line_first + idx;
 
 	/* Add the block to the corresponding collision list */
@@ -333,7 +333,7 @@ static void ocf_engine_map_hndl_error(struct ocf_cache *cache,
 			break;
 
 		case LOOKUP_REMAPPED:
-			OCF_DEBUG_RQ(req, "Canceling cache line %u",
+			OCF_DEBUG_RQ(req, "Canceling cache line %lu",
 					entry->coll_idx);
 
 			entry->status = LOOKUP_MISS;

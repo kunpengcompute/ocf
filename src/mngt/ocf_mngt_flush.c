@@ -116,7 +116,7 @@ bool ocf_mngt_core_is_dirty(ocf_core_t core)
 	if (ocf_cache_is_standby(cache))
 		return false;
 
-	return !!env_atomic_read(&core->runtime_meta->dirty_clines);
+	return !!env_atomic_cl_read(&core->runtime_meta->dirty_clines);
 }
 
 bool ocf_mngt_cache_is_dirty(ocf_cache_t cache)
@@ -158,7 +158,7 @@ static int _ocf_mngt_get_sectors(ocf_cache_t cache, ocf_core_id_t core_id,
 
 	ocf_metadata_start_exclusive_access(&cache->metadata.lock);
 
-	dirty_total = env_atomic_read(&core->runtime_meta->dirty_clines);
+	dirty_total = env_atomic_cl_read(&core->runtime_meta->dirty_clines);
 	if (!dirty_total) {
 		*num = 0;
 		*tbl = NULL;
@@ -256,7 +256,7 @@ static int _ocf_mngt_get_flush_containers(ocf_cache_t cache,
 		core_revmap[core_id] = j;
 
 		/* Check for dirty blocks */
-		fc[j].count = env_atomic_read(
+		fc[j].count = env_atomic_cl_read(
 				&core->runtime_meta->dirty_clines);
 		dirty_total += fc[j].count;
 
@@ -378,7 +378,7 @@ static void _ocf_mngt_flush_portion_end(void *private_data, int error)
 	ocf_core_t core = &cache->core[fc->core_id];
 	bool first_interrupt;
 
-	env_atomic_set(&core->flushed, fc->iter);
+	env_atomic_cl_set(&core->flushed, fc->iter);
 
 	fc->ticks2 = env_get_tick_count();
 
@@ -584,7 +584,7 @@ static void _ocf_mngt_flush_all_cores_complete(
 		if (!env_bit_test(i, cache->conf_meta->valid_core_bitmap))
 			continue;
 
-		env_atomic_set(&cache->core[i].flushed, 0);
+		env_atomic_cl_set(&cache->core[i].flushed, 0);
 
 		if (++j == cache->conf_meta->core_count)
 			break;
@@ -709,7 +709,7 @@ static void _ocf_mngt_flush_core_complete(
 	ocf_cache_t cache = context->cache;
 	ocf_core_t core = context->core;
 
-	env_atomic_set(&core->flushed, 0);
+	env_atomic_cl_set(&core->flushed, 0);
 
 	if (error)
 		OCF_PL_FINISH_RET(context->pipeline, error);

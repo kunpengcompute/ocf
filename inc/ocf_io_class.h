@@ -27,18 +27,18 @@ struct ocf_io_class_info {
 	int16_t priority;
 		/*!< IO class priority */
 
-	uint32_t curr_size;
+	ocf_cache_line_t curr_size;
 		/*!< Current size of the IO class - number of cache lines which
 		 * were assigned into this IO class
 		 */
 
-	uint32_t min_size;
+	ocf_cache_line_t min_size;
 		/*!< Minimum number of cache lines that were guaranteed
 		 * for specified IO class. If current size reach minimum size
 		 * that no more eviction takes place
 		 */
 
-	uint32_t max_size;
+	ocf_cache_line_t max_size;
 		/*!< Maximum number of cache lines that might be assigned into
 		 * this IO class. If current size reaches maximum size then some
 		 * of ioclass's cachelines are evicted.

@@ -466,14 +466,14 @@ static void ocf_mngt_cache_add_core_insert(ocf_pipeline_t pipeline,
 
 	/* When adding new core to cache, reset all core/cache statistics */
 	ocf_core_stats_initialize(core);
-	env_atomic_set(&core->runtime_meta->cached_clines, 0);
-	env_atomic_set(&core->runtime_meta->dirty_clines, 0);
-	env_atomic64_set(&core->runtime_meta->dirty_since, 0);
+	env_atomic_cl_set(&core->runtime_meta->cached_clines, 0);
+	env_atomic_cl_set(&core->runtime_meta->dirty_clines, 0);
+	env_atomic_cl_set(&core->runtime_meta->dirty_since, 0);
 
 	for (i = 0; i != OCF_USER_IO_CLASS_MAX; i++) {
-		env_atomic_set(&core->runtime_meta->
+		env_atomic_cl_set(&core->runtime_meta->
 				part_counters[i].cached_clines, 0);
-		env_atomic_set(&core->runtime_meta->
+		env_atomic_cl_set(&core->runtime_meta->
 				part_counters[i].dirty_clines, 0);
 	}
 
@@ -881,7 +881,7 @@ static void _ocf_mngt_cache_remove_core_mapping(ocf_pipeline_t pipeline,
 
 	gettimeofday(&context->time_end, NULL);
 
-	if (env_atomic_read(&core->runtime_meta->dirty_clines) == 0)
+	if (env_atomic_cl_read(&core->runtime_meta->dirty_clines) == 0)
 		OCF_PL_NEXT_RET(pipeline);
 
 	ocf_metadata_flush_collision(cache,
@@ -1089,7 +1089,7 @@ int ocf_mngt_remove_core_skip_unmapping(ocf_core_t core,
 	context->core_name = ocf_core_get_name(core);
 	env_atomic_set(&core->deleting, 1);
 
-	ocf_pipeline_stay_back(pipeline);
+	ocf_pipeline_next(pipeline);
 
 	return 0;
 }

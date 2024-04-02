@@ -11,8 +11,8 @@ static uint32_t ocf_evict_calculate(ocf_cache_t cache,
 		struct ocf_user_part *user_part, uint32_t to_evict)
 {
 
-	uint32_t curr_part_size = ocf_part_get_occupancy(&user_part->part);
-	uint32_t min_part_size = ocf_user_part_get_min_size(cache, user_part);
+	ocf_cache_line_t curr_part_size = ocf_part_get_occupancy(&user_part->part);
+	ocf_cache_line_t min_part_size = ocf_user_part_get_min_size(cache, user_part);
 
 	if (curr_part_size <= min_part_size) {
 		/*
@@ -52,7 +52,7 @@ static inline uint32_t ocf_evict_user_partitions(ocf_cache_t cache,
 	uint32_t to_evict = 0, evicted = 0;
 	struct ocf_user_part *user_part;
 	ocf_part_id_t part_id;
-	unsigned overflow_size;
+	uint64_t overflow_size;
 
 	/* For each partition from the lowest priority to highest one */
 	for_each_user_part(cache, user_part, part_id) {

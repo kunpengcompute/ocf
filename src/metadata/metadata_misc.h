@@ -15,7 +15,7 @@
 static inline ocf_cache_line_t ocf_metadata_hash_func(ocf_cache_t cache,
 		uint64_t core_line_num, ocf_core_id_t core_id)
 {
-	const unsigned int entries = cache->device->hash_table_entries;
+	const ocf_cache_line_t entries = cache->device->hash_table_entries;
 
 	return (ocf_cache_line_t) ((core_line_num  + (core_id * (entries / 32)))
 			% entries);

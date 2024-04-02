@@ -10,7 +10,7 @@
 #include "../utils/utils_cache_line.h"
 
 static bool ocf_cl_lock_line_needs_lock(struct ocf_alock *alock,
-		struct ocf_request *req, unsigned index)
+		struct ocf_request *req, ocf_cache_line_t index)
 {
 	/* Remapped cachelines are assigned cacheline lock individually
 	 * during eviction
@@ -20,14 +20,14 @@ static bool ocf_cl_lock_line_needs_lock(struct ocf_alock *alock,
 }
 
 static bool ocf_cl_lock_line_is_acting(struct ocf_alock *alock,
-		struct ocf_request *req, unsigned index)
+		struct ocf_request *req, ocf_cache_line_t index)
 {
 	return req->map[index].status != LOOKUP_MISS;
 }
 
 static ocf_cache_line_t ocf_cl_lock_line_get_entry(
 		struct ocf_alock *alock, struct ocf_request *req,
-		unsigned index)
+		ocf_cache_line_t index)
 {
 	return req->map[index].coll_idx;
 }
@@ -250,7 +250,7 @@ uint32_t ocf_cache_line_concurrency_suspended_no(struct ocf_alock *alock)
 #define ALLOCATOR_NAME_MAX (sizeof(ALLOCATOR_NAME_FMT) + OCF_CACHE_NAME_SIZE)
 
 int ocf_cache_line_concurrency_init(struct ocf_alock **self,
-		unsigned num_clines, ocf_cache_t cache)
+		ocf_cache_line_t num_clines, ocf_cache_t cache)
 {
 	char name[ALLOCATOR_NAME_MAX];
 	int ret;

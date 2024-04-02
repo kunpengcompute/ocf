@@ -43,7 +43,7 @@
 
 struct ocf_alock_waiter {
 	ocf_cache_line_t entry;
-	uint32_t idx;
+	ocf_cache_line_t idx;
 	struct ocf_request *req;
 	ocf_req_async_lock_cb cmpl;
 	struct list_head item;
@@ -90,7 +90,7 @@ size_t ocf_alock_obj_size(void)
 	return sizeof(struct ocf_alock);
 }
 
-int ocf_alock_init_inplace(struct ocf_alock *self, unsigned num_entries,
+int ocf_alock_init_inplace(struct ocf_alock *self, ocf_cache_line_t num_entries,
 		const char* name, struct ocf_alock_lock_cbs *cbs, ocf_cache_t cache)
 {
 	uint32_t i;
@@ -152,7 +152,7 @@ rwsem_err:
 	return -1;
 }
 
-int ocf_alock_init(struct ocf_alock **self, unsigned num_entries,
+int ocf_alock_init(struct ocf_alock **self, ocf_cache_line_t num_entries,
 		const char* name, struct ocf_alock_lock_cbs *cbs, ocf_cache_t cache)
 {
 	struct ocf_alock *alock;
@@ -201,7 +201,7 @@ void ocf_alock_deinit(struct ocf_alock **self)
 	*self = NULL;
 }
 
-size_t ocf_alock_size(unsigned num_entries)
+size_t ocf_alock_size(ocf_cache_line_t num_entries)
 {
 	size_t size;
 
@@ -218,7 +218,7 @@ static inline bool ocf_alock_waitlist_is_empty_locked(struct ocf_alock *alock,
 {
 	bool are = false;
 	struct list_head *iter;
-	uint32_t idx = _WAITERS_LIST_ITEM(entry);
+	ocf_cache_line_t idx = _WAITERS_LIST_ITEM(entry);
 	struct ocf_alock_waiters_list *lst = &alock->waiters_lsts[idx];
 	struct ocf_alock_waiter *waiter;
 
@@ -241,7 +241,7 @@ static inline bool ocf_alock_waitlist_is_empty_locked(struct ocf_alock *alock,
 static inline void ocf_alock_waitlist_add(struct ocf_alock *alock,
 		ocf_cache_line_t entry, struct ocf_alock_waiter *waiter)
 {
-	uint32_t idx = _WAITERS_LIST_ITEM(entry);
+	ocf_cache_line_t idx = _WAITERS_LIST_ITEM(entry);
 	struct ocf_alock_waiters_list *lst = &alock->waiters_lsts[idx];
 
 	list_add_tail(&waiter->item, &lst->head);
@@ -250,14 +250,14 @@ static inline void ocf_alock_waitlist_add(struct ocf_alock *alock,
 
 #define ocf_alock_waitlist_lock(cncrrncy, entry, flags) \
 	do { \
-		uint32_t idx = _WAITERS_LIST_ITEM(entry); \
+		ocf_cache_line_t idx = _WAITERS_LIST_ITEM(entry); \
 		struct ocf_alock_waiters_list *lst = &cncrrncy->waiters_lsts[idx]; \
 		env_spinlock_lock_irqsave(&lst->lock, flags); \
 	} while (0)
 
 #define ocf_alock_waitlist_unlock(cncrrncy, entry, flags) \
 	do { \
-		uint32_t idx = _WAITERS_LIST_ITEM(entry); \
+		ocf_cache_line_t idx = _WAITERS_LIST_ITEM(entry); \
 		struct ocf_alock_waiters_list *lst = &cncrrncy->waiters_lsts[idx]; \
 		env_spinlock_unlock_irqrestore(&lst->lock, flags); \
 	} while (0)
@@ -376,7 +376,7 @@ static void ocf_alock_entry_locked(struct ocf_alock *alock,
 
 bool ocf_alock_lock_one_wr(struct ocf_alock *alock,
 		const ocf_cache_line_t entry, ocf_req_async_lock_cb cmpl,
-		void *req, uint32_t idx)
+		void *req, ocf_cache_line_t idx)
 {
 	struct ocf_alock_waiter *waiter;
 	bool waiting = false;
@@ -433,7 +433,7 @@ unlock:
  */
 bool ocf_alock_lock_one_rd(struct ocf_alock *alock,
 		const ocf_cache_line_t entry, ocf_req_async_lock_cb cmpl,
-		void *req, uint32_t idx)
+		void *req, ocf_cache_line_t idx)
 {
 	struct ocf_alock_waiter *waiter;
 	bool waiting = false;
@@ -500,7 +500,7 @@ static inline void ocf_alock_unlock_one_rd_common(struct ocf_alock *alock,
 	bool locked = false;
 	bool exchanged = true;
 
-	uint32_t idx = _WAITERS_LIST_ITEM(entry);
+	ocf_cache_line_t idx = _WAITERS_LIST_ITEM(entry);
 	struct ocf_alock_waiters_list *lst = &alock->waiters_lsts[idx];
 	struct ocf_alock_waiter *waiter;
 
@@ -568,7 +568,7 @@ void ocf_alock_unlock_one_rd(struct ocf_alock *alock,
 {
 	unsigned long flags = 0;
 
-	OCF_DEBUG_CACHE(alock->cache, "Cache entry unlock one rd = %u", entry);
+	OCF_DEBUG_CACHE(alock->cache, "Cache entry unlock one rd = %lu", entry);
 
 	/* Lock waiters list */
 	ocf_alock_waitlist_lock(alock, entry, flags);
@@ -587,7 +587,7 @@ static inline void ocf_alock_unlock_one_wr_common(struct ocf_alock *alock,
 	bool locked = false;
 	bool exchanged = true;
 
-	uint32_t idx = _WAITERS_LIST_ITEM(entry);
+	ocf_cache_line_t idx = _WAITERS_LIST_ITEM(entry);
 	struct ocf_alock_waiters_list *lst = &alock->waiters_lsts[idx];
 	struct ocf_alock_waiter *waiter;
 
@@ -649,7 +649,7 @@ void ocf_alock_unlock_one_wr(struct ocf_alock *alock,
 {
 	unsigned long flags = 0;
 
-	OCF_DEBUG_CACHE(alock->cache, "Cache entry unlock one wr = %u", entry);
+	OCF_DEBUG_CACHE(alock->cache, "Cache entry unlock one wr = %lu", entry);
 
 	/* Lock waiters list */
 	ocf_alock_waitlist_lock(alock, entry, flags);
@@ -665,7 +665,7 @@ void ocf_alock_unlock_one_wr(struct ocf_alock *alock,
 void ocf_alock_waitlist_remove_entry(struct ocf_alock *alock,
 	struct ocf_request *req, ocf_cache_line_t entry, int i, int rw)
 {
-	uint32_t idx = _WAITERS_LIST_ITEM(entry);
+	ocf_cache_line_t idx = _WAITERS_LIST_ITEM(entry);
 	struct ocf_alock_waiters_list *lst = &alock->waiters_lsts[idx];
 	struct list_head *iter, *next;
 	struct ocf_alock_waiter *waiter;

@@ -37,16 +37,16 @@
  * Check if page is valid for specified RAW descriptor
  */
 
-uint32_t raw_dynamic_segment_size_on_ssd(struct ocf_metadata_raw *raw)
+uint64_t raw_dynamic_segment_size_on_ssd(struct ocf_metadata_raw *raw)
 {
 	const size_t alignment = 128 * KiB / PAGE_SIZE;
 
 	return OCF_DIV_ROUND_UP(raw->ssd_pages, alignment) * alignment;
 }
 
-static bool _raw_ssd_page_is_valid(struct ocf_metadata_raw *raw, uint32_t page)
+static bool _raw_ssd_page_is_valid(struct ocf_metadata_raw *raw, uint64_t page)
 {
-	uint32_t size = raw_dynamic_segment_size_on_ssd(raw) *
+	uint64_t size = raw_dynamic_segment_size_on_ssd(raw) *
 			(raw->flapping ? 2 : 1);
 
 	ENV_BUG_ON(page < raw->ssd_pages_offset);
@@ -75,11 +75,11 @@ struct _raw_ctrl {
 };
 
 static void *_raw_dynamic_get_item(ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, uint32_t entry)
+		struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	void *new = NULL;
 	struct _raw_ctrl *ctrl = (struct _raw_ctrl *)raw->priv;
-	uint32_t page = _RAW_DYNAMIC_PAGE(raw, entry);
+	uint64_t page = _RAW_DYNAMIC_PAGE(raw, entry);
 
 	ENV_BUG_ON(!_raw_is_valid(raw, entry));
 
@@ -129,7 +129,7 @@ _raw_dynamic_get_item_SKIP:
 int raw_dynamic_deinit(ocf_cache_t cache,
 		struct ocf_metadata_raw *raw)
 {
-	uint32_t i;
+	uint64_t i;
 	struct _raw_ctrl *ctrl = (struct _raw_ctrl *)raw->priv;
 
 	if (!ctrl)
@@ -221,7 +221,7 @@ size_t raw_dynamic_size_of(ocf_cache_t cache,
 /*
  * RAW DYNAMIC Implementation - Size on SSD
  */
-uint32_t raw_dynamic_size_on_ssd(struct ocf_metadata_raw *raw)
+uint64_t raw_dynamic_size_on_ssd(struct ocf_metadata_raw *raw)
 {
 	size_t flapping_factor = raw->flapping ? 2 : 1;
 
@@ -231,7 +231,7 @@ uint32_t raw_dynamic_size_on_ssd(struct ocf_metadata_raw *raw)
 /*
  * RAM DYNAMIC Implementation - Checksum
  */
-uint32_t raw_dynamic_checksum(ocf_cache_t cache,
+uint64_t raw_dynamic_checksum(ocf_cache_t cache,
 		struct ocf_metadata_raw *raw)
 {
 	struct _raw_ctrl *ctrl = (struct _raw_ctrl *)raw->priv;
@@ -251,7 +251,7 @@ uint32_t raw_dynamic_checksum(ocf_cache_t cache,
 /*
  * RAM DYNAMIC Implementation - Entry page number
  */
-uint32_t raw_dynamic_page(struct ocf_metadata_raw *raw, uint32_t entry)
+uint64_t raw_dynamic_page(struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	ENV_BUG_ON(entry >= raw->entries);
 
@@ -262,7 +262,7 @@ uint32_t raw_dynamic_page(struct ocf_metadata_raw *raw, uint32_t entry)
 * RAM DYNAMIC Implementation - access
 */
 void *raw_dynamic_access(ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, uint32_t entry)
+		struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	return _raw_dynamic_get_item(cache, raw, entry);
 }
@@ -537,12 +537,12 @@ struct raw_dynamic_flush_all_context {
  * RAM Implementation - Flush IO callback - Fill page
  */
 static int raw_dynamic_flush_all_fill(ocf_cache_t cache,
-		ctx_data_t *data, uint32_t page, void *priv)
+		ctx_data_t *data, uint64_t page, void *priv)
 {
 	struct raw_dynamic_flush_all_context *context = priv;
 	struct ocf_metadata_raw *raw = context->raw;
 	struct _raw_ctrl *ctrl = (struct _raw_ctrl *)raw->priv;
-	uint32_t raw_page;
+	uint64_t raw_page;
 
 	ENV_BUG_ON(!_raw_ssd_page_is_valid(raw, page));
 

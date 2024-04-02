@@ -49,11 +49,20 @@ enum {
 
 static inline size_t ocf_metadata_status_sizeof(ocf_cache_line_size_t line_size)
 {
-	size_t status_bits = BYTES_TO_SECTORS(line_size);
-	size_t size = DIV_ROUND_UP(status_bits, 8);
+	size_t size;
 
-	/* Number of types of status (valid, dirty, etc...) */
-	size *= ocf_metadata_status_type_max;
+	switch (line_size) {
+		case ocf_cache_line_size_8:
+		case ocf_cache_line_size_16:
+			size = 1; // valid:4bit, clean:4bit
+			break;
+		case ocf_cache_line_size_32:
+		case ocf_cache_line_size_64:
+			size = 4; // valid:2bytes, clean:2bytes
+			break;
+		default:
+			ENV_BUG();
+	}
 
 	/* At the end we have size */
 	return size;
@@ -162,7 +171,7 @@ static int64_t ocf_metadata_get_element_size(
 		break;
 
 	case metadata_segment_hash:
-		size = sizeof(ocf_cache_line_t);
+		size = sizeof(struct ocf_metadata_hash);
 		break;
 
 	case metadata_segment_core_config:
@@ -344,7 +353,7 @@ static int ocf_metadata_calculate_metadata_size(
 
 	ctrl->count_pages = count_pages;
 	ctrl->cachelines = cache_lines;
-	OCF_DEBUG_PARAM(cache, "Cache lines = %u", ctrl->cachelines);
+	OCF_DEBUG_PARAM(cache, "Cache lines = %lu", ctrl->cachelines);
 
 	if (ctrl->device_lines < ctrl->cachelines)
 		return -1;
@@ -424,6 +433,73 @@ static void ocf_metadata_raw_info(struct ocf_cache *cache,
 #endif
 
 /*
+ * NOTE Hash table is specific for hash table metadata service implementation
+ * and should be used internally by metadata service.
+ * At the moment there is no high level metadata interface because of that
+ * temporary defined in this file.
+ */
+/*******************************************************************************
+ * Hash Table
+ ******************************************************************************/
+/*
+ * Hash Table - Get
+ */
+ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
+		ocf_cache_line_t index)
+{
+	struct ocf_metadata_ctrl *ctrl
+		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	const struct ocf_metadata_hash *info =
+			ocf_metadata_raw_rd_access(cache,
+			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	
+	return info->cache_line;
+}
+
+uint8_t *ocf_metadata_get_hash_lock(struct ocf_cache *cache,
+		ocf_cache_line_t index)
+{
+	struct ocf_metadata_ctrl *ctrl
+		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	struct ocf_metadata_hash *info =
+			ocf_metadata_raw_wr_access(cache,
+			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	
+	return &(info->hash_lock);
+}
+
+/*
+ * Hash Table - Set
+ */
+void ocf_metadata_set_hash(struct ocf_cache *cache, ocf_cache_line_t index,
+		ocf_cache_line_t line)
+{
+	struct ocf_metadata_ctrl *ctrl
+		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	struct ocf_metadata_hash *info =
+			ocf_metadata_raw_wr_access(cache,
+			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	
+	info->cache_line = line;
+}
+
+void ocf_metadata_set_hash_lock(struct ocf_cache *cache, ocf_cache_line_t index,
+		uint8_t lock)
+{
+	struct ocf_metadata_ctrl *ctrl
+		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
+
+	struct ocf_metadata_hash *info =
+			ocf_metadata_raw_wr_access(cache,
+			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	
+	info->hash_lock = lock;
+}
+
+/*
  * Deinitialize hash metadata interface
  */
 void ocf_metadata_deinit_variable_size(struct ocf_cache *cache)
@@ -488,7 +564,7 @@ static struct ocf_metadata_ctrl *ocf_metadata_ctrl_init(
 		bool metadata_volatile)
 {
 	struct ocf_metadata_ctrl *ctrl = NULL;
-	uint32_t page = 0;
+	uint64_t page = 0;
 	uint32_t i = 0;
 
 	ctrl = env_vzalloc(sizeof(*ctrl));
@@ -621,7 +697,7 @@ static int ocf_metadata_init_fixed_size(struct ocf_cache *cache,
 }
 
 static void ocf_metadata_flush_lock_collision_page(struct ocf_cache *cache,
-		struct ocf_metadata_raw *raw, uint32_t page)
+		struct ocf_metadata_raw *raw, uint64_t page)
 
 {
 	ocf_collision_start_exclusive_access(&cache->metadata.lock,
@@ -630,7 +706,7 @@ static void ocf_metadata_flush_lock_collision_page(struct ocf_cache *cache,
 
 static void ocf_metadata_flush_unlock_collision_page(
 		struct ocf_cache *cache, struct ocf_metadata_raw *raw,
-		uint32_t page)
+		uint64_t page)
 
 {
 	ocf_collision_end_exclusive_access(&cache->metadata.lock,
@@ -712,9 +788,9 @@ int ocf_metadata_init_variable_size(struct ocf_cache *cache,
 		return -OCF_ERR_INVAL_CACHE_DEV;
 	}
 
-	OCF_DEBUG_PARAM(cache, "Metadata begin pages = %u", ctrl->start_page);
-	OCF_DEBUG_PARAM(cache, "Metadata count pages = %u", ctrl->count_pages);
-	OCF_DEBUG_PARAM(cache, "Metadata end pages = %u", ctrl->start_page
+	OCF_DEBUG_PARAM(cache, "Metadata begin pages = %lu", ctrl->start_page);
+	OCF_DEBUG_PARAM(cache, "Metadata count pages = %lu", ctrl->count_pages);
+	OCF_DEBUG_PARAM(cache, "Metadata end pages = %lu", ctrl->start_page
 			+ ctrl->count_pages);
 
 	superblock = ctrl->segment[metadata_segment_sb_config];
@@ -808,7 +884,7 @@ finalize:
 
 	result = ocf_metadata_concurrency_attached_init(&cache->metadata.lock,
 			cache, ctrl->raw_desc[metadata_segment_hash].entries,
-			(uint32_t)ctrl->raw_desc[metadata_segment_collision].
+			ctrl->raw_desc[metadata_segment_collision].
 			ssd_pages);
 	if (result) {
 		ocf_cache_log(cache, log_err, "Failed to initialize attached "
@@ -836,12 +912,17 @@ static inline void _ocf_init_collision_entry(struct ocf_cache *cache,
  */
 void ocf_metadata_init_collision(struct ocf_cache *cache)
 {
-	unsigned int i;
-	unsigned int step = 0;
-
-	for (i = 0; i < cache->device->collision_table_entries; i++) {
+	ocf_cache_line_t i;
+	ocf_cache_line_t step = 0;
+	ocf_cache_line_t entries = cache->device->collision_table_entries;
+	for (i = 0; i < entries; i++) {
 		_ocf_init_collision_entry(cache, i);
 		OCF_COND_RESCHED_DEFAULT(step);
+
+		if (i % (entries / 10) == 0) {
+			uint64_t process_bar = 10 * i / entries;
+			ocf_cache_log(cache, log_info, "Init collision process : %lu0 %%", process_bar);
+		}
 	}
 }
 
@@ -850,8 +931,8 @@ void ocf_metadata_init_collision(struct ocf_cache *cache)
  */
 void ocf_metadata_init_hash_table(struct ocf_cache *cache)
 {
-	unsigned int i;
-	unsigned int hash_table_entries = cache->device->hash_table_entries;
+	ocf_cache_line_t i;
+	ocf_cache_line_t hash_table_entries = cache->device->hash_table_entries;
 	ocf_cache_line_t invalid_idx = cache->device->collision_table_entries;
 
 	/* Init hash table */
@@ -861,6 +942,11 @@ void ocf_metadata_init_hash_table(struct ocf_cache *cache)
 		 * from collision_table
 		 **/
 		ocf_metadata_set_hash(cache, i, invalid_idx);
+
+		if (i % (hash_table_entries / 10) == 0) {
+			uint64_t process_bar = 10 * i / hash_table_entries;
+			ocf_cache_log(cache, log_info, "Init hash table process : %lu0 %%", process_bar);
+		}
 	}
 
 }
@@ -1436,42 +1522,6 @@ void ocf_metadata_get_core_and_part_id(struct ocf_cache *cache,
 	if (part_id)
 		*part_id = info->partition_id;
 }
-/*******************************************************************************
- * Hash Table
- ******************************************************************************/
-
-/*
- * Hash Table - Get
- */
-ocf_cache_line_t *ocf_metadata_get_hash_p(struct ocf_cache *cache,
-		ocf_cache_line_t index)
-{
-	struct ocf_metadata_ctrl *ctrl
-		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
-
-	return (ocf_cache_line_t *)ocf_metadata_raw_rd_access(cache,
-			&(ctrl->raw_desc[metadata_segment_hash]), index);
-}
-
-ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
-		ocf_cache_line_t index)
-{
-	return *ocf_metadata_get_hash_p(cache, index) & ~(1 << HASH_LOCK_BIT);
-}
-
-/*
- * Hash Table - Set
- */
-void ocf_metadata_set_hash(struct ocf_cache *cache, ocf_cache_line_t index,
-		ocf_cache_line_t line)
-{
-	struct ocf_metadata_ctrl *ctrl
-		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
-
-	line |= (*ocf_metadata_get_hash_p(cache, index) & (1 << HASH_LOCK_BIT));
-	*(ocf_cache_line_t *)ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_hash]), index) = line;
-}
 
 /*******************************************************************************
  *  Bitmap status
@@ -1486,8 +1536,8 @@ bool ocf_metadata_##what(struct ocf_cache *cache, \
 	switch (cache->metadata.line_size) { \
 		case ocf_cache_line_size_8: \
 		case ocf_cache_line_size_16: \
-		case ocf_cache_line_size_32: \
 			return _ocf_metadata_##what##_u8(cache, line, start, stop, all); \
+		case ocf_cache_line_size_32: \
 		case ocf_cache_line_size_64: \
 			return _ocf_metadata_##what##_u16(cache, line, start, stop, all); \
 		case ocf_cache_line_size_none: \
@@ -1505,8 +1555,8 @@ bool ocf_metadata_##what(struct ocf_cache *cache, \
 	switch (cache->metadata.line_size) { \
 		case ocf_cache_line_size_8: \
 		case ocf_cache_line_size_16: \
-		case ocf_cache_line_size_32: \
 			return _ocf_metadata_##what##_u8(cache, line, start, stop); \
+		case ocf_cache_line_size_32: \
 		case ocf_cache_line_size_64: \
 			return _ocf_metadata_##what##_u16(cache, line, start, stop); \
 		case ocf_cache_line_size_none: \
@@ -1533,9 +1583,9 @@ bool ocf_metadata_clear_valid_if_clean(struct ocf_cache *cache,
 	switch (cache->metadata.line_size) {
 		case ocf_cache_line_size_8:
 		case ocf_cache_line_size_16:
-		case ocf_cache_line_size_32:
 			return _ocf_metadata_clear_valid_if_clean_u8(cache,
 					line, start, stop);
+		case ocf_cache_line_size_32:
 		case ocf_cache_line_size_64:
 			return _ocf_metadata_clear_valid_if_clean_u16(cache,
 					line, start, stop);
@@ -1552,9 +1602,9 @@ void ocf_metadata_clear_dirty_if_invalid(struct ocf_cache *cache,
 	switch (cache->metadata.line_size) {
 		case ocf_cache_line_size_8:
 		case ocf_cache_line_size_16:
-		case ocf_cache_line_size_32:
 			return _ocf_metadata_clear_dirty_if_invalid_u8(cache,
 					line, start, stop);
+		case ocf_cache_line_size_32:
 		case ocf_cache_line_size_64:
 			return _ocf_metadata_clear_dirty_if_invalid_u16(cache,
 					line, start, stop);
@@ -1569,8 +1619,8 @@ bool ocf_metadata_check(struct ocf_cache *cache, ocf_cache_line_t line)
 	switch (cache->metadata.line_size) {
 		case ocf_cache_line_size_8:
 		case ocf_cache_line_size_16:
-		case ocf_cache_line_size_32:
 			return _ocf_metadata_check_u8(cache, line);
+		case ocf_cache_line_size_32:
 		case ocf_cache_line_size_64:
 			return _ocf_metadata_check_u16(cache, line);
 		case ocf_cache_line_size_none:

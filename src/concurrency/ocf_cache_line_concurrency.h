@@ -23,7 +23,7 @@
  * @return 0 - Initialization successful, otherwise ERROR
  */
 int ocf_cache_line_concurrency_init(struct ocf_alock **self,
-		unsigned num_clines, struct ocf_cache *cache);
+		ocf_cache_line_t num_clines, struct ocf_cache *cache);
 
 /**
  * @biref De-Initialize  OCF cache concurrency module
@@ -149,7 +149,7 @@ bool ocf_cache_line_are_waiters(struct ocf_alock *c,
  * @param entry - request map entry number
  */
 void ocf_req_unlock_entry(struct ocf_alock *c,
-		struct ocf_request *req, uint32_t entry);
+		struct ocf_request *req, ocf_cache_line_t entry);
 
 /**
  * @brief Release cache line read lock

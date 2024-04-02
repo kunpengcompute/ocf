@@ -34,7 +34,7 @@
  * Common RAW Implementation
  ******************************************************************************/
 
-static uint32_t _raw_ram_segment_size_on_ssd(struct ocf_metadata_raw *raw)
+static uint64_t _raw_ram_segment_size_on_ssd(struct ocf_metadata_raw *raw)
 {
 	const size_t alignment = 128 * KiB / PAGE_SIZE;
 
@@ -42,9 +42,9 @@ static uint32_t _raw_ram_segment_size_on_ssd(struct ocf_metadata_raw *raw)
 }
 
 
-static uint32_t _raw_ram_segment_size_on_ssd_total(struct ocf_metadata_raw *raw)
+static uint64_t _raw_ram_segment_size_on_ssd_total(struct ocf_metadata_raw *raw)
 {
-	uint32_t size = _raw_ram_segment_size_on_ssd(raw) *
+	uint64_t size = _raw_ram_segment_size_on_ssd(raw) *
 			(raw->flapping ? 2 : 1);
 
 	return size;
@@ -53,9 +53,9 @@ static uint32_t _raw_ram_segment_size_on_ssd_total(struct ocf_metadata_raw *raw)
 /*
  * Check if page is valid for specified RAW descriptor
  */
-static bool _raw_ssd_page_is_valid(struct ocf_metadata_raw *raw, uint32_t page)
+static bool _raw_ssd_page_is_valid(struct ocf_metadata_raw *raw, uint64_t page)
 {
-	uint32_t size = _raw_ram_segment_size_on_ssd_total(raw);
+	uint64_t size = _raw_ram_segment_size_on_ssd_total(raw);
 
 	ENV_BUG_ON(page < raw->ssd_pages_offset);
 	ENV_BUG_ON(page >= (raw->ssd_pages_offset + size));
@@ -161,7 +161,7 @@ static size_t _raw_ram_size_of(ocf_cache_t cache, struct ocf_metadata_raw *raw)
 /*
  * RAM Implementation - Size on SSD
  */
-static uint32_t _raw_ram_size_on_ssd(struct ocf_metadata_raw *raw)
+static uint64_t _raw_ram_size_on_ssd(struct ocf_metadata_raw *raw)
 {
 	size_t flapping_factor = raw->flapping ? 2 : 1;
 
@@ -171,12 +171,12 @@ static uint32_t _raw_ram_size_on_ssd(struct ocf_metadata_raw *raw)
 /*
  * RAM Implementation - Checksum
  */
-static uint32_t _raw_ram_checksum(ocf_cache_t cache,
+static uint64_t _raw_ram_checksum(ocf_cache_t cache,
 		struct ocf_metadata_raw *raw)
 {
 	uint64_t i;
-	uint32_t step = 0;
-	uint32_t crc = 0;
+	uint64_t step = 0;
+	uint64_t crc = 0;
 
 	for (i = 0; i < raw->ssd_pages; i++) {
 		crc = env_crc32(crc, raw->mem_pool + PAGE_SIZE * i, PAGE_SIZE);
@@ -189,7 +189,7 @@ static uint32_t _raw_ram_checksum(ocf_cache_t cache,
 /*
  * RAM Implementation - Entry page number
  */
-uint32_t _raw_ram_page(struct ocf_metadata_raw *raw, uint32_t entry)
+uint64_t _raw_ram_page(struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	ENV_BUG_ON(entry >= raw->entries);
 
@@ -200,7 +200,7 @@ uint32_t _raw_ram_page(struct ocf_metadata_raw *raw, uint32_t entry)
  * RAM Implementation - Read only entry access
  */
 static void *_raw_ram_access(ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, uint32_t entry)
+		struct ocf_metadata_raw *raw, ocf_cache_line_t entry)
 {
 	ENV_BUG_ON(!_raw_is_valid(raw, entry));
 
@@ -208,9 +208,9 @@ static void *_raw_ram_access(ocf_cache_t cache,
 }
 
 static int _raw_ram_drain_page(ocf_cache_t cache,
-		struct ocf_metadata_raw *raw, ctx_data_t *data, uint32_t page)
+		struct ocf_metadata_raw *raw, ctx_data_t *data, uint64_t page)
 {
-	uint32_t size = raw->entry_size * raw->entries_in_page;
+	uint64_t size = raw->entry_size * raw->entries_in_page;
 	ocf_cache_line_t line;
 
 	ENV_BUG_ON(page > raw->ssd_pages);
@@ -218,7 +218,7 @@ static int _raw_ram_drain_page(ocf_cache_t cache,
 
 	line = page * raw->entries_in_page;
 
-	OCF_DEBUG_PARAM(cache, "Line = %u, Page = %u", line, page);
+	OCF_DEBUG_PARAM(cache, "Line = %lu, Page = %lu", line, page);
 
 	ctx_data_rd_check(cache->owner, _RAW_RAM_ADDR(raw, line), data, size);
 	ctx_data_seek(cache->owner, data, ctx_data_seek_current,
@@ -244,7 +244,7 @@ static int _raw_ram_update(ocf_cache_t cache,
 }
 
 static int raw_ram_zero_do_asynch_fill(ocf_cache_t cache,
-		ctx_data_t *data, uint32_t page, void *context)
+		ctx_data_t *data, uint64_t page, void *context)
 {
 	ctx_data_zero(cache->owner, data, PAGE_SIZE);
 
@@ -298,7 +298,7 @@ struct _raw_ram_load_all_context {
  * RAM Implementation - Load all IO callback
  */
 static int _raw_ram_load_all_drain(ocf_cache_t cache,
-		ctx_data_t *data, uint32_t page, void *priv)
+		ctx_data_t *data, uint64_t page, void *priv)
 {
 	struct _raw_ram_load_all_context *context = priv;
 	struct ocf_metadata_raw *raw = context->raw;
@@ -356,13 +356,13 @@ struct _raw_ram_flush_all_context {
  * RAM Implementation - Flush IO callback - Fill page
  */
 static int _raw_ram_flush_all_fill(ocf_cache_t cache,
-		ctx_data_t *data, uint32_t page, void *priv)
+		ctx_data_t *data, uint64_t page, void *priv)
 {
 	struct _raw_ram_flush_all_context *context = priv;
 	struct ocf_metadata_raw *raw = context->raw;
-	uint32_t size = raw->entry_size * raw->entries_in_page;
+	uint64_t size = raw->entry_size * raw->entries_in_page;
 	ocf_cache_line_t line;
-	uint32_t raw_page;
+	uint64_t raw_page;
 
 	ENV_BUG_ON(!_raw_ssd_page_is_valid(raw, page));
 	ENV_BUG_ON(size > PAGE_SIZE);
@@ -370,7 +370,7 @@ static int _raw_ram_flush_all_fill(ocf_cache_t cache,
 	raw_page = page - context->ssd_pages_offset;
 	line = raw_page * raw->entries_in_page;
 
-	OCF_DEBUG_PARAM(cache, "Line = %u, Page = %u", line, raw_page);
+	OCF_DEBUG_PARAM(cache, "Line = %lu, Page = %lu", line, raw_page);
 
 	if (raw->lock_page)
 		raw->lock_page(cache, raw, raw_page);
@@ -471,10 +471,10 @@ static void _raw_ram_flush_do_asynch_io_complete(ocf_cache_t cache,
  * RAM Implementation - Flush IO callback - Fill page
  */
 static int _raw_ram_flush_do_asynch_fill(ocf_cache_t cache,
-		ctx_data_t *data, uint32_t page, void *context)
+		ctx_data_t *data, uint64_t page, void *context)
 {
 	ocf_cache_line_t line;
-	uint32_t raw_page;
+	uint64_t raw_page;
 	struct _raw_ram_flush_ctx *ctx = context;
 	struct ocf_metadata_raw *raw = NULL;
 	uint32_t size;
@@ -490,7 +490,7 @@ static int _raw_ram_flush_do_asynch_fill(ocf_cache_t cache,
 	raw_page = page - raw->ssd_pages_offset;
 	line = raw_page * raw->entries_in_page;
 
-	OCF_DEBUG_PARAM(cache, "Line = %u, Page = %u", line, raw_page);
+	OCF_DEBUG_PARAM(cache, "Line = %lu, Page = %lu", line, raw_page);
 
 	if (raw->lock_page)
 		raw->lock_page(cache, raw, raw_page);
@@ -522,7 +522,7 @@ int _raw_ram_flush_do_page_cmp(const void *item1, const void *item2)
 }
 
 static void __raw_ram_flush_do_asynch_add_pages(struct ocf_request *req,
-		uint32_t *pages_tab, struct ocf_metadata_raw *raw,
+		uint64_t *pages_tab, struct ocf_metadata_raw *raw,
 		int *pages_to_flush) {
 	int i, j = 0;
 	int line_no = req->core_line_count;
@@ -544,12 +544,12 @@ static int _raw_ram_flush_do_asynch(ocf_cache_t cache,
 		ocf_req_end_t complete)
 {
 	int result = 0, i;
-	uint32_t __pages_tab[MAX_STACK_TAB_SIZE];
-	uint32_t *pages_tab;
+	uint64_t __pages_tab[MAX_STACK_TAB_SIZE];
+	uint64_t *pages_tab;
 	int line_no = req->core_line_count;
 	int pages_to_flush;
-	uint32_t start_page = 0;
-	uint32_t count = 0;
+	uint64_t start_page = 0;
+	uint64_t count = 0;
 	struct _raw_ram_flush_ctx *ctx;
 
 	ENV_BUG_ON(!complete);

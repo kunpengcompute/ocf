@@ -21,7 +21,7 @@ static const ocf_cache_line_t end_marker = (ocf_cache_line_t)((1ULL << CACHE_LIN
 /* update list last_hot index. returns pivot element (the one for which hot
  * status effectively changes during balancing). */
 static inline ocf_cache_line_t balance_update_last_hot(ocf_cache_t cache,
-		struct ocf_lru_list *list, int change)
+		struct ocf_lru_list *list, long change)
 {
 	ocf_cache_line_t last_hot_new, last_hot_old;
 
@@ -60,8 +60,8 @@ static inline ocf_cache_line_t balance_update_last_hot(ocf_cache_t cache,
  */
 static void balance_lru_list(ocf_cache_t cache, struct ocf_lru_list *list)
 {
-	unsigned target_hot_count = list->num_nodes / OCF_LRU_HOT_RATIO;
-	int change = target_hot_count - list->num_hot;
+	ocf_cache_line_t target_hot_count = list->num_nodes / OCF_LRU_HOT_RATIO;
+	long change = target_hot_count - list->num_hot;
 	ocf_cache_line_t pivot;
 
 	if (!list->track_hot)
@@ -81,10 +81,10 @@ static void balance_lru_list(ocf_cache_t cache, struct ocf_lru_list *list)
 /* Adds the given collision_index to the _head_ of the LRU list */
 static void add_lru_head_nobalance(ocf_cache_t cache,
 		struct ocf_lru_list *list,
-		unsigned int collision_index)
+		ocf_cache_line_t collision_index)
 {
 	struct ocf_lru_meta *node;
-	unsigned int curr_head_index;
+	ocf_cache_line_t curr_head_index;
 
 	ENV_BUG_ON(collision_index == end_marker);
 
@@ -138,8 +138,8 @@ static inline void remove_update_ptrs(ocf_cache_t cache,
 		struct ocf_lru_list *list, ocf_cache_line_t collision_index,
 		struct ocf_lru_meta *node)
 {
-	uint32_t next_lru_node = node->next;
-	uint32_t prev_lru_node = node->prev;
+	ocf_cache_line_t next_lru_node = node->next;
+	ocf_cache_line_t prev_lru_node = node->prev;
 	struct ocf_lru_meta *next_node;
 	struct ocf_lru_meta *prev_node;
 	bool is_head = (node->prev == end_marker);
@@ -276,8 +276,8 @@ static void ocf_lru_repart_locked(ocf_cache_t cache, ocf_cache_line_t cline,
 
 	ocf_lru_move(cache, cline, src_list, dst_list);
 	ocf_metadata_set_partition_id(cache, cline, dst_part->id);
-	env_atomic_dec(&src_part->runtime->curr_size);
-	env_atomic_inc(&dst_part->runtime->curr_size);
+	env_atomic_cl_dec(&src_part->runtime->curr_size);
+	env_atomic_cl_inc(&dst_part->runtime->curr_size);
 }
 
 void ocf_lru_repart(ocf_cache_t cache, ocf_cache_line_t cline,
@@ -674,8 +674,8 @@ static void ocf_lru_invalidate(ocf_cache_t cache, ocf_cache_line_t cline,
 			cache, cline);
 
 	core = ocf_cache_get_core(cache, core_id);
-	env_atomic_dec(&core->runtime_meta->cached_clines);
-	env_atomic_dec(&core->runtime_meta->
+	env_atomic_cl_dec(&core->runtime_meta->cached_clines);
+	env_atomic_cl_dec(&core->runtime_meta->
 			part_counters[part_id].cached_clines);
 }
 
@@ -834,7 +834,7 @@ void ocf_lru_init(ocf_cache_t cache, struct ocf_part *part)
 		}
 	}
 
-	env_atomic_set(&part->runtime->curr_size, 0);
+	env_atomic_cl_set(&part->runtime->curr_size, 0);
 }
 
 void ocf_lru_clean_cline(ocf_cache_t cache, struct ocf_part *part,
@@ -871,7 +871,7 @@ void ocf_lru_dirty_cline(ocf_cache_t cache, struct ocf_part *part,
 
 struct ocf_lru_populate_context {
 	ocf_cache_t cache;
-	env_atomic curr_size;
+	env_atomic_cl curr_size;
 
 	ocf_lru_populate_end_t cmpl;
 	void *priv;
@@ -888,8 +888,8 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 	struct ocf_lru_list *list;
 	unsigned lru_list = shard_id;
 	unsigned step = 0;
-	uint32_t portion, offset;
-	uint32_t i, idx;
+	ocf_cache_line_t portion, offset;
+	ocf_cache_line_t i, idx;
 
 	portion = OCF_DIV_ROUND_UP((uint64_t)entries, shards_cnt);
 	offset = shard_id * portion / shards_cnt;
@@ -911,9 +911,14 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 		add_lru_head_nobalance(cache, list, cline);
 
 		cnt++;
+
+		if (i % (portion / 10) == 0) {
+			uint64_t process_bar = 10 * i / portion;
+			ocf_cache_log(cache, log_info, "Init lru process : %lu0 %%", process_bar);
+		}
 	}
 
-	env_atomic_add(cnt, &context->curr_size);
+	env_atomic_cl_add(cnt, &context->curr_size);
 
 	return 0;
 }
@@ -923,8 +928,8 @@ static void ocf_lru_populate_finish(ocf_parallelize_t parallelize,
 {
 	struct ocf_lru_populate_context *context = priv;
 
-	env_atomic_set(&context->cache->free.runtime->curr_size,
-		env_atomic_read(&context->curr_size));
+	env_atomic_cl_set(&context->cache->free.runtime->curr_size,
+		env_atomic_cl_read(&context->curr_size));
 
 	context->cmpl(context->priv, error);
 
@@ -949,7 +954,7 @@ void ocf_lru_populate(ocf_cache_t cache,
 
 	context = ocf_parallelize_get_priv(parallelize);
 	context->cache = cache;
-	env_atomic_set(&context->curr_size, 0);
+	env_atomic_cl_set(&context->curr_size, 0);
 	context->cmpl = cmpl;
 	context->priv = priv;
 
@@ -957,7 +962,7 @@ void ocf_lru_populate(ocf_cache_t cache,
 }
 
 static bool _is_cache_line_acting(struct ocf_cache *cache,
-		uint32_t cache_line, ocf_core_id_t core_id,
+		ocf_cache_line_t cache_line, ocf_core_id_t core_id,
 		uint64_t start_line, uint64_t end_line)
 {
 	ocf_core_id_t tmp_core_id;
@@ -1002,7 +1007,7 @@ int ocf_metadata_actor(struct ocf_cache *cache,
 	int clean;
 	struct ocf_lru_list *list;
 	struct ocf_part *part;
-	unsigned i, cline;
+	ocf_cache_line_t i, cline;
 	struct ocf_lru_meta *node;
 
 	start_line = ocf_bytes_2_lines(cache, start_byte);
@@ -1053,9 +1058,9 @@ int ocf_metadata_actor(struct ocf_cache *cache,
 	return ret;
 }
 
-uint32_t ocf_lru_num_free(ocf_cache_t cache)
+ocf_cache_line_t ocf_lru_num_free(ocf_cache_t cache)
 {
-	return env_atomic_read(&cache->free.runtime->curr_size);
+	return env_atomic_cl_read(&cache->free.runtime->curr_size);
 }
 
 void ocf_lru_add_free(ocf_cache_t cache, ocf_cache_line_t cline)

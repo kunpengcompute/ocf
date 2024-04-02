@@ -275,14 +275,14 @@ static void __reset_stats(ocf_cache_t cache)
 	ocf_part_id_t i;
 
 	for_each_core_all(cache, core, core_id) {
-		env_atomic_set(&core->runtime_meta->cached_clines, 0);
-		env_atomic_set(&core->runtime_meta->dirty_clines, 0);
-		env_atomic64_set(&core->runtime_meta->dirty_since, 0);
+		env_atomic_cl_set(&core->runtime_meta->cached_clines, 0);
+		env_atomic_cl_set(&core->runtime_meta->dirty_clines, 0);
+		env_atomic_cl_set(&core->runtime_meta->dirty_since, 0);
 
 		for (i = 0; i != OCF_USER_IO_CLASS_MAX; i++) {
-			env_atomic_set(&core->runtime_meta->
+			env_atomic_cl_set(&core->runtime_meta->
 					part_counters[i].cached_clines, 0);
-			env_atomic_set(&core->runtime_meta->
+			env_atomic_cl_set(&core->runtime_meta->
 					part_counters[i].dirty_clines, 0);
 		}
 	}
@@ -458,16 +458,16 @@ struct ocf_mngt_rebuild_metadata_context {
 	ocf_cache_t cache;
 
 	struct {
-		env_atomic lines;
+		env_atomic_cl lines;
 	} core[OCF_CORE_MAX];
 
 	struct {
 		struct {
-			uint32_t lines;
+			ocf_cache_line_t lines;
 		} core[OCF_CORE_MAX];
 	} shard[OCF_MNGT_REBUILD_METADATA_SHARDS_CNT];
 
-	env_atomic free_lines;
+	env_atomic_cl free_lines;
 
 	ocf_mngt_rebuild_metadata_end_t cmpl;
 	void *priv;
@@ -558,11 +558,11 @@ static int ocf_mngt_rebuild_metadata_handle(ocf_parallelize_t parallelize,
 	}
 
 	for_each_core(cache, core, core_id) {
-		env_atomic_add(context->shard[shard_id].core[core_id].lines,
+		env_atomic_cl_add(context->shard[shard_id].core[core_id].lines,
 				&context->core[core_id].lines);
 	}
 
-	env_atomic_add(free_lines, &context->free_lines);
+	env_atomic_cl_add(free_lines, &context->free_lines);
 
 	return 0;
 }
@@ -579,13 +579,13 @@ static void ocf_mngt_rebuild_metadata_finish(ocf_parallelize_t parallelize,
 	uint32_t lines_total = 0;
 
 	for_each_core(cache, core, core_id) {
-		uint32_t lines = env_atomic_read(&context->core[core_id].lines);
+		uint32_t lines = env_atomic_cl_read(&context->core[core_id].lines);
 
-		env_atomic_set(&core->runtime_meta->cached_clines, lines);
-		env_atomic_set(&core->runtime_meta->
+		env_atomic_cl_set(&core->runtime_meta->cached_clines, lines);
+		env_atomic_cl_set(&core->runtime_meta->
 				part_counters[part_id].cached_clines, lines);
-		env_atomic_set(&core->runtime_meta->dirty_clines, lines);
-		env_atomic_set(&core->runtime_meta->
+		env_atomic_cl_set(&core->runtime_meta->dirty_clines, lines);
+		env_atomic_cl_set(&core->runtime_meta->
 				part_counters[part_id].dirty_clines, lines);
 		if (lines) {
 			env_atomic64_set(&core->runtime_meta->dirty_since,
@@ -596,10 +596,10 @@ static void ocf_mngt_rebuild_metadata_finish(ocf_parallelize_t parallelize,
 	}
 
 	part = cache->user_parts[part_id].part.runtime;
-	env_atomic_set(&part->curr_size, lines_total);
+	env_atomic_cl_set(&part->curr_size, lines_total);
 
-	env_atomic_set(&cache->free.runtime->curr_size,
-			env_atomic_read(&context->free_lines));
+	env_atomic_cl_set(&cache->free.runtime->curr_size,
+			env_atomic_cl_read(&context->free_lines));
 
 	context->cmpl(context->priv, error);
 
@@ -3289,8 +3289,8 @@ static void _cache_mngt_update_initial_dirty_clines(ocf_cache_t cache)
 	ocf_core_id_t core_id;
 
 	for_each_core(cache, core, core_id) {
-		env_atomic_set(&core->runtime_meta->initial_dirty_clines,
-				env_atomic_read(&core->runtime_meta->
+		env_atomic_cl_set(&core->runtime_meta->initial_dirty_clines,
+				env_atomic_cl_read(&core->runtime_meta->
 						dirty_clines));
 	}
 
