@@ -17,6 +17,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
 # 添加头文件目录
 include_directories(../../../lava_ocf_adaptor/include)
 include_directories(../../../lava_ocf_adaptor/src)
+include_directories(../../../env/posix)
 
 # 生成目标
 add_executable(log_tests ${TEST_SRC} ../../../lava_ocf_adaptor/src/log.c)

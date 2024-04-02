@@ -13,6 +13,7 @@
 using namespace std;
 
 #define CHUNK_SIZE (128 * MiB)
+#define FAKE_CHUNK_SIZE (64 * KiB) // we donnot need to malloc true size for cache
 #define MAX_CHUNK_NUMS (CACHE_MAX_SUPPORT_IN_TB * TiB / CHUNK_SIZE)
 
 typedef struct {
@@ -26,7 +27,7 @@ typedef Chunk *Chunk_t;
 static Chunk_t g_chunks[MAX_CHUNK_NUMS];
 /* completion queue mock */
 static queue<Request_t> g_queue;
-static uint64_t g_cache_io_time = 10;
+static uint64_t g_cache_io_time = 5;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int AllocChunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
@@ -40,7 +41,7 @@ int AllocChunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
 		if (!ck) {
 			return ALLOC_CHUNK_ERR;
 		}
-		ck->ptr = (char*)malloc(CHUNK_SIZE);
+		ck->ptr = (char*)malloc(FAKE_CHUNK_SIZE);
 		if (!ck->ptr) {
 			return ALLOC_CHUNK_ERR;
 		}
@@ -52,6 +53,7 @@ int AllocChunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
 	}
 	
 	if (cnt < num) {
+		printf("We could not alloced %d chunks less than %d chunks, max chunks is %d \n", cnt, num, MAX_CHUNK_NUMS);
 		FreeChunks(chunk_ids);
 		return ALLOC_CHUNK_ERR;
 	}
@@ -73,35 +75,8 @@ int FreeChunks(std::vector<uint64_t> *chunk_ids)
 	return 0;
 }
 
-int Write(uint64_t chunk_id, Segment_t segment)
-{
-	Chunk_t ck = g_chunks[chunk_id];
-	if (!ck || !ck->ptr || !segment || !segment->data)
-		return WRITE_ERR;
-	std::memcpy(ck->ptr + segment->offset, segment->data, segment->length);
-	std::this_thread::sleep_for(std::chrono::microseconds(g_cache_io_time));
-	return 0;
-}
-
-int Read(uint64_t chunk_id, Segment_t segment)
-{
-	Chunk_t ck = g_chunks[chunk_id];
-	if (!ck || !ck->ptr || !segment || !segment->data)
-		return READ_ERR;
-	std::memcpy(segment->data, ck->ptr + segment->offset, segment->length);
-	std::this_thread::sleep_for(std::chrono::microseconds(g_cache_io_time));
-	return 0;
-}
-
 int AioWrite(Request_t req)
 {
-	uint64_t chunk_id = req->chunk_id;
-	for (auto &segment : req->segments) {
-		if (Write(chunk_id, &segment)) {
-			return -1;
-		}
-	}
-	/* write done, push in completion queue */
 	pthread_mutex_lock(&queue_mutex);
 	g_queue.push(req);
 	pthread_mutex_unlock(&queue_mutex);
@@ -110,13 +85,6 @@ int AioWrite(Request_t req)
 
 int AioRead(Request_t req)
 {
-	uint64_t chunk_id = req->chunk_id;
-	for (auto &segment : req->segments) {
-		if (Read(chunk_id, &segment)) {
-			return -1;
-		}
-	}
-	/* write done, push in completion queue */
 	pthread_mutex_lock(&queue_mutex);
 	g_queue.push(req);
 	pthread_mutex_unlock(&queue_mutex);

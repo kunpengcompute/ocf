@@ -176,7 +176,7 @@ static void engine_uc_test(void **state)
 	req = create_request(0, 0, 0, 1 * PAGE_SIZE, &identify);
 	req->cb = generic_callback;
 	env_atomic_inc(&poll_num);
-	ret = ocf_range_invalid(req);
+	ret = ocf_invalid(req);
 	assert_int_equal(ret, 0);
 	/* sleep because of backend latency */
 	usleep(1000);
@@ -215,13 +215,19 @@ static void engine_uc_test(void **state)
 static void ocf_exit_test(void **state)
 {
 	int ret;
+
+	/* remove success */
+	ret = ocf_remove_region(0, 0);
+	assert_int_equal(ret, 0);
+
 	/* remove success */
 	ret = ocf_remove_core(0);
 	assert_int_equal(ret, 0);
 
 	/* remove failed */
 	ret = ocf_remove_core(5);
-	assert_int_equal(ret, -1001);
+	assert_int_equal(ret, 0);
+
 	ocf_exit();
 }
 
@@ -247,9 +253,7 @@ static void ocf_submit_failed_test(void **state)
 	assert_int_equal(ret, -1003);
 	ret = ocf_lookup(NULL);
 	assert_int_equal(ret, -1003);
-	ret = ocf_range_invalid(NULL);
-	assert_int_equal(ret, -1003);
-	ret = ocf_region_invalid(NULL);
+	ret = ocf_invalid(NULL);
 	assert_int_equal(ret, -1003);
 }
 
@@ -261,7 +265,7 @@ int main(void)
 		cmocka_unit_test(ocf_exit_test),
     };
 
-    print_message("Unit test for ocf_engine_prepare_clines\n");
+    print_message("Unit test for ocf_engine\n");
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
