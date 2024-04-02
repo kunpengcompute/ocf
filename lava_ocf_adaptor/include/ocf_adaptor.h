@@ -182,6 +182,16 @@ struct ocf_dump_info *ocf_dump_cache_stats();
 void ocf_release_dump_info(struct ocf_dump_info *info);
 
 /**
+ * @brief reset cache stats
+ */
+int ocf_reset_cache_stats();
+
+/**
+ * @brief dump ocf status
+ */
+struct ocf_dump_info *ocf_dump_status();
+
+/**
  * @brief Check cacheline alocks from cache instance
  *
  * @param[in] cache Cache handle

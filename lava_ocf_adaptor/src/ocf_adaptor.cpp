@@ -29,6 +29,13 @@ using namespace std;
 
 extern "C" ocf_core_id_t ocf_core_get_id(ocf_core_t core);
 
+static const char *STATUS_STR[OCF_STATUS_MAX] = {
+	[OCF_STATUS_NONE] = "None",
+	[OCF_STATUS_INITIALIZED] = "Initialized",
+	[OCF_STATUS_DELETING] = "Deleting",
+	[OCF_STATUS_ERROR] = "Error",
+};
+
 struct ocf_config g_cfg;
 
 struct ocf_adaptor_context {
@@ -1042,6 +1049,45 @@ struct ocf_dump_info *ocf_dump_cache_stats()
 	*tail = b;
 
 	return info;
+}
+
+struct ocf_dump_info *ocf_dump_status()
+{
+	struct ocf_dump_info *info = (struct ocf_dump_info *)env_zalloc(sizeof(struct ocf_dump_info) + sizeof(void *), 0);
+	if (!info) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "dump info memory malloc fail\n");
+		return NULL;
+	}
+
+	struct strbuf *b = new_strbuf();
+	if (!b) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "dump info memory malloc fail\n");
+		return NULL;
+	}
+
+	int state = get_ocf_global_status();
+	if (state >= OCF_STATUS_MAX) {
+		state = OCF_STATUS_NONE;
+	}
+
+	strbuf_write_format_str(b, "OCF status: %s\n", STATUS_STR[state]);
+
+	info->buf = b->buf;
+	info->len = b->cur;
+	struct strbuf **tail = (struct strbuf **)((char *)info + sizeof(struct ocf_dump_info));
+	*tail = b;
+
+	return info;
+}
+
+int ocf_reset_cache_stats()
+{
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not dump cache stats\n");
+		return -1;
+	}
+
+	return ocf_stats_reset_cache(g_adaptor.ctx, ocf_cache_get_name(g_adaptor.cache));
 }
 
 void ocf_release_dump_info(struct ocf_dump_info *info)

@@ -13,6 +13,7 @@ extern "C" {
 #define OCF_STATUS_INITIALIZED  1
 #define OCF_STATUS_DELETING     2
 #define OCF_STATUS_ERROR        3
+#define OCF_STATUS_MAX			4
 
 #define MAX_QUEUE_NUM 64
 
