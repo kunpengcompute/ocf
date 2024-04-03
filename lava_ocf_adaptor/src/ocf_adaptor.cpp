@@ -292,6 +292,9 @@ static int initialize_cache(ocf_ctx_t ctx, ocf_cache_t *cache, struct ocf_config
 err_cache:
 	ocf_mngt_cache_stop(*cache, simple_complete, &context);
 	sem_wait(&context.sem);
+	for (uint32_t i = 0; i < cache_priv->queue_num; ++i) {
+		check_queue_put(cache_priv->check_queues[i]);
+	}
 	ocf_queue_put(cache_priv->mngt_queue);
 err_priv:
 	free(cache_priv);
