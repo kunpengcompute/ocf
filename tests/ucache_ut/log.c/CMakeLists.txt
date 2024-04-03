@@ -18,6 +18,15 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
 include_directories(../../../lava_ocf_adaptor/include)
 include_directories(../../../lava_ocf_adaptor/src)
 include_directories(../../../env/posix)
+execute_process(COMMAND mkdir inc WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+execute_process(COMMAND mkdir ocf WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/inc)
+execute_process(COMMAND sudo cp -r ${PROJECT_SOURCE_DIR}/../../../inc/. inc/ocf/ WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+execute_process(COMMAND cp ${PROJECT_SOURCE_DIR}/../../../env/posix/ocf_env.h ${PROJECT_SOURCE_DIR}/inc WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+execute_process(COMMAND cp ${PROJECT_SOURCE_DIR}/../../../env/posix/ocf_env_headers.h ${PROJECT_SOURCE_DIR}/inc/ WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+execute_process(COMMAND cp ${PROJECT_SOURCE_DIR}/../../../env/posix/ocf_env_list.h ${PROJECT_SOURCE_DIR}/inc/ WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+execute_process(COMMAND cp ${PROJECT_SOURCE_DIR}/../../../env/posix/utils_mpool.h ${PROJECT_SOURCE_DIR}/inc/ WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+
+include_directories(inc)
 
 # 生成目标
 add_executable(log_tests ${TEST_SRC} ../../../lava_ocf_adaptor/src/log.c)
