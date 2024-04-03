@@ -208,6 +208,23 @@ static void engine_uc_test(void **state)
 	printf("stats info\n%s", info->buf);
 	ocf_release_dump_info(info);
 
+	/* dump status test */
+	info = ocf_dump_status();
+	assert_non_null(info);
+	printf("status info\n%s", info->buf);
+	ocf_release_dump_info(info);
+
+	/* dump region info test */
+	info = ocf_dump_region_info();
+	assert_non_null(info);
+	printf("region info\n%s", info->buf);
+	ocf_release_dump_info(info);
+
+	ocf_show_alock();
+
+	/* reset stats */
+	ocf_reset_cache_stats();
+
 	/* ensure that all ios have been processed */
 	assert_int_equal(env_atomic_read(&poll_num), 0);
 }
