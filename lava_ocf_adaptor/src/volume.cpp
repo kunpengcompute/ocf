@@ -372,6 +372,11 @@ static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
 				.length = 4 * KiB,
 				.data = (char*)malloc(4 * KiB)
 			};
+			if (!s.data) {
+				delete req;
+				is_submitting_io = false;
+				return;
+			}
 
 			req->chunk_id = (*lava_volume->chunk_ids)[i];
 			req->segments.push_back(s);
