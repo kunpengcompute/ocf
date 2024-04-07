@@ -453,7 +453,7 @@ ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
 	const struct ocf_metadata_hash *info =
 			ocf_metadata_raw_rd_access(cache,
 			&(ctrl->raw_desc[metadata_segment_hash]), index);
-	
+
 	return info->cache_line;
 }
 
@@ -466,7 +466,7 @@ uint8_t *ocf_metadata_get_hash_lock(struct ocf_cache *cache,
 	struct ocf_metadata_hash *info =
 			ocf_metadata_raw_wr_access(cache,
 			&(ctrl->raw_desc[metadata_segment_hash]), index);
-	
+
 	return &(info->hash_lock);
 }
 
@@ -482,7 +482,7 @@ void ocf_metadata_set_hash(struct ocf_cache *cache, ocf_cache_line_t index,
 	struct ocf_metadata_hash *info =
 			ocf_metadata_raw_wr_access(cache,
 			&(ctrl->raw_desc[metadata_segment_hash]), index);
-	
+
 	info->cache_line = line;
 }
 
@@ -495,7 +495,7 @@ void ocf_metadata_set_hash_lock(struct ocf_cache *cache, ocf_cache_line_t index,
 	struct ocf_metadata_hash *info =
 			ocf_metadata_raw_wr_access(cache,
 			&(ctrl->raw_desc[metadata_segment_hash]), index);
-	
+
 	info->hash_lock = lock;
 }
 
@@ -907,47 +907,131 @@ static inline void _ocf_init_collision_entry(struct ocf_cache *cache,
 	metadata_init_status_bits(cache, idx);
 }
 
+struct metadata_init_context {
+	sem_t sem;
+	env_atomic count;
+	env_atomic now;
+	uint32_t single_thread_num;
+	struct ocf_cache *cache;
+};
+
+static void *ocf_init_collision_pararel_handle(void *args)
+{
+	struct metadata_init_context *ctx = (struct metadata_init_context *)args;
+	struct ocf_cache *cache = ctx->cache;
+	ocf_cache_line_t i;
+	ocf_cache_line_t total_entries = cache->device->collision_table_entries;
+
+	struct ocf_metadata_ctrl *ctrl = (struct ocf_metadata_ctrl *)cache->metadata.priv;
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_list_info]);
+	struct ocf_metadata_list_info *infos = (struct ocf_metadata_list_info *)(raw->mem_pool);
+
+	uint64_t now = env_atomic_inc_return(&ctx->now);
+	ocf_cache_line_t st = now * ctx->single_thread_num;
+	ocf_cache_line_t ed = ocf_min((now + 1) * ctx->single_thread_num, total_entries);
+
+	if (ocf_line_size(cache) <= 16 * KiB) {
+		struct ocf_metadata_map_u8 *coll_map_u8 = raw->mem_pool;
+		struct ocf_metadata_list_info *info = &infos[st];
+		struct ocf_metadata_map_u8 *coll = &coll_map_u8[st];
+		for (i = st; i < ed; i++) {
+			info->next_col = total_entries;
+			info->partition_id = PARTITION_FREELIST;
+			info++;
+		}
+
+		for (i = st; i < ed; i++) {
+			coll->map.core_line = (1ULL << CORE_LINE_BITS) - 1;
+			coll->map.core_id = OCF_CORE_MAX;
+			coll->valid = 0;
+			coll->dirty = 0;
+			coll++;
+		}
+	} else {
+		struct ocf_metadata_map_u16 *coll_map_u16 = raw->mem_pool;
+		struct ocf_metadata_list_info *info = &infos[st];
+		struct ocf_metadata_map_u16 *coll = &coll_map_u16[st];
+		for (i = st; i < ed; i++) {
+			info->next_col = total_entries;
+			info->partition_id = PARTITION_FREELIST;
+			info++;
+		}
+
+		for (i = st; i < ed; i++) {
+			coll->map.core_line = (1ULL << CORE_LINE_BITS) - 1;
+			coll->map.core_id = OCF_CORE_MAX;
+			coll->valid = 0;
+			coll->dirty = 0;
+			coll++;
+		}
+	}
+
+	if (env_atomic_dec_and_test(&ctx->count)) {
+		sem_post(&ctx->sem);
+	}
+	pthread_exit(0);
+}
+
 /*
  * Initialize collision table
  */
 void ocf_metadata_init_collision(struct ocf_cache *cache)
 {
+	ocf_cache_log(cache, log_info, "init collision start\n");
+	struct metadata_init_context ctx;
+	ctx.cache = cache;
+	ctx.single_thread_num = 1 << 28;
+	env_atomic_set(&ctx.count, 1);
+	env_atomic_set(&ctx.now, -1);
+	sem_init(&ctx.sem, 0, 0);
+
+	ocf_cache_line_t entries = cache->device->collision_table_entries;
+	uint64_t num = (entries - 1) / ctx.single_thread_num + 1;
+
+	pthread_t pid;
+	for (uint64_t i = 0; i < num; ++i) {
+		env_atomic_inc(&ctx.count);
+		int ret = pthread_create(&pid, NULL, ocf_init_collision_pararel_handle, &ctx);
+		ENV_BUG_ON(ret);
+	}
+
+	if (env_atomic_dec_and_test(&ctx.count)) {
+		sem_post(&ctx.sem);
+	}
+	sem_wait(&ctx.sem);
+	sem_destroy(&ctx.sem);
+	ocf_cache_log(cache, log_info, "init collision complete\n");
+}
+
+static void *ocf_init_hash_pararel_handle(void *args)
+{
+	struct metadata_init_context *ctx = (struct metadata_init_context *)args;
+	struct ocf_cache *cache = ctx->cache;
 	ocf_cache_line_t i;
-	ocf_cache_line_t total_entries = cache->device->collision_table_entries;
+	ocf_cache_line_t hash_table_entries = cache->device->hash_table_entries;
+	ocf_cache_line_t invalid_idx = cache->device->collision_table_entries;
 
-	struct ocf_metadata_ctrl *ctrl = 
-		(struct ocf_metadata_ctrl *) cache->metadata.priv;
+	struct ocf_metadata_ctrl *ctrl = (struct ocf_metadata_ctrl *)cache->metadata.priv;
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_hash]);
+	struct ocf_metadata_hash *infos = (struct ocf_metadata_hash *)(raw->mem_pool);
+	uint64_t now = env_atomic_inc_return(&ctx->now);
+	ocf_cache_line_t st = now * ctx->single_thread_num;
+	ocf_cache_line_t ed = ocf_min((now + 1) * ctx->single_thread_num, hash_table_entries);
+	struct ocf_metadata_hash *info = &infos[st];
 
-	struct ocf_metadata_raw *raw =
-		&(ctrl->raw_desc[metadata_segment_list_info]);
-
-	struct ocf_metadata_list_info *info;
-
-	for (i = 0; i < total_entries; i++) {
-		info =(struct ocf_metadata_list_info *)(raw->mem_pool + (uint64_t)raw->entry_size * i);
-		info->next_col = total_entries;
-		info->partition_id = PARTITION_FREELIST;
+	for (i = st; i < ed; ++i) {
+		/* hash_table contains indexes from collision_table
+		 * thus it shall be initialized in improper values
+		 * from collision_table
+		 **/
+		info->cache_line = invalid_idx;
+		info++;
 	}
 
-	raw = &(ctrl->raw_desc[metadata_segment_collision]);
-
-	if (ocf_line_size(cache) <= 16 * KiB) {
-		struct ocf_metadata_map_u8 *coll_map_u8 = raw->mem_pool;
-		for (i = 0; i < total_entries; i++) {
-			coll_map_u8[i].map.core_line = (1ULL << CORE_LINE_BITS) - 1;
-			coll_map_u8[i].map.core_id = OCF_CORE_MAX;
-			coll_map_u8[i].valid = 0;
-			coll_map_u8[i].dirty = 0;
-		}
-	} else {
-		struct ocf_metadata_map_u16 *coll_map_u16 = raw->mem_pool;
-		for (i = 0; i < total_entries; i++) {
-			coll_map_u16[i].map.core_line = (1ULL << CORE_LINE_BITS) - 1;
-			coll_map_u16[i].map.core_id = OCF_CORE_MAX;
-			coll_map_u16[i].valid = 0;
-			coll_map_u16[i].dirty = 0;
-		}
+	if (env_atomic_dec_and_test(&ctx->count)) {
+		sem_post(&ctx->sem);
 	}
+	pthread_exit(0);
 }
 
 /*
@@ -955,24 +1039,30 @@ void ocf_metadata_init_collision(struct ocf_cache *cache)
  */
 void ocf_metadata_init_hash_table(struct ocf_cache *cache)
 {
-	ocf_cache_line_t i;
-	ocf_cache_line_t hash_table_entries = cache->device->hash_table_entries;
-	ocf_cache_line_t invalid_idx = cache->device->collision_table_entries;
+	ocf_cache_log(cache, log_info, "init hash start\n");
+	struct metadata_init_context ctx;
+	ctx.cache = cache;
+	ctx.single_thread_num = 1 << 28;
+	env_atomic_set(&ctx.count, 1);
+	env_atomic_set(&ctx.now, -1);
+	sem_init(&ctx.sem, 0, 0);
 
-	/* Init hash table */
-	for (i = 0; i < hash_table_entries; i++) {
-		/* hash_table contains indexes from collision_table
-		 * thus it shall be initialized in improper values
-		 * from collision_table
-		 **/
-		ocf_metadata_set_hash(cache, i, invalid_idx);
+	ocf_cache_line_t entries = cache->device->hash_table_entries;
+	uint64_t num = (entries - 1) / ctx.single_thread_num + 1;
 
-		if ((i + 1) % (hash_table_entries / 10) == 0) {
-			uint64_t process_bar = 10 * i / hash_table_entries;
-			ocf_cache_log(cache, log_info, "Init hash table process : %lu0 %%", process_bar);
-		}
+	pthread_t pid;
+	for (uint64_t i = 0; i < num; ++i) {
+		env_atomic_inc(&ctx.count);
+		int ret = pthread_create(&pid, NULL, ocf_init_hash_pararel_handle, &ctx);
+		ENV_BUG_ON(ret);
 	}
 
+	if (env_atomic_dec_and_test(&ctx.count)) {
+		sem_post(&ctx.sem);
+	}
+	sem_wait(&ctx.sem);
+	sem_destroy(&ctx.sem);
+	ocf_cache_log(cache, log_info, "init hash complete\n");
 }
 
 /*
@@ -1107,7 +1197,7 @@ static bool ocf_check_if_cleaner_enabled(ocf_pipeline_t pipeline,
 		void* priv, ocf_pipeline_arg_t arg)
 {
 	struct ocf_metadata_context *context = priv;
-	
+
 	return !context->cache->conf_meta->cleaner_disabled;
 }
 
@@ -1115,7 +1205,7 @@ struct ocf_pipeline_properties ocf_metadata_flush_all_pipeline_props = {
 	.priv_size = sizeof(struct ocf_metadata_context),
 	.finish = ocf_metadata_flush_all_finish,
 	.steps = {
-		
+
 		OCF_PL_STEP_COND_ARG_INT(ocf_check_if_cleaner_enabled,
 				ocf_metadata_flush_segment,
 				metadata_segment_cleaning),
@@ -1269,7 +1359,7 @@ struct ocf_pipeline_properties ocf_metadata_load_all_pipeline_props = {
 				metadata_segment_cleaning),
 		OCF_PL_STEP_FOREACH(ocf_metadata_load_segment,
 				ocf_metadata_load_all_args),
-	
+
 		OCF_PL_STEP_COND_ARG_INT(ocf_check_if_cleaner_enabled,
 				ocf_metadata_check_crc,
 				metadata_segment_cleaning),

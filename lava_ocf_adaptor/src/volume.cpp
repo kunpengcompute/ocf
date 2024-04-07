@@ -44,7 +44,7 @@ static int alloc_chunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
 			break;
 		}
 	}
-	
+
 	return ret;
 }
 
@@ -102,15 +102,15 @@ static void lava_volume_recovery_one_chunk_cb(ocf_cache_t cache, void *context, 
 		ocf_adaptor_log(OCF_LOG_ERROR, "Alloc chunk failed for chunk %d",
 			(*lava_volume->chunk_ids)[chunk_id]);
 		(*lava_volume->chunk_status)[chunk_id] |= CHUNK_STATUS_DELET_FAIL;
-		
+
 		set_ocf_global_status(OCF_STATUS_ERROR);
-		
+
 		return;
 	}
 
 	ocf_adaptor_log(OCF_LOG_INFO, "Recoveried one chunk from %d to %d",
 		(*lava_volume->chunk_ids)[chunk_id], new_avail_chunk_ids[0]);
-	
+
 	(*lava_volume->chunk_ids)[chunk_id] = new_avail_chunk_ids[0];
 	(*lava_volume->chunk_status)[chunk_id] = CHUNK_STATUS_VALID;
 }
@@ -128,11 +128,11 @@ static void lava_volume_recovery_one_chunk(ocf_cache_t cache, struct lava_volume
 	(*lava_volume->chunk_status)[bad_chunk_idx] |= CHUNK_STATUS_DELETING;
 	ret = ocf_mngt_cache_remove_cachelines(cache, bad_chunk_idx * LAVA_CHUNK_SIZE, LAVA_CHUNK_SIZE,
 		lava_volume_recovery_one_chunk_cb, lava_volume, bad_chunk_idx);
-	
+
 	if (ret) {
 		/* set valid, wait for next process */
 		(*lava_volume->chunk_status)[bad_chunk_idx] = CHUNK_STATUS_VALID;
-		
+
 		ocf_adaptor_log(OCF_LOG_ERROR, "Recovery chunk failed on %d", (*lava_volume->chunk_ids)[bad_chunk_idx]);
 	}
 }
@@ -308,7 +308,7 @@ static void _do_send_chunk_request(ocf_request *ocf_req, Request *chunk_req, int
 	if ((*lava_volume->chunk_status)[chunk_idx] != CHUNK_STATUS_VALID) {
 		lava_volume_submit_req_cb(-OCF_ERR_UCACHE_IO, chunk_req);
 		return;
-	}	
+	}
 
 	/* transfer chunk_id to true chunk_id backend */
 	chunk_req->chunk_id = (*lava_volume->chunk_ids)[chunk_idx];
@@ -326,7 +326,7 @@ static void _do_send_chunk_request(ocf_request *ocf_req, Request *chunk_req, int
 done:
 	if (ret) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "Chunk IO failed with ret: %d\n", ret);
-		
+
 		if (ret == CHUNK_NOT_AVAIL) {
 			/* redirect lava err to ocf internal err */
 			ret = -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL;
@@ -354,16 +354,16 @@ static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
 	if (is_submitting_io) {
 		return;
 	}
-	
+
 	is_submitting_io = true;
-	
+
 	uint32_t now_time = env_ticks_to_secs(env_get_tick_count());
 	struct lava_volume *lava_volume = (struct lava_volume*)ocf_volume_get_priv(volume);
 
 	uint32_t time_hash_sidx = prev_time % period;
 	uint32_t time_hash_eidx = now_time % period;
 	uint64_t i, total_io = lava_volume->chunk_ids->size();
-	
+
 	for (i = total_io * time_hash_sidx / period; i != total_io * time_hash_eidx / period;) {
 		if (likely((*lava_volume->chunk_status)[i] == CHUNK_STATUS_VALID)) {
 			Request *req = new Request();
@@ -431,7 +431,7 @@ static void lava_volume_submit_req(uint64_t cacheline_size,
 	 * freed before the for loop completes
 	 */
 	env_atomic_set(&req->req_remaining, 1);
-	
+
 	/* calc io handle latency */
 	_ocf_engine_update_latency_stats_int_adaptor(req, STATS_CLASS_OCF);
 	req->backend_start_timestamp = env_get_tick_count();
@@ -451,7 +451,7 @@ static void lava_volume_submit_req(uint64_t cacheline_size,
 
 		if (cur == 0) {
 			uint64_t seek = req->byte_position % cacheline_size;
-			
+
 			addr += seek;
 			/*
 			 * when only one cacheline is accessed and the access size is smaller than
@@ -517,7 +517,7 @@ static void lava_volume_submit_req(uint64_t cacheline_size,
 	if (chunk_req != NULL) {
 		_do_send_chunk_request(req, chunk_req, dir, blocksize);
 	}
-	
+
 	/* callback for free req_remaining */
 	callback(req, 0);
 
