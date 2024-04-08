@@ -931,14 +931,16 @@ static void *ocf_init_collision_pararel_handle(void *args)
 	ocf_cache_line_t ed = ocf_min((now + 1) * ctx->single_thread_num, total_entries);
 
 	if (ocf_line_size(cache) <= 16 * KiB) {
-		struct ocf_metadata_map_u8 *coll_map_u8 = raw->mem_pool;
 		struct ocf_metadata_list_info *info = &infos[st];
-		struct ocf_metadata_map_u8 *coll = &coll_map_u8[st];
 		for (i = st; i < ed; i++) {
 			info->next_col = total_entries;
 			info->partition_id = PARTITION_FREELIST;
 			info++;
 		}
+
+		struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_collision]);
+		struct ocf_metadata_map_u8 *coll_map_u8 = raw->mem_pool;
+		struct ocf_metadata_map_u8 *coll = &coll_map_u8[st];
 
 		for (i = st; i < ed; i++) {
 			coll->map.core_line = (1ULL << CORE_LINE_BITS) - 1;
@@ -948,14 +950,16 @@ static void *ocf_init_collision_pararel_handle(void *args)
 			coll++;
 		}
 	} else {
-		struct ocf_metadata_map_u16 *coll_map_u16 = raw->mem_pool;
 		struct ocf_metadata_list_info *info = &infos[st];
-		struct ocf_metadata_map_u16 *coll = &coll_map_u16[st];
 		for (i = st; i < ed; i++) {
 			info->next_col = total_entries;
 			info->partition_id = PARTITION_FREELIST;
 			info++;
 		}
+
+		struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_collision]);
+		struct ocf_metadata_map_u16 *coll_map_u16 = raw->mem_pool;
+		struct ocf_metadata_map_u16 *coll = &coll_map_u16[st];
 
 		for (i = st; i < ed; i++) {
 			coll->map.core_line = (1ULL << CORE_LINE_BITS) - 1;
@@ -980,7 +984,7 @@ void ocf_metadata_init_collision(struct ocf_cache *cache)
 	ocf_cache_log(cache, log_info, "init collision start\n");
 	struct metadata_init_context ctx;
 	ctx.cache = cache;
-	ctx.single_thread_num = 2 * TiB / ocf_line_size(cache);
+	ctx.single_thread_num = 1 * TiB / ocf_line_size(cache);
 	env_atomic_set(&ctx.count, 1);
 	env_atomic_set(&ctx.now, -1);
 	sem_init(&ctx.sem, 0, 0);
@@ -1042,7 +1046,7 @@ void ocf_metadata_init_hash_table(struct ocf_cache *cache)
 	ocf_cache_log(cache, log_info, "init hash start\n");
 	struct metadata_init_context ctx;
 	ctx.cache = cache;
-	ctx.single_thread_num = 2 * TiB / ocf_line_size(cache);
+	ctx.single_thread_num = 1 * TiB / ocf_line_size(cache);
 	env_atomic_set(&ctx.count, 1);
 	env_atomic_set(&ctx.now, -1);
 	sem_init(&ctx.sem, 0, 0);

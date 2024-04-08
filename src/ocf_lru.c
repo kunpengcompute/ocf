@@ -958,7 +958,7 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 	struct lru_context ctx;
 
 	ctx.context = context;
-	ctx.single_thread_num = 1 << 28;
+	ctx.single_thread_num = 1 * TiB / ocf_line_size(cache);
 	ctx.entries = ocf_metadata_collision_table_entries(cache);
 	ctx.portion = OCF_DIV_ROUND_UP((uint64_t)ctx.entries, shards_cnt);
 	ctx.offset = shard_id * ctx.portion;
@@ -1048,6 +1048,15 @@ void ocf_lru_populate(ocf_cache_t cache,
 	env_atomic_cl_set(&context->curr_size, 0);
 	context->cmpl = cmpl;
 	context->priv = priv;
+
+	ocf_queue_t io_queue;
+	ocf_queue_t mngt_queue = cache->mngt_queue;
+	for (uint32_t i = 0; i < OCF_NUM_LRU_LISTS; i++) {
+		io_queue = parallelize->reqs[i]->io_queue;
+		ocf_queue_put(io_queue);
+		parallelize->reqs[i]->io_queue = mngt_queue;
+		ocf_queue_get(mngt_queue);
+	}
 
 	ocf_parallelize_run(parallelize);
 }
