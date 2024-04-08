@@ -25,18 +25,6 @@ static inline uint64_t _get_mask(uint8_t start, uint8_t stop)
 #define _get_mask_u8(start, stop) _get_mask(start, stop)
 #define _get_mask_u16(start, stop) _get_mask(start, stop)
 
-struct ocf_metadata_map_u8 {
-	struct ocf_metadata_map map;
-	u8 valid : 4;
-	u8 dirty : 4;
-} __attribute__((packed));
-
-struct ocf_metadata_map_u16 {
-	struct ocf_metadata_map map;
-	u16 valid;
-	u16 dirty;
-} __attribute__((packed));
-
 #define ocf_metadata_bit_func(what, type) \
 static bool _ocf_metadata_test_##what##_##type(struct ocf_cache *cache, \
 		ocf_cache_line_t line, uint8_t start, uint8_t stop, bool all) \

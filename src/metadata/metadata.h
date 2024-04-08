@@ -189,6 +189,18 @@ struct ocf_metadata_hash {
 	uint8_t hash_lock;
 } __attribute__((packed));
 
+struct ocf_metadata_map_u8 {
+	struct ocf_metadata_map map;
+	u8 valid : 4;
+	u8 dirty : 4;
+} __attribute__((packed));
+
+struct ocf_metadata_map_u16 {
+	struct ocf_metadata_map map;
+	u16 valid;
+	u16 dirty;
+} __attribute__((packed));
+
 /*
  * Hash Table - Get
  */
