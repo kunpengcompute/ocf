@@ -12,19 +12,6 @@
 
 #define OCF_PARALLELIZE_ALIGNMENT 64
 
-struct ocf_parallelize {
-	ocf_cache_t cache;
-	ocf_parallelize_handle_t handle;
-	ocf_parallelize_finish_t finish;
-	void *priv;
-
-	unsigned shards_cnt;
-	env_atomic remaining;
-	env_atomic error;
-
-	struct ocf_request *reqs[];
-};
-
 static int _ocf_parallelize_hndl(struct ocf_request *req)
 {
 	ocf_parallelize_t parallelize = req->priv;

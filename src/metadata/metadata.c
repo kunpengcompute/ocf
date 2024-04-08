@@ -911,7 +911,7 @@ struct metadata_init_context {
 	sem_t sem;
 	env_atomic count;
 	env_atomic now;
-	uint32_t single_thread_num;
+	ocf_cache_line_t single_thread_num;
 	struct ocf_cache *cache;
 };
 
@@ -980,7 +980,7 @@ void ocf_metadata_init_collision(struct ocf_cache *cache)
 	ocf_cache_log(cache, log_info, "init collision start\n");
 	struct metadata_init_context ctx;
 	ctx.cache = cache;
-	ctx.single_thread_num = 1 << 28;
+	ctx.single_thread_num = 2 * TiB / ocf_line_size(cache);
 	env_atomic_set(&ctx.count, 1);
 	env_atomic_set(&ctx.now, -1);
 	sem_init(&ctx.sem, 0, 0);
@@ -1042,7 +1042,7 @@ void ocf_metadata_init_hash_table(struct ocf_cache *cache)
 	ocf_cache_log(cache, log_info, "init hash start\n");
 	struct metadata_init_context ctx;
 	ctx.cache = cache;
-	ctx.single_thread_num = 1 << 28;
+	ctx.single_thread_num = 2 * TiB / ocf_line_size(cache);
 	env_atomic_set(&ctx.count, 1);
 	env_atomic_set(&ctx.now, -1);
 	sem_init(&ctx.sem, 0, 0);

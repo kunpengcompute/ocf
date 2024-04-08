@@ -884,31 +884,30 @@ struct lru_context {
 	env_atomic count;
 	env_atomic now;
 	env_atomic64 num_node;
-	uint32_t single_thread_num;
+	ocf_cache_line_t single_thread_num;
 	uint32_t shards_cnt;
 	uint32_t shard_id;
 	ocf_cache_line_t entries;
 	ocf_cache_line_t portion;
 	ocf_cache_line_t offset;
 	struct ocf_lru_populate_context *context;
-	struct ocf_lru_meta *lrt_meta;
+	struct ocf_lru_meta *lru_meta;
 	ocf_cache_line_t *first;
 	ocf_cache_line_t *last;
 };
 
-static void *ocf_lru_pararel_handle(void *args)
+static void *ocf_lru_parallelize_handle(void *args)
 {
 	struct lru_context *ctx = (struct lru_context *)args;
-	struct ocf_lru_meta *lrt_meta = ctx->lrt_meta;
+	struct ocf_lru_meta *lru_meta = ctx->lru_meta;
 	uint64_t now = env_atomic_inc_return(&ctx->now);
 	uint64_t st = now * ctx->single_thread_num;
 	uint64_t ed = ocf_min((now + 1) * ctx->single_thread_num, ctx->portion);
 	uint64_t entries = ctx->entries;
 	uint64_t offset = ctx->offset;
 	int64_t cnt = 0;
-	uint64_t pre = end_marker;
-	struct ocf_lru_meta *prev;
-	struct ocf_lru_meta *node = &lrt_meta[offset + st];
+	uint64_t pre_cline = end_marker;
+	struct ocf_lru_meta *node = &lru_meta[offset + st];
 
 	ctx->first[now] = end_marker;
 	for (uint64_t i = st; i < ed; ++i) {
@@ -916,23 +915,26 @@ static void *ocf_lru_pararel_handle(void *args)
 		if (unlikely(cline >= entries))
 			break;
 
-		node->hot = false;
-		if (unlikely(pre == end_marker)) {
+		if (unlikely(pre_cline == end_marker)) { // for the first node
 			ctx->first[now] = cline;
-			node->next = end_marker;
+			node->next = cline + 1;
 			node->prev = end_marker;
+			node->hot = false;
 		} else {
-			prev->next = cline;
-			node->prev = pre;
-			node->next = end_marker;
+			node->prev = pre_cline;
+			node->next = cline + 1;
+			node->hot = false;
 		}
-		prev = node;
-		pre = cline;
+		pre_cline = cline;
 		node++;
 		cnt++;
 	}
+	if (cnt) {
+		node--;
+		node->next = end_marker; // for the last node
+	}
 
-	ctx->last[now] = pre;
+	ctx->last[now] = pre_cline;
 	ocf_cache_log(ctx->context->cache, log_err, "now %lu, st %lu, ed %lu, first %lu, last %lu\n",
 		now, st, ed, ctx->first[now], ctx->last[now]);
 	env_atomic64_add(cnt, &ctx->num_node);
@@ -960,7 +962,7 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 	ctx.entries = ocf_metadata_collision_table_entries(cache);
 	ctx.portion = OCF_DIV_ROUND_UP((uint64_t)ctx.entries, shards_cnt);
 	ctx.offset = shard_id * ctx.portion;
-	ctx.lrt_meta = (struct ocf_lru_meta *)(raw->mem_pool);
+	ctx.lru_meta = (struct ocf_lru_meta *)(raw->mem_pool);
 	num = (ctx.portion - 1) / ctx.single_thread_num + 1;
 	ctx.first = env_zalloc(sizeof(ocf_cache_line_t) * num, 0);
 	if (!ctx.first) {
@@ -978,7 +980,7 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 	pthread_t pid;
 	for (uint64_t i = 0; i < num; ++i) {
 		env_atomic_inc(&ctx.count);
-		int ret = pthread_create(&pid, NULL, ocf_lru_pararel_handle, &ctx);
+		int ret = pthread_create(&pid, NULL, ocf_lru_parallelize_handle, &ctx);
 		ENV_BUG_ON(ret);
 	}
 
@@ -996,8 +998,8 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 		uint64_t cline = ctx.first[i];
 		ENV_BUG_ON(pre_cline == end_marker);
 		ENV_BUG_ON(cline == end_marker);
-		struct ocf_lru_meta *pre = &ctx.lrt_meta[pre_cline];
-		struct ocf_lru_meta *node = &ctx.lrt_meta[cline];
+		struct ocf_lru_meta *pre = &ctx.lru_meta[pre_cline];
+		struct ocf_lru_meta *node = &ctx.lru_meta[cline];
 		pre->next = cline;
 		node->prev = pre_cline;
 	}
