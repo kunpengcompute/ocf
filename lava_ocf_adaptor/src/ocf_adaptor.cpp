@@ -507,10 +507,11 @@ void ocf_exit()
 		ocf_adaptor_log(OCF_LOG_WARN, "ocf is not initialized or error, not need to delete\n");
 		return;
 	}
-	set_ocf_global_status(OCF_STATUS_DELETING);
 
 	ocf_adaptor_log(OCF_LOG_INFO, "ocf exiting, wait for a while\n");
 	env_msleep(500);
+
+	set_ocf_global_status(OCF_STATUS_DELETING);
 
 	int ret = STATE_SUCCESS;
 	simple_context ctx;
@@ -917,8 +918,9 @@ int ocf_put(struct req_context *ctx)
 
 int ocf_poll(uint32_t io_worker_id, int max_num)
 {
-	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
-		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not initialized, can not poll\n");
+	if (unlikely((get_ocf_global_status() != OCF_STATUS_INITIALIZED) && 
+			(get_ocf_global_status() != OCF_STATUS_ERROR))) {
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not working, can not poll\n");
 		return STATE_SUCCESS;
 	}
 
