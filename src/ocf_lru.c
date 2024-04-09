@@ -935,7 +935,7 @@ static void *ocf_lru_parallelize_handle(void *args)
 	}
 
 	ctx->last[now] = pre_cline;
-	ocf_cache_log(ctx->context->cache, log_err, "now %lu, st %lu, ed %lu, first %lu, last %lu\n",
+	ocf_cache_log(ctx->context->cache, log_debug, "now %lu, st %lu, ed %lu, first %lu, last %lu\n",
 		now, st, ed, ctx->first[now], ctx->last[now]);
 	env_atomic64_add(cnt, &ctx->num_node);
 
