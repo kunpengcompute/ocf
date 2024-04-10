@@ -507,10 +507,11 @@ void ocf_exit()
 		ocf_adaptor_log(OCF_LOG_WARN, "ocf is not initialized or error, not need to delete\n");
 		return;
 	}
-	set_ocf_global_status(OCF_STATUS_DELETING);
 
 	ocf_adaptor_log(OCF_LOG_INFO, "ocf exiting, wait for a while\n");
 	env_msleep(500);
+
+	set_ocf_global_status(OCF_STATUS_DELETING);
 
 	int ret = STATE_SUCCESS;
 	simple_context ctx;
@@ -527,7 +528,10 @@ void ocf_exit()
 	/* Remove core from cache */
 	for (auto it: slot_info_table) {
 		slot_info_t info = it.second;
-		ocf_mngt_remove_core_skip_unmapping(info->core, core_remove_complete, &ctx);
+		ret = ocf_mngt_remove_core_skip_unmapping(info->core, core_remove_complete, &ctx);
+		if (ret) {
+			core_remove_complete(&ctx, ret);
+		}
 		env_free(info);
 	}
 	for (uint32_t i = 0; i < slot_info_table.size(); ++i) {
@@ -538,7 +542,7 @@ void ocf_exit()
 
 	if (ret) {
 		/* default deletion will not fail */
-		ocf_adaptor_log(OCF_LOG_WARN, "ocf core remove fail\n");
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf core remove fail when exiting(%d)\n", ret);
 	}
 
 	/* Stop cache */
@@ -547,7 +551,7 @@ void ocf_exit()
 	sem_wait(&ctx.sem);
 	if (ret) {
 		/* default deletion will not fail */
-		ocf_adaptor_log(OCF_LOG_WARN, "ocf cache remove fail\n");
+		ocf_adaptor_log(OCF_LOG_WARN, "ocf cache remove fail(%d)\n", ret);
 	}
 
 	struct cache_priv *priv = (struct cache_priv *)ocf_cache_get_priv(g_adaptor.cache);
@@ -917,8 +921,9 @@ int ocf_put(struct req_context *ctx)
 
 int ocf_poll(uint32_t io_worker_id, int max_num)
 {
-	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
-		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not initialized, can not poll\n");
+	if (unlikely((get_ocf_global_status() != OCF_STATUS_INITIALIZED) && 
+			(get_ocf_global_status() != OCF_STATUS_ERROR))) {
+		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not working, can not poll\n");
 		return STATE_SUCCESS;
 	}
 
