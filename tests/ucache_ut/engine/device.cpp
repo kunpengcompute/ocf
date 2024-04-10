@@ -38,11 +38,11 @@ int AllocChunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
 		}
 		Chunk *ck = (Chunk*)malloc(sizeof(Chunk));
 		if (!ck) {
-			return ALLOC_CHUNK_ERR;
+			return -1;
 		}
 		ck->ptr = (char*)malloc(CHUNK_SIZE);
 		if (!ck->ptr) {
-			return ALLOC_CHUNK_ERR;
+			return -1;
 		}
 		ck->size = CHUNK_SIZE;
 		ck->chunk_id = i;
@@ -53,7 +53,7 @@ int AllocChunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
 	
 	if (cnt < num) {
 		FreeChunks(chunk_ids);
-		return ALLOC_CHUNK_ERR;
+		return -1;
 	}
 	return 0;
 }
@@ -77,7 +77,7 @@ int Write(uint64_t chunk_id, Segment_t segment)
 {
 	Chunk_t ck = g_chunks[chunk_id];
 	if (!ck || !ck->ptr || !segment || !segment->data)
-		return WRITE_ERR;
+		return -1;
 	std::memcpy(ck->ptr + segment->offset, segment->data, segment->length);
 	std::this_thread::sleep_for(std::chrono::microseconds(g_cache_io_time));
 	return 0;
@@ -87,7 +87,7 @@ int Read(uint64_t chunk_id, Segment_t segment)
 {
 	Chunk_t ck = g_chunks[chunk_id];
 	if (!ck || !ck->ptr || !segment || !segment->data)
-		return READ_ERR;
+		return -1;
 	std::memcpy(segment->data, ck->ptr + segment->offset, segment->length);
 	std::this_thread::sleep_for(std::chrono::microseconds(g_cache_io_time));
 	return 0;

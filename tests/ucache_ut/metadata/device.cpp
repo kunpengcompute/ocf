@@ -39,11 +39,11 @@ int AllocChunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
 		}
 		Chunk *ck = (Chunk*)malloc(sizeof(Chunk));
 		if (!ck) {
-			return ALLOC_CHUNK_ERR;
+			return -1;
 		}
 		ck->ptr = (char*)malloc(FAKE_CHUNK_SIZE);
 		if (!ck->ptr) {
-			return ALLOC_CHUNK_ERR;
+			return -1;
 		}
 		ck->size = CHUNK_SIZE;
 		ck->chunk_id = i;
@@ -55,7 +55,7 @@ int AllocChunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
 	if (cnt < num) {
 		printf("We could not alloced %d chunks less than %d chunks, max chunks is %d \n", cnt, num, MAX_CHUNK_NUMS);
 		FreeChunks(chunk_ids);
-		return ALLOC_CHUNK_ERR;
+		return -1;
 	}
 	return 0;
 }

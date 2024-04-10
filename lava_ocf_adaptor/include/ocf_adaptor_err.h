@@ -14,9 +14,9 @@
 
 #define STATE_MISS -2
 
-#define STATE_TIMEOUT -3
+#define STATE_CHUNK_TIMEOUT -3
 
-#define STATE_OCF_UNAVAILABLE -4
+#define STATE_CHUNK_UNAVAILABLE 1
 
 /***error code when submitting request***/
 #define STATE_CORE_EXIST -1000
@@ -30,5 +30,7 @@
 #define STATE_MEM_ALLOC_ERR -1004
 
 #define STATE_TOO_MANY_REGION -1005
+
+#define STATE_OCF_UNAVAILABLE -1006
 
 #endif
