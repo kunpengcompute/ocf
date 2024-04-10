@@ -528,7 +528,10 @@ void ocf_exit()
 	/* Remove core from cache */
 	for (auto it: slot_info_table) {
 		slot_info_t info = it.second;
-		ocf_mngt_remove_core_skip_unmapping(info->core, core_remove_complete, &ctx);
+		ret = ocf_mngt_remove_core_skip_unmapping(info->core, core_remove_complete, &ctx);
+		if (ret) {
+			core_remove_complete(&ctx, ret);
+		}
 		env_free(info);
 	}
 	for (uint32_t i = 0; i < slot_info_table.size(); ++i) {
@@ -539,7 +542,7 @@ void ocf_exit()
 
 	if (ret) {
 		/* default deletion will not fail */
-		ocf_adaptor_log(OCF_LOG_WARN, "ocf core remove fail\n");
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf core remove fail when exiting(%d)\n", ret);
 	}
 
 	/* Stop cache */
@@ -548,7 +551,7 @@ void ocf_exit()
 	sem_wait(&ctx.sem);
 	if (ret) {
 		/* default deletion will not fail */
-		ocf_adaptor_log(OCF_LOG_WARN, "ocf cache remove fail\n");
+		ocf_adaptor_log(OCF_LOG_WARN, "ocf cache remove fail(%d)\n", ret);
 	}
 
 	struct cache_priv *priv = (struct cache_priv *)ocf_cache_get_priv(g_adaptor.cache);
