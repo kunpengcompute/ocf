@@ -8,6 +8,8 @@
 
 #include "ocf/ocf.h"
 
+struct ocf_parallelize;
+
 typedef struct ocf_parallelize *ocf_parallelize_t;
 
 typedef int (*ocf_parallelize_handle_t)(ocf_parallelize_t parallelize,
@@ -15,6 +17,19 @@ typedef int (*ocf_parallelize_handle_t)(ocf_parallelize_t parallelize,
 
 typedef void (*ocf_parallelize_finish_t)(ocf_parallelize_t parallelize,
 		void *priv, int error);
+
+struct ocf_parallelize {
+	ocf_cache_t cache;
+	ocf_parallelize_handle_t handle;
+	ocf_parallelize_finish_t finish;
+	void *priv;
+
+	unsigned shards_cnt;
+	env_atomic remaining;
+	env_atomic error;
+
+	struct ocf_request *reqs[];
+};
 
 int ocf_parallelize_create(ocf_parallelize_t *parallelize,
 		ocf_cache_t cache, unsigned shards_cnt, uint32_t priv_size,

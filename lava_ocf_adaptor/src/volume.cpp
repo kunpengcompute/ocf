@@ -325,7 +325,7 @@ static void _do_send_chunk_request(ocf_request *ocf_req, Request *chunk_req, int
 
 done:
 	if (ret) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "Chunk IO failed with ret: %d\n", ret);
+		ocf_adaptor_log(OCF_LOG_DEBUG, "Chunk IO failed with ret: %d\n", ret);
 
 		if (ret == CHUNK_NOT_AVAIL) {
 			/* redirect lava err to ocf internal err */
