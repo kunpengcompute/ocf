@@ -19,6 +19,7 @@
 #include "volume.h"
 #include "ctx.h"
 #include "log.h"
+#include "../include/ocf_adaptor_err.h"
 
 using namespace std;
 
@@ -327,7 +328,7 @@ done:
 	if (ret) {
 		ocf_adaptor_log(OCF_LOG_DEBUG, "Chunk IO failed with ret: %d\n", ret);
 
-		if (ret == CHUNK_NOT_AVAIL) {
+		if (ret == STATE_CHUNK_UNAVAILABLE) {
 			/* redirect lava err to ocf internal err */
 			ret = -OCF_ERR_UCACHE_CHUNK_NOT_AVAIL;
 
@@ -383,7 +384,7 @@ static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
 			req->user_ctx = lava_volume;
 			req->cb = lava_volume_submit_dummy_io_cb;
 
-			if (unlikely(AioRead(req) == CHUNK_NOT_AVAIL)) {
+			if (unlikely(AioRead(req) == STATE_CHUNK_UNAVAILABLE)) {
 				(*lava_volume->chunk_status)[i] |= CHUNK_STATUS_INVALID;
 				lava_volume_recovery_one_chunk(volume->cache, lava_volume, i);
 				ocf_adaptor_log(OCF_LOG_ERROR, "Dummy IO discovery bad chunk %d, auto recovery \n",
