@@ -24,16 +24,17 @@
 /* 超时返回已经拿到锁的io */
 static void do_timeout_process(struct ocf_request **req, uint32_t cnt) {
 	uint8_t prev;
+	uint8_t end_status;
 	
 	for (uint32_t i = 0; i < cnt; i++) {
-		/* ensure io timeout and normal io only be ended once */
-		prev = env_atomic8_cmpxchg(&(req[i]->ioi.io.is_ended), 0, 1);
-		if (prev == 1) { /* io has already been ended */
-			ocf_io_put(&req[i]->ioi.io);
+		// 超时返回
+		end_status = ocf_io_end(&req[i]->ioi.io, -OCF_ERR_TIMEOUT_IO);
+		if (end_status == 0) {
+			/* io has already been ended */
+			ocf_req_put(req[i]);
 			continue;
 		}
-		// 超时返回
-		ocf_io_end(&req[i]->ioi.io, -OCF_ERR_TIMEOUT_IO);
+		
 		// 根据io类型进行处理，write: invalid，read: unlock
 		if (req[i]->rw == OCF_WRITE) {
 			prev = env_atomic8_cmpxchg(&(req[i]->is_invalided), 0, 1);

@@ -220,7 +220,7 @@ static inline int ocf_core_validate_io(struct ocf_io *io)
 	return 0;
 }
 
-static void ocf_req_complete(struct ocf_request *req, int error)
+static uint8_t ocf_req_complete(struct ocf_request *req, int error)
 {
 	/* stats count the io going out from ocf */
 	ocf_core_stats_ocf_output_req_update(req->core, req->part_id,
@@ -232,16 +232,13 @@ static void ocf_req_complete(struct ocf_request *req, int error)
 	}
 
 	/* ensure io timeout and normal io only be ended once */
-	uint8_t prev = env_atomic8_cmpxchg(&(req->ioi.io.is_ended), 0, 1);
-	if (prev == 0) { /* io has not been ended */
-		/* Complete IO */
-		ocf_io_end(&req->ioi.io, error);
-	}
+	uint8_t end_status = ocf_io_end(&req->ioi.io, error);
 
 	dec_counter_if_req_was_dirty(req);
 
 	/* Invalidate OCF IO, it is not valid after completion */
 	ocf_io_put(&req->ioi.io);
+	return end_status;
 }
 
 static int ocf_core_submit_io_fast(struct ocf_io *io, struct ocf_request *req,
