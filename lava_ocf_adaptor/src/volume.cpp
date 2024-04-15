@@ -618,7 +618,7 @@ static unsigned int no_io_volume_get_max_io_size(ocf_volume_t volume)
 static uint64_t no_io_volume_get_length(ocf_volume_t volume)
 {
     struct no_io_volume *v = (struct no_io_volume*)ocf_volume_get_priv(volume);
-    return (1UL << 42) * v->cache_line_size;
+    return (1ULL << CORE_LINE_BITS) * v->cache_line_size;
 }
 
 static int no_io_volume_io_set_data(struct ocf_io *io, ctx_data_t *data,
