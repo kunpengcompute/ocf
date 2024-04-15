@@ -439,6 +439,12 @@ static void ocf_mngt_cache_add_core_insert(ocf_pipeline_t pipeline,
 		ocf_cache_log(cache, log_err, "Core %s is zero size\n", cfg->name);
 		OCF_PL_FINISH_RET(pipeline, -OCF_ERR_CORE_NOT_AVAIL);
 	}
+	if (length > ((1ULL << CORE_LINE_BITS) * ocf_line_size(cache))) {
+		ocf_cache_log(cache, log_err, "Core %s is too large: %lu, "
+				"max support is %llu\n", cfg->name, 
+				length, (1ULL << CORE_LINE_BITS) * ocf_line_size(cache));
+		OCF_PL_FINISH_RET(pipeline, -OCF_ERR_CORE_NOT_AVAIL);
+	}
 
 	core->conf_meta->length = length;
 	core->conf_meta->type = cfg->volume_type;

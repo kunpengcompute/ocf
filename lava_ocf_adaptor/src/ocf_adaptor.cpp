@@ -642,7 +642,7 @@ int ocf_remove_core(uint32_t slot_id)
 	if (slot_info_table.find(slot_id) == slot_info_table.end()) {
 		ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core is not exists\n", slot_id);
 		env_rwlock_write_unlock(&table_lock);
-		return STATE_SUCCESS;
+		return STATE_CORE_NOT_EXIST;
 	}
 	info = slot_info_table[slot_id];
 	if (!info->core) {
