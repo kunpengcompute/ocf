@@ -19,7 +19,6 @@
 #include "volume.h"
 #include "ocf_adaptor.h"
 #include "ocf_queue_utils.h"
-#include <../../src/ocf_lru_structs.h>
 
 using namespace std;
 
@@ -107,8 +106,8 @@ static int check_ocf_config(struct ocf_config *cfg)
 			return STATE_FAIL;
 	}
 
-	if (cfg->cache_capacity > CACHE_MAX_SUPPORT_IN_TB * TiB) {
-		ocf_adaptor_log(OCF_LOG_ERROR, "cache capacity should be <= %d TiB\n", CACHE_MAX_SUPPORT_IN_TB);
+	if (cfg->cache_capacity > CACHE_MAX_SUPPORT_IN_TIB * TiB) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "cache capacity should be <= %d TiB\n", CACHE_MAX_SUPPORT_IN_TIB);
 		return STATE_FAIL;
 	}
 
@@ -530,7 +529,7 @@ void ocf_exit()
 	/* Remove core from cache */
 	for (auto it: slot_info_table) {
 		slot_info_t info = it.second;
-		ret = ocf_mngt_remove_core_skip_unmapping(info->core, core_remove_complete, &ctx);
+		ret = ocf_mngt_remove_core(info->core, core_remove_complete, &ctx);
 		if (ret) {
 			core_remove_complete(&ctx, ret);
 		}
@@ -656,21 +655,8 @@ int ocf_remove_core(uint32_t slot_id)
 	core_id = ocf_core_get_id(core);
 
 	int ret = 0;
-	auto &region_map = region_remap_table[slot_id];
 
-	if (region_map.size() * REGION_SIZE < g_cfg.cache_capacity / 4) {
-		for (auto it = region_map.begin(); it != region_map.end(); it++) {
-			ret = ocf_mngt_cache_remove_corelines(core, it->second * REGION_SIZE, REGION_SIZE,
-					region_remove_complete, NULL);
-			if (ret) {
-				env_rwlock_write_unlock(&table_lock);
-				return STATE_MEM_ALLOC_ERR;
-			}
-		}
-		ret = ocf_mngt_remove_core_skip_unmapping(core, single_core_remove_complete, NULL);
-	} else {
-		ret = ocf_mngt_remove_core(core, single_core_remove_complete, NULL);
-	}
+	ret = ocf_mngt_remove_core(core, single_core_remove_complete, NULL);
 
 	if (ret) {
 		env_rwlock_write_unlock(&table_lock);
@@ -1109,6 +1095,16 @@ int ocf_reset_cache_stats()
 	}
 
 	return ocf_stats_reset_cache(g_adaptor.ctx, ocf_cache_get_name(g_adaptor.cache));
+}
+
+int ocf_reset_lattency_stats()
+{
+	if (unlikely(get_ocf_global_status() != OCF_STATUS_INITIALIZED)) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "ocf is not initialized, can not dump cache stats\n");
+		return -1;
+	}
+
+	return ocf_stats_reset_lattency(g_adaptor.ctx, ocf_cache_get_name(g_adaptor.cache));
 }
 
 void ocf_release_dump_info(struct ocf_dump_info *info)

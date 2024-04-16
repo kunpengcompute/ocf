@@ -7,14 +7,13 @@
 #include "device.h"
 #include "ocf/ocf.h"
 #include "ocf/ocf_def.h"
-#include "ocf_lru_structs.h"
 #include "pthread.h"
 
 using namespace std;
 
 #define CHUNK_SIZE (128 * MiB)
 #define FAKE_CHUNK_SIZE (64 * KiB) // we donnot need to malloc true size for cache
-#define MAX_CHUNK_NUMS (CACHE_MAX_SUPPORT_IN_TB * TiB / CHUNK_SIZE)
+#define MAX_CHUNK_NUMS (CACHE_MAX_SUPPORT_IN_TIB * TiB / CHUNK_SIZE)
 
 typedef struct {
 	uint64_t chunk_id;

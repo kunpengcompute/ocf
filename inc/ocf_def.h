@@ -31,7 +31,7 @@
 /**
  * Minimum cache size in bytes
  */
-#define OCF_CACHE_SIZE_MIN	(40 * MiB)
+#define OCF_CACHE_SIZE_MIN	(128 * MiB)
 /**
  * Size of cache name
  */
@@ -59,14 +59,20 @@
 /* support max 511 slots*/
 #define SLOT_MAX_SUPPORT 511
 
-#define OCF_CONFIG_MAX_CORES SLOT_MAX_SUPPORT
+/* support max 256TB for 8 KiB Cacheline*/
+#define CACHE_MAX_SUPPORT_IN_TIB 256
 
-#define CORE_ID_BITS __builtin_ctz(OCF_CONFIG_MAX_CORES + 1)
+/* support max 4096TB for 8 KiB Cacheline*/
+#define CORE_MAX_SUPPORT_IN_TIB 4096
+
+#define CACHE_LINE_BITS (27 + __builtin_ctz(CACHE_MAX_SUPPORT_IN_TIB))
+#define CORE_LINE_BITS (27 + __builtin_ctz(CORE_MAX_SUPPORT_IN_TIB))
+#define CORE_ID_BITS __builtin_ctz(SLOT_MAX_SUPPORT + 1)
 
 /**
  * Maximum numbers of cores per cache instance
  */
-#define OCF_CORE_MAX OCF_CONFIG_MAX_CORES
+#define OCF_CORE_MAX SLOT_MAX_SUPPORT
 /**
  * Minimum value of a valid core ID
  */

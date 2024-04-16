@@ -16,7 +16,7 @@
 
 #define STATE_CHUNK_TIMEOUT -3
 
-#define STATE_CHUNK_UNAVAILABLE 1
+#define STATE_CHUNK_UNAVAILABLE -4
 
 /***error code when submitting request***/
 #define STATE_CORE_EXIST -1000
