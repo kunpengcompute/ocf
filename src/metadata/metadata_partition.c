@@ -15,8 +15,8 @@ ocf_part_id_t ocf_metadata_get_partition_id(struct ocf_cache *cache,
 	struct ocf_metadata_ctrl *ctrl =
 		(struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	info = ocf_metadata_raw_rd_access(cache,
-			&(ctrl->raw_desc[metadata_segment_list_info]), line);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_list_info]);
+	info = &((struct ocf_metadata_list_info *)raw->mem_pool)[line];
 
 	ENV_BUG_ON(!info);
 
@@ -30,8 +30,8 @@ void ocf_metadata_set_partition_id(struct ocf_cache *cache,
 	struct ocf_metadata_ctrl *ctrl =
 		(struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	info = ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_list_info]), line);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_list_info]);
+	info = &((struct ocf_metadata_list_info *)raw->mem_pool)[line];
 
 	if (info)
 		info->partition_id = part_id;
