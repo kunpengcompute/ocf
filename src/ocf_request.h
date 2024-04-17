@@ -226,7 +226,7 @@ struct ocf_request {
 	struct ocf_req_info info;
 	/*!< Detailed request info */
 
-	void (*complete)(struct ocf_request *ocf_req, int error);
+	uint8_t (*complete)(struct ocf_request *ocf_req, int error);
 	/*!< Request completion function */
 
 	ocf_req_end_t backend_complete;
