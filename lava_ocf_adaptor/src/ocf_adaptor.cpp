@@ -22,7 +22,6 @@
 
 using namespace std;
 
-#define REGION_SIZE (1UL << 35)
 #define MAX_CQ_ENTRYS 16
 #define ALIGN_SIZE 4096
 
@@ -639,7 +638,7 @@ int ocf_remove_core(uint32_t slot_id)
 	ocf_core_id_t core_id;
 	env_rwlock_write_lock(&table_lock);
 	if (slot_info_table.find(slot_id) == slot_info_table.end()) {
-		ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core is not exists\n", slot_id);
+		ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core does not exist\n", slot_id);
 		env_rwlock_write_unlock(&table_lock);
 		return STATE_CORE_NOT_EXIST;
 	}
@@ -686,7 +685,8 @@ int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 	env_rwlock_write_lock(&g_adaptor.table_lock);
 	if (region_remap_table.find(slot_id) == region_remap_table.end()) {
 		env_rwlock_write_unlock(&g_adaptor.table_lock);
-		return STATE_SUCCESS;
+		ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) core does not exist\n", slot_id);
+		return STATE_CORE_NOT_EXIST;
 	}
 
 	slot_info_t info = slot_info_table[slot_id];
@@ -694,7 +694,8 @@ int ocf_remove_region(uint32_t slot_id, uint32_t region_id)
 	ocf_core_t core = info->core;
 	if (region_map.find(region_id) == region_map.end()) {
 		env_rwlock_write_unlock(&g_adaptor.table_lock);
-		return STATE_SUCCESS;
+		ocf_adaptor_log(OCF_LOG_INFO, "region(%u) does not exist\n", region_id);
+		return STATE_REGION_NOT_EXIST;
 	}
 	uint64_t remap_id = region_map[region_id];
 	int ret = ocf_mngt_cache_remove_corelines(core, remap_id * REGION_SIZE, REGION_SIZE,

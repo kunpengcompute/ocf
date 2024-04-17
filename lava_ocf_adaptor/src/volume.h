@@ -13,6 +13,7 @@
 #define ALLOC_CHUNK_RETRY 3
 
 #define LAVA_CHUNK_SIZE (128 * MiB)
+#define REGION_SIZE (32 * GiB)
 
 #define CHUNK_STATUS_VALID		0
 #define CHUNK_STATUS_INVALID	1
