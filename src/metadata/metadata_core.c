@@ -37,8 +37,13 @@ void ocf_metadata_get_core_info(struct ocf_cache *cache,
 	
 	collision = ocf_metadata_get_collision_map(cache, line);
 
-	*core_sector = collision->core_line;
-	*core_id = collision->core_id;
+	if(core_sector) {
+		*core_sector = collision->core_line;
+	}
+
+	if(core_id) {
+		*core_id = collision->core_id;
+	}
 }
 
 void ocf_metadata_set_core_info(struct ocf_cache *cache,
