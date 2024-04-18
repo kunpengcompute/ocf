@@ -450,9 +450,8 @@ ocf_cache_line_t ocf_metadata_get_hash(struct ocf_cache *cache,
 	struct ocf_metadata_ctrl *ctrl
 		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	const struct ocf_metadata_hash *info =
-			ocf_metadata_raw_rd_access(cache,
-			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_hash]);
+	struct ocf_metadata_hash *info = &((struct ocf_metadata_hash *)raw->mem_pool)[index];
 
 	return info->cache_line;
 }
@@ -463,9 +462,8 @@ uint8_t *ocf_metadata_get_hash_lock(struct ocf_cache *cache,
 	struct ocf_metadata_ctrl *ctrl
 		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	struct ocf_metadata_hash *info =
-			ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_hash]);
+	struct ocf_metadata_hash *info = &((struct ocf_metadata_hash *)raw->mem_pool)[index];
 
 	return &(info->hash_lock);
 }
@@ -479,9 +477,8 @@ void ocf_metadata_set_hash(struct ocf_cache *cache, ocf_cache_line_t index,
 	struct ocf_metadata_ctrl *ctrl
 		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	struct ocf_metadata_hash *info =
-			ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_hash]);
+	struct ocf_metadata_hash *info = &((struct ocf_metadata_hash *)raw->mem_pool)[index];
 
 	info->cache_line = line;
 }
@@ -492,9 +489,8 @@ void ocf_metadata_set_hash_lock(struct ocf_cache *cache, ocf_cache_line_t index,
 	struct ocf_metadata_ctrl *ctrl
 		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	struct ocf_metadata_hash *info =
-			ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_hash]), index);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_hash]);
+	struct ocf_metadata_hash *info = &((struct ocf_metadata_hash *)raw->mem_pool)[index];
 
 	info->hash_lock = lock;
 }
@@ -1612,33 +1608,6 @@ void ocf_metadata_load_recovery(ocf_cache_t cache,
 		_ocf_metadata_load_recovery_atomic(cache, cmpl, priv);
 	else
 		_ocf_metadata_load_recovery_legacy(cache, cmpl, priv);
-}
-
-/*******************************************************************************
- * Core and part id
- ******************************************************************************/
-
-void ocf_metadata_get_core_and_part_id(struct ocf_cache *cache,
-		ocf_cache_line_t line, ocf_core_id_t *core_id,
-		ocf_part_id_t *part_id)
-{
-	const struct ocf_metadata_map *collision;
-	const struct ocf_metadata_list_info *info;
-	struct ocf_metadata_ctrl *ctrl =
-		(struct ocf_metadata_ctrl *) cache->metadata.priv;
-
-	collision = ocf_metadata_raw_rd_access(cache,
-			&(ctrl->raw_desc[metadata_segment_collision]), line);
-
-	info =  ocf_metadata_raw_rd_access(cache,
-			&(ctrl->raw_desc[metadata_segment_list_info]), line);
-
-	ENV_BUG_ON(!collision || !info);
-
-	if (core_id)
-		*core_id = collision->core_id;
-	if (part_id)
-		*part_id = info->partition_id;
 }
 
 /*******************************************************************************

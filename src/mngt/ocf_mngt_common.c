@@ -139,6 +139,8 @@ static uint64_t _ocf_mngt_cache_remove_corelines_mapping_do(ocf_core_t core,
 			}
 
 			if (iter_coreline > corelines_eidx || iter_coreline < corelines_sidx) {
+				prev_cline = curr_cline;
+				curr_cline = ocf_metadata_get_collision_next(cache, curr_cline);
 				continue;
 			}
 

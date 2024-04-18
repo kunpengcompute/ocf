@@ -17,8 +17,11 @@ struct ocf_lru_meta * ocf_metadata_get_lru(struct ocf_cache *cache,
 	struct ocf_metadata_ctrl *ctrl
 		= (struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	return ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_lru]), line);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_lru]);
+
+	struct ocf_lru_meta *lru_metas = (struct ocf_lru_meta *)raw->mem_pool;
+
+	return &lru_metas[line];
 }
 
 

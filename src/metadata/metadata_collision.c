@@ -15,8 +15,8 @@ void ocf_metadata_set_collision_info(struct ocf_cache *cache,
 	struct ocf_metadata_ctrl *ctrl =
 		(struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	info = ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_list_info]), line);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_list_info]);
+	info = &((struct ocf_metadata_list_info *)raw->mem_pool)[line];
 
 	if (info) {
 		info->next_col = next;
@@ -32,8 +32,8 @@ void ocf_metadata_set_collision_next(struct ocf_cache *cache,
 	struct ocf_metadata_ctrl *ctrl =
 		(struct ocf_metadata_ctrl *) cache->metadata.priv;
 
-	info = ocf_metadata_raw_wr_access(cache,
-			&(ctrl->raw_desc[metadata_segment_list_info]), line);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_list_info]);
+	info = &((struct ocf_metadata_list_info *)raw->mem_pool)[line];
 
 	if (info)
 		info->next_col = next;
@@ -50,8 +50,9 @@ void ocf_metadata_get_collision_info(struct ocf_cache *cache,
 
 	ENV_BUG_ON(NULL == next);
 
-	info = ocf_metadata_raw_rd_access(cache,
-			&(ctrl->raw_desc[metadata_segment_list_info]), line);
+	struct ocf_metadata_raw *raw = &(ctrl->raw_desc[metadata_segment_list_info]);
+	info = &((struct ocf_metadata_list_info *)raw->mem_pool)[line];
+
 	if (info) {
 		if (next)
 			*next = info->next_col;

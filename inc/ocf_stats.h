@@ -318,6 +318,16 @@ int ocf_stats_collect_cache(ocf_cache_t cache,
 int ocf_stats_reset_cache(ocf_ctx_t ctx, const char *cache_name);
 
 /**
+ * @param Reset statistics for given cache
+ *
+ * @param cache Cache instance for which statistics will be collected
+ *
+ * @retval 0 Success
+ * @retval Non-zero Error
+ */
+int ocf_stats_reset_lattency(ocf_ctx_t ctx, const char *cache_name);
+
+/**
  * @param Collect statistics for given core
  *
  * @param core Core for which statistics will be collected
@@ -387,6 +397,15 @@ void ocf_core_stats_initialize(ocf_core_t core);
  * @param[in] core Core handle
  */
 void ocf_core_stats_reset(ocf_core_t core);
+
+/**
+ * @brief reset core statistics of lattency
+ *
+ * reset counters used for statistics.
+ *
+ * @param[in] core Core handle
+ */
+void ocf_core_stats_reset_lattency(ocf_core_t core);
 
 /**
  * @brief Initialize or reset statistics of all cores in cache

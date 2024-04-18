@@ -102,7 +102,9 @@ static void lava_volume_recovery_one_chunk_cb(ocf_cache_t cache, void *context, 
 	if (unlikely(ret)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "Alloc chunk failed for chunk %d",
 			(*lava_volume->chunk_ids)[chunk_id]);
-		(*lava_volume->chunk_status)[chunk_id] |= CHUNK_STATUS_DELET_FAIL;
+
+		/* set valid, wait for next process */
+		(*lava_volume->chunk_status)[chunk_id] = CHUNK_STATUS_VALID;
 
 		set_ocf_global_status(OCF_STATUS_ERROR);
 
@@ -384,11 +386,14 @@ static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
 			req->user_ctx = lava_volume;
 			req->cb = lava_volume_submit_dummy_io_cb;
 
-			if (unlikely(AioRead(req) == STATE_CHUNK_UNAVAILABLE)) {
-				(*lava_volume->chunk_status)[i] |= CHUNK_STATUS_INVALID;
-				lava_volume_recovery_one_chunk(volume->cache, lava_volume, i);
-				ocf_adaptor_log(OCF_LOG_ERROR, "Dummy IO discovery bad chunk %d, auto recovery \n",
-						(*lava_volume->chunk_ids)[i]);
+			int ret = AioRead(req);
+			if (unlikely(ret)) {
+				if (ret == STATE_CHUNK_UNAVAILABLE) {
+					(*lava_volume->chunk_status)[i] |= CHUNK_STATUS_INVALID;
+					lava_volume_recovery_one_chunk(volume->cache, lava_volume, i);
+					ocf_adaptor_log(OCF_LOG_ERROR, "Dummy IO discovery bad chunk %d, auto recovery \n",
+							(*lava_volume->chunk_ids)[i]);
+				}
 				free(s.data);
 				delete req;
 			}

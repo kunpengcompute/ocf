@@ -8,13 +8,14 @@
 #define __SLOT_INFO_H__
 
 #include <ocf/ocf.h>
+#include "volume.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define REGION_NUM_LIMIT (1 << 16) // 16k
-#define REGION_REMAP_MASK ((1 << 16) - 1)
+#define REGION_NUM_LIMIT (CORE_MAX_SUPPORT_IN_TIB * TiB / REGION_SIZE) // 4096T / 32G = 128Ki
+#define REGION_REMAP_MASK (REGION_NUM_LIMIT - 1)
 
 struct slot_info {
 	ocf_core_t core;

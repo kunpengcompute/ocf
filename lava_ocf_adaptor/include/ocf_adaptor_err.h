@@ -16,7 +16,7 @@
 
 #define STATE_CHUNK_TIMEOUT -3
 
-#define STATE_CHUNK_UNAVAILABLE 1
+#define STATE_CHUNK_UNAVAILABLE -4
 
 /***error code when submitting request***/
 #define STATE_CORE_EXIST -1000
@@ -31,6 +31,8 @@
 
 #define STATE_TOO_MANY_REGION -1005
 
-#define STATE_OCF_UNAVAILABLE -1006
+#define STATE_REGION_NOT_EXIST -1006
+
+#define STATE_OCF_UNAVAILABLE -1007
 
 #endif

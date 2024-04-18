@@ -108,12 +108,17 @@ static void ocf_stats_part_init(struct ocf_counters_part *stats)
 	ocf_stats_latencys_init(stats->backend_latency);
 }
 
+static void ocf_stats_part_reset_lattency(struct ocf_counters_part *stats)
+{
+	ocf_stats_latencys_reset(stats->ocf_latency);
+	ocf_stats_latencys_reset(stats->backend_latency);
+}
+
 static void ocf_stats_part_reset(struct ocf_counters_part *stats)
 {
 	_do_ocf_stats_part1_init(stats);
 
-	ocf_stats_latencys_reset(stats->ocf_latency);
-	ocf_stats_latencys_reset(stats->backend_latency);
+	ocf_stats_part_reset_lattency(stats);
 }
 
 static void ocf_stats_rw_init(struct ocf_counters_rw *stats)
@@ -415,6 +420,19 @@ void ocf_core_stats_reset(ocf_core_t core)
 
 	for (i = 0; i != OCF_USER_IO_CLASS_MAX; i++)
 		ocf_stats_part_reset(&exp_obj_stats->part_counters[i]);
+}
+
+void ocf_core_stats_reset_lattency(ocf_core_t core)
+{
+	struct ocf_counters_core *exp_obj_stats;
+	int i;
+
+	OCF_CHECK_NULL(core);
+
+	exp_obj_stats = core->counters;
+
+	for (i = 0; i != OCF_USER_IO_CLASS_MAX; i++)
+		ocf_stats_part_reset_lattency(&exp_obj_stats->part_counters[i]);
 }
 
 int ocf_core_stats_initialize_all(ocf_cache_t cache)
