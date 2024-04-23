@@ -12,7 +12,7 @@ Requires:   zlib
 
 %description
 Product Name: Kunpeng BoostKit
-Product Version: 24.0.RC2
+Product Version: 24.0.T5
 Component Name: BoostKit-%{name}
 Component Version: %{version}
 
