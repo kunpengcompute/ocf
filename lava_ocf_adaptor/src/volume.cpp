@@ -373,7 +373,7 @@ static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
 			Segment s = {
 				.offset = 0,
 				.length = 4 * KiB,
-				.data = (char*)malloc(4 * KiB)
+				.data = (char*)aligned_alloc(ALIGN_SIZE, 4 * KiB)
 			};
 			if (!s.data) {
 				delete req;
@@ -500,7 +500,7 @@ static void lava_volume_submit_req(uint64_t cacheline_size,
 			uint32_t pre_cur = indices[i - 1];
 			auto &pre_s = chunk_req->segments.back();
 			/* coreline and cacheline are both consecutive */
-			if ((pre_s.offset + pre_s.length == addr) &&
+			if (((pre_s.offset + pre_s.length + chunk_req->chunk_id * LAVA_CHUNK_SIZE) == addr) &&
 					(req->map[cur].core_id == req->map[pre_cur].core_id) &&
 					(req->map[cur].core_line > req->map[pre_cur].core_line) &&
 					(req->map[cur].core_line == req->map[pre_cur].core_line + 1)) {

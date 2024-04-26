@@ -38,7 +38,7 @@ int set_ocf_io_timeout_val(uint64_t val);
  * @param[in] cfg: ocf configuration parameters
  *
  * @retval STATE_SUCCESS when success
- *         STATE_PRRAM_INVALID when the value of the internal parameter ocf_config is invalid
+ *         STATE_PARAM_INVALID when the value of the internal parameter ocf_config is invalid
  *         STATE_FAIL when ocf fails to be initialized
  */
 int ocf_init(struct ocf_config *cfg);
@@ -91,7 +91,7 @@ int ocf_remove_region(uint32_t slot_id, uint32_t region_id);
  *
  * @retval STATE_SUCCESS when the invalid request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         STATE_PRRAM_INVALID when the value of the internal parameter req_context is invalid
+ *         STATE_PARAM_INVALID when the value of the internal parameter req_context is invalid
  *         STATE_MEM_ALLOC_ERR when memory alloc fail
  *         STATE_FAIL when ocf is not initialized
  *
@@ -106,7 +106,7 @@ int ocf_invalid(struct req_context *ctx);
  *
  * @retval STATE_SUCCESS when the lookup request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         STATE_PRRAM_INVALID when the value of the internal parameter req_context is invalid
+ *         STATE_PARAM_INVALID when the value of the internal parameter req_context is invalid
  *         STATE_MEM_ALLOC_ERR when memory alloc fail
  *         STATE_FAIL when ocf is not initialized
  *
@@ -121,7 +121,7 @@ int ocf_lookup(struct req_context *ctx);
  *
  * @retval STATE_SUCCESS when the read request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         STATE_PRRAM_INVALID when the value of the internal parameter req_context is invalid
+ *         STATE_PARAM_INVALID when the value of the internal parameter req_context is invalid
  *         STATE_MEM_ALLOC_ERR when memory alloc fail
  *         STATE_FAIL when ocf is not initialized
  *
@@ -136,7 +136,7 @@ int ocf_get(struct req_context *ctx);
  *
  * @retval STATE_SUCCESS when the write request is successfully submmitted
  *         STATE_CORE_NOT_EXIST when the core device corresponding to the slot doesn't exists
- *         STATE_PRRAM_INVALID when the value of the internal parameter req_context is invalid
+ *         STATE_PARAM_INVALID when the value of the internal parameter req_context is invalid
  *         STATE_MEM_ALLOC_ERR when memory alloc fail
  *         STATE_FAIL when ocf is not initialized
  *

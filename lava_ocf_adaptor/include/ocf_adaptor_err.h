@@ -25,7 +25,7 @@
 
 #define STATE_CORE_CREATING  -1002  // core is creaing, can not remove
 
-#define STATE_PRRAM_INVALID -1003
+#define STATE_PARAM_INVALID -1003
 
 #define STATE_MEM_ALLOC_ERR -1004
 
