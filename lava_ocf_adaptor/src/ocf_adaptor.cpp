@@ -23,7 +23,6 @@
 using namespace std;
 
 #define MAX_CQ_ENTRYS 16
-#define ALIGN_SIZE 4096
 
 extern "C" ocf_core_id_t ocf_core_get_id(ocf_core_t core);
 
@@ -434,7 +433,7 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 	if (unlikely(ctx->io_worker_id >= priv->queue_num)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io_work_id(%u) is not within the range of [0, %u)\n",
 			ctx->io_worker_id, priv->queue_num);
-		return STATE_PRRAM_INVALID;
+		return STATE_PARAM_INVALID;
 	}
 
 	ocf_queue_t q = priv->io_queues[ctx->io_worker_id];
@@ -474,7 +473,7 @@ int ocf_init(struct ocf_config *cfg)
 
 	if (!cfg) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_init cfg is NULL\n");
-		return STATE_PRRAM_INVALID;
+		return STATE_PARAM_INVALID;
 	}
 
 	if (cfg->log_print) {
@@ -482,7 +481,7 @@ int ocf_init(struct ocf_config *cfg)
 	}
 
 	if (check_ocf_config(cfg)) {
-		return STATE_PRRAM_INVALID;
+		return STATE_PARAM_INVALID;
 	}
 
 	if (ctx_init(&g_adaptor.ctx)) {
@@ -721,7 +720,7 @@ int ocf_invalid(struct req_context *ctx)
 
 	if (unlikely(!ctx)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_invalid ctx is NULL\n");
-		return STATE_PRRAM_INVALID;
+		return STATE_PARAM_INVALID;
 	}
 
 	/* find the remap id for the region */
@@ -764,7 +763,7 @@ int ocf_lookup(struct req_context *ctx)
 
 	if (unlikely(!ctx)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_lookup ctx is NULL\n");
-		return STATE_PRRAM_INVALID;
+		return STATE_PARAM_INVALID;
 	}
 
 	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
@@ -815,7 +814,7 @@ int ocf_get(struct req_context *ctx)
 
 	if (unlikely(!ctx)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_get ctx is NULL\n");
-		return STATE_PRRAM_INVALID;
+		return STATE_PARAM_INVALID;
 	}
 
 	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
@@ -862,7 +861,7 @@ int ocf_put(struct req_context *ctx)
 
 	if (unlikely(!ctx)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "ocf_put ctx is NULL\n");
-		return STATE_PRRAM_INVALID;
+		return STATE_PARAM_INVALID;
 	}
 
 	if (unlikely((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE))) {
@@ -919,7 +918,7 @@ int ocf_poll(uint32_t io_worker_id, int max_num)
 	struct cache_priv *priv = (struct cache_priv *)ocf_cache_get_priv(g_adaptor.cache);
 	if (unlikely(io_worker_id >= priv->queue_num)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io_work_id(%u) can not exceed %u\n", io_worker_id, priv->queue_num);
-		return STATE_PRRAM_INVALID;
+		return STATE_PARAM_INVALID;
 	}
 
 	int limit;

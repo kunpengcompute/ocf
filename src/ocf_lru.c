@@ -909,29 +909,22 @@ static void *ocf_lru_parallelize_handle(void *args)
 	uint64_t pre_cline = end_marker;
 	struct ocf_lru_meta *node = &lru_meta[offset + st];
 
-	ctx->first[now] = end_marker;
+	ctx->first[now] = offset + st;
 	for (uint64_t i = st; i < ed; ++i) {
 		uint64_t cline = offset + i;
 		if (unlikely(cline >= entries))
 			break;
 
-		if (unlikely(pre_cline == end_marker)) { // for the first node
-			ctx->first[now] = cline;
-			node->next = cline + 1;
-			node->prev = end_marker;
-			node->hot = false;
-		} else {
-			node->prev = pre_cline;
-			node->next = cline + 1;
-			node->hot = false;
-		}
+		node->prev = cline + 1;
+		node->next = pre_cline;
+		node->hot = false;
 		pre_cline = cline;
 		node++;
 		cnt++;
 	}
 	if (cnt) {
 		node--;
-		node->next = end_marker; // for the last node
+		node->prev = end_marker; // for the last node
 	}
 
 	ctx->last[now] = pre_cline;
@@ -991,8 +984,8 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 
 	ENV_BUG_ON(ctx.first[0] == end_marker);
 	ENV_BUG_ON(ctx.last[num - 1] == end_marker);
-	list->head = ctx.first[0];
-	list->tail = ctx.last[num - 1];
+	list->head = ctx.last[num - 1];
+	list->tail = ctx.first[0];
 	for (uint32_t i = 1; i < num; ++i) {
 		uint64_t pre_cline = ctx.last[i - 1];
 		uint64_t cline = ctx.first[i];
@@ -1000,8 +993,8 @@ static int ocf_lru_populate_handle(ocf_parallelize_t parallelize,
 		ENV_BUG_ON(cline == end_marker);
 		struct ocf_lru_meta *pre = &ctx.lru_meta[pre_cline];
 		struct ocf_lru_meta *node = &ctx.lru_meta[cline];
-		pre->next = cline;
-		node->prev = pre_cline;
+		pre->prev = cline;
+		node->next = pre_cline;
 	}
 
 	list->num_nodes = env_atomic64_read(&ctx.num_node);
