@@ -172,6 +172,24 @@ struct ocf_request *ocf_io_to_req(struct ocf_io *io)
 	return container_of(ioi, struct ocf_request, ioi);
 }
 
+struct ocf_io *ocf_req_to_io(struct ocf_request *req)
+{
+	return &req->ioi.io;
+}
+
+void ocf_io_get_io_priv(struct ocf_io *io, void **priv1, void **priv2)
+{
+	if (priv1)
+		*priv1 = io->priv1;
+	if (priv2)
+		*priv2 = io->priv2;
+}
+
+void *ocf_req_get_io_queue(struct ocf_request *req)
+{
+	return req->ioi.io.io_queue;
+}
+
 static inline ocf_core_t ocf_volume_to_core(ocf_volume_t volume)
 {
 	struct ocf_core_volume *core_volume = ocf_volume_get_priv(volume);

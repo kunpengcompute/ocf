@@ -144,7 +144,7 @@ static void lava_volume_recovery_one_chunk(ocf_cache_t cache, struct lava_volume
 static void lava_volume_submit_io_cb(int ret, void *context)
 {
 	Request *req = (Request*)context;
-	struct ocf_io *io = (struct ocf_io*)req->user_ctx;
+	struct ocf_io *io = ocf_req_to_io((struct ocf_request*)req->user_ctx);
 	struct lava_volume_io *lava_volume_io = (struct lava_volume_io*)ocf_io_get_priv(io);
 
 	if (unlikely(ret)) {
@@ -189,7 +189,7 @@ static void lava_volume_submit_io(struct ocf_io *io)
 		s.data = data->ptr + lava_volume_io->offset + submitted_len;
 		req->chunk_id = (*lava_volume->chunk_ids)[((addr + submitted_len) / LAVA_CHUNK_SIZE)];
 		req->segments.push_back(s);
-		req->user_ctx = io;
+		req->user_ctx = ocf_io_to_req(io);
 		req->cb = lava_volume_submit_io_cb;
 		submitted_len += s.length;
 		env_atomic_inc(&lava_volume_io->req_cnt);
@@ -383,7 +383,7 @@ static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
 
 			req->chunk_id = (*lava_volume->chunk_ids)[i];
 			req->segments.push_back(s);
-			req->user_ctx = lava_volume;
+			req->user_ctx = NULL;
 			req->cb = lava_volume_submit_dummy_io_cb;
 
 			int ret = AioRead(req);
