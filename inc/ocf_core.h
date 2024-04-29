@@ -237,4 +237,10 @@ void *ocf_core_get_priv(ocf_core_t core);
  */
 struct ocf_request *ocf_io_to_req(struct ocf_io *io);
 
+struct ocf_io *ocf_req_to_io(struct ocf_request *req);
+
+void ocf_io_get_io_priv(struct ocf_io *io, void **priv1, void **priv2);
+
+void *ocf_req_get_io_queue(struct ocf_request *req);
+
 #endif /* __OCF_CORE_H__ */
