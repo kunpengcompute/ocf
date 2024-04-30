@@ -64,9 +64,7 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 }
 
 static void ocf_read_ucache_submit_hit(struct ocf_request *req)
-{
-	req->ready_to_cache = 1;
-	
+{	
 	ocf_volume_submit_req(req->cache, req, OCF_READ, _ocf_read_ucache_hit_complete);
 }
 
@@ -246,8 +244,6 @@ static inline void _ocf_write_uc_submit(struct ocf_request *req)
 
 	/* Submit IOs */
 	OCF_DEBUG_RQ(req, "Submit");
-
-	req->ready_to_cache = 1;
 
 	/* To cache */
 	ocf_volume_submit_req(cache, req, OCF_WRITE, _ocf_write_uc_cache_complete);

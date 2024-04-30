@@ -1568,6 +1568,44 @@ int ocf_mngt_core_get_seq_cutoff_promote_on_threshold(ocf_core_t core,
 	return 0;
 }
 
+static int ocf_cache_alive_req(ocf_cache_t cache)
+{
+	return env_atomic_read(&cache->refcnt.metadata.counter);
+}
+
+static int ocf_cache_alive_chunk_req(ocf_cache_t cache)
+{
+	return env_atomic_read(&ocf_cache_get_volume(cache)->refcnt.counter);
+}
+
+void ocf_mngt_cache_waite_processing_io(ocf_cache_t cache)
+{
+	int alive_io = ocf_cache_alive_chunk_req(cache);
+	while(alive_io > 0 || ocf_cache_alive_req(cache)) {
+		ocf_cache_log(cache, log_info, "There are %d chunk req (%d IO) exist, please waite\n",
+			alive_io, ocf_cache_alive_req(cache));
+		env_msleep(500);
+		alive_io = ocf_cache_alive_chunk_req(cache);
+	}
+}
+
+void ocf_mngt_cache_waite_deleting_core(ocf_cache_t cache)
+{
+	ocf_core_t core;
+	ocf_core_id_t core_id;
+	int no = cache->conf_meta->core_count;
+
+	/* All exported objects removed, cleaning up rest. */
+	for_each_core(cache, core, core_id) {
+		while(env_atomic_read(&core->deleting)) {
+			ocf_cache_log(cache, log_info, "Core %d is deleting on mngt-queue, please waite\n", core_id);
+			env_msleep(1000);
+		}
+		if (--no == 0)
+			break;
+	}
+}
+
 void ocf_check_metadata_alock(ocf_cache_t cache)
 {
 	struct ocf_alock *alock = ocf_cache_line_concurrency(cache);
