@@ -1399,4 +1399,14 @@ void ocf_mngt_core_pool_remove(ocf_ctx_t ctx, ocf_volume_t volume);
  */
 void ocf_check_metadata_alock(ocf_cache_t cache);
 
+/**
+ * @brief wait if core is deleting in mngt-queue
+ */
+void ocf_mngt_cache_waite_deleting_core(ocf_cache_t cache);
+
+/**
+ * @brief wait if there still IO is being proccesing
+ */
+void ocf_mngt_cache_waite_processing_io(ocf_cache_t cache);
+
 #endif /* __OCF_CACHE_H__ */

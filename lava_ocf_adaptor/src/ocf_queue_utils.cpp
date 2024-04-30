@@ -7,7 +7,7 @@
 
 struct ocf_status_context {
 	int state = OCF_STATUS_NONE;
-	uint64_t ocf_timeout = 2000000;
+	uint64_t ocf_timeout = 5000000;
 } g_status;
 
 int select_valid_cpu_core(__uint128_t core_mask, uint8_t *cpu_valid_core)

@@ -510,6 +510,9 @@ void ocf_exit()
 	ocf_adaptor_log(OCF_LOG_INFO, "ocf exiting, wait for a while\n");
 	env_msleep(500);
 
+	ocf_mngt_cache_waite_processing_io(g_adaptor.cache);
+	ocf_mngt_cache_waite_deleting_core(g_adaptor.cache);
+
 	set_ocf_global_status(OCF_STATUS_DELETING);
 
 	int ret = STATE_SUCCESS;
