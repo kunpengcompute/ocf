@@ -61,14 +61,23 @@ static inline void ocf_io_start(struct ocf_io *io)
 static inline uint8_t ocf_io_end(struct ocf_io *io, int error)
 {	
 	uint8_t prev;
+	char *buffer = io->buffer;
 	/* ensure io timeout and normal io only be ended once */
 	prev = env_atomic8_cmpxchg(&(io->is_ended), 0, 1);
 	if (prev == 1) {
+		if ((error != -OCF_ERR_TIMEOUT_IO) && buffer) {
+			free(buffer);
+		}
+
 		/* io has already been ended */
 		return 0;
 	}
 	if (io->end)
 		io->end(io, error);
+
+	if ((error != -OCF_ERR_TIMEOUT_IO) && buffer) {
+		free(buffer);
+	}
 	/* io ended this time */
 	return 1;
 

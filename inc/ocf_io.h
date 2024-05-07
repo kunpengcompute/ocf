@@ -50,6 +50,11 @@ typedef void (*ocf_end_io_t)(struct ocf_io *io, int error);
  */
 struct ocf_io {
 	/**
+	 * @brief OCF IO buffer
+	 */
+	char *buffer;
+
+	/**
 	 * @brief OCF IO destination address
 	 */
 	uint64_t addr;
@@ -199,6 +204,17 @@ static inline void ocf_io_set_start(struct ocf_io *io, ocf_start_io_t fn)
 static inline void ocf_io_set_handle(struct ocf_io *io, ocf_handle_io_t fn)
 {
 	io->handle = fn;
+}
+
+/**
+ * @brief Set OCF IO buffer
+ *
+ * @param[in] io OCF IO
+ * @param[in] buffer reed-write io buffer
+ */
+static inline void ocf_io_set_buffer(struct ocf_io *io, char *buffer)
+{
+	io->buffer = buffer;
 }
 
 /**

@@ -405,16 +405,18 @@ static void complete(struct ocf_io *io, int error)
 
 	cq_entry_t entry = (cq_entry_t)ctx->internal;
 	int ret;
-	int op = io->dir;
 	switch (error) {
 		case 0:
 			ret = STATE_SUCCESS;
+			if (io->dir == OCF_READ && io->flags == 0) {
+				memcpy(ctx->buffer, io->buffer, ctx->len);
+			}
 			break;
 		case -OCF_ERR_TIMEOUT_IO:
 			ret = STATE_CHUNK_TIMEOUT;
 			break;
 		default:
-			ret = ((op == OCF_LOOKUP || op == OCF_READ) ? STATE_MISS : STATE_FAIL);
+			ret = ((io->dir == OCF_READ) ? STATE_MISS : STATE_FAIL);
 			break;
 	}
 
@@ -424,8 +426,15 @@ static void complete(struct ocf_io *io, int error)
 	ocf_io_put(io);
 }
 
+static void free_buffer(char *buffer)
+{
+	if (buffer) {
+		free(buffer);
+	}
+}
+
 static int submit_io(struct req_context *ctx, ocf_core_t core,
-	uint64_t addr, uint64_t len, int dir, ocf_end_io_t cmpl)
+	char *buffer, uint64_t addr, uint64_t len, int dir, ocf_end_io_t cmpl)
 {
 	ocf_cache_t cache = ocf_core_get_cache(core);
 	ocf_volume_t core_vol = ocf_core_get_front_volume(core);
@@ -433,6 +442,7 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 	if (unlikely(ctx->io_worker_id >= priv->queue_num)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io_work_id(%u) is not within the range of [0, %u)\n",
 			ctx->io_worker_id, priv->queue_num);
+		free_buffer(buffer);
 		return STATE_PARAM_INVALID;
 	}
 
@@ -441,14 +451,16 @@ static int submit_io(struct req_context *ctx, ocf_core_t core,
 	struct ocf_io *io = ocf_volume_new_io(core_vol, q, addr, len, dir, 0, 0);
 	if (unlikely(!io)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io memory request fail\n");
+		free_buffer(buffer);
 		return STATE_MEM_ALLOC_ERR;
 	}
 
 	struct volume_data *data = (struct volume_data *)(ctx->internal + sizeof(struct cq_entry));
-	data->ptr = ctx->buffer;
+	data->ptr = buffer;
 	data->offset = 0;
 	/* assign data to io, used when read/write, unused when lookup/invalid */
 	ocf_io_set_data(io, data, 0);
+	ocf_io_set_buffer(io, buffer);
 	/* setup completion function */
 	ocf_io_set_cmpl(io, ctx, NULL, cmpl);
 
@@ -754,7 +766,7 @@ int ocf_invalid(struct req_context *ctx)
 	uint64_t offset = ctx->offset - left_pad;
 	uint64_t len = ctx->len + (left_pad + right_pad);
 	uint64_t core_offset = remap_id * REGION_SIZE + offset;
-	return submit_io(ctx, core, core_offset, len, OCF_INVALID, complete);
+	return submit_io(ctx, core, NULL, core_offset, len, OCF_INVALID, complete);
 }
 
 int ocf_lookup(struct req_context *ctx)
@@ -805,7 +817,7 @@ int ocf_lookup(struct req_context *ctx)
 	uint64_t offset = ctx->offset - left_pad;
 	uint64_t len = ctx->len + (left_pad + right_pad);
 	uint64_t core_offset = remap_id * REGION_SIZE + offset;
-	return submit_io(ctx, core, core_offset, len, OCF_LOOKUP, complete);
+	return submit_io(ctx, core, NULL, core_offset, len, OCF_LOOKUP, complete);
 }
 
 int ocf_get(struct req_context *ctx)
@@ -852,7 +864,12 @@ int ocf_get(struct req_context *ctx)
 
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
-	return submit_io(ctx, core, core_offset, ctx->len, OCF_READ, complete);
+	char *buffer = (char *)aligned_alloc(PAGE_SIZE, ctx->len);
+	if (!buffer) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "buffer malloc fail\n");
+		return STATE_MEM_ALLOC_ERR;
+	}
+	return submit_io(ctx, core, buffer, core_offset, ctx->len, OCF_READ, complete);
 }
 
 int ocf_put(struct req_context *ctx)
@@ -907,7 +924,13 @@ int ocf_put(struct req_context *ctx)
 
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
-	return submit_io(ctx, core, core_offset, ctx->len, OCF_WRITE, complete);
+	char *buffer = (char *)aligned_alloc(PAGE_SIZE, ctx->len);
+	if (!buffer) {
+		ocf_adaptor_log(OCF_LOG_ERROR, "buffer malloc fail\n");
+		return STATE_MEM_ALLOC_ERR;
+	}
+	memcpy(buffer, ctx->buffer, ctx->len);
+	return submit_io(ctx, core, buffer, core_offset, ctx->len, OCF_WRITE, complete);
 }
 
 int ocf_poll(uint32_t io_worker_id, int max_num)

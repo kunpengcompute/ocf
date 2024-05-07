@@ -103,6 +103,7 @@ struct ocf_io *ocf_io_new(ocf_volume_t volume, ocf_queue_t queue,
 	env_atomic_set(&ioi->meta.ref_count, 1);
 
 	ioi->io.io_queue = queue;
+	ioi->io.buffer = NULL;
 	ioi->io.addr = addr;
 	ioi->io.bytes = bytes;
 	ioi->io.dir = dir;
