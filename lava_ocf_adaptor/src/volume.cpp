@@ -322,8 +322,6 @@ static void _do_send_chunk_request(ocf_request *ocf_req, Request *chunk_req, int
 		ret = AioRead(chunk_req);
 	}
 
-	ocf_req->ready_to_cache = 1;
-
 	/* update block stats */
 	ocf_core_stats_cache_block_update(ocf_req->core, ocf_req->ioi.io.io_class,
 			dir, blocksize);
