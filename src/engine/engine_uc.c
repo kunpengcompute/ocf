@@ -64,7 +64,8 @@ static void _ocf_read_ucache_hit_complete(struct ocf_request *req, int error)
 }
 
 static void ocf_read_ucache_submit_hit(struct ocf_request *req)
-{	
+{
+	req->ready_to_cache = 1;
 	ocf_volume_submit_req(req->cache, req, OCF_READ, _ocf_read_ucache_hit_complete);
 }
 
@@ -200,7 +201,7 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 
 	req->backend_start_timestamp = 0;
 
-	uint8_t prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1);
+	uint8_t prev;
 	uint8_t ended_status;
 	if (unlikely(req->error)) {
 		/* An error occured */
@@ -212,9 +213,10 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 		ended_status = req->complete(req, -OCF_ERR_UCACHE_IO);
 		if (ended_status == 0) {
 			/* io has already been ended */
+			ocf_req_put(req);
 			return;
 		}
-		
+		prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1)
 		if (prev == 0) { /* req has not been invalided */
 			ocf_engine_invalidate(req);
 		}
@@ -230,7 +232,7 @@ static void _ocf_write_uc_cache_complete(struct ocf_request *req, int error)
 		ocf_req_put(req);
 		return;
 	}
-
+	prev = env_atomic8_cmpxchg(&(req->is_invalided), 0, 1)
 	if (prev == 0) { /* req has not been invalided */
 		ocf_req_unlock_wr(ocf_cache_line_concurrency(req->cache), req);
 	}
@@ -245,6 +247,7 @@ static inline void _ocf_write_uc_submit(struct ocf_request *req)
 	/* Submit IOs */
 	OCF_DEBUG_RQ(req, "Submit");
 
+	req->ready_to_cache = 1;
 	/* To cache */
 	ocf_volume_submit_req(cache, req, OCF_WRITE, _ocf_write_uc_cache_complete);
 }
