@@ -62,18 +62,33 @@ static int lava_volume_open(ocf_volume_t volume, void *volume_params)
 
 	lava_volume->name = ocf_uuid_to_str(uuid);
 	lava_volume->chunk_ids = new std::vector<uint64_t>();
-	lava_volume->chunk_status = new std::vector<uint8_t>();
-	ret = alloc_chunks(param->chunk_num, lava_volume->chunk_ids);
-	lava_volume->chunk_status->resize(param->chunk_num, CHUNK_STATUS_VALID);
+	if (!lava_volume->chunk_ids)
+		goto err_nomem;
+	lava_volume->chunk_ids->reserve(param->chunk_num);
+	if (lava_volume->chunk_ids->capacity() < param->chunk_num)
+		goto err_nomem;
 
+	ret = alloc_chunks(param->chunk_num, lava_volume->chunk_ids);
 	if (ret) {
+		delete lava_volume->chunk_ids;
 		ocf_adaptor_log(OCF_LOG_ERROR, "Lava chunk open faied with ret:%d\n", ret);
 		return -1;
+	}
+
+	lava_volume->chunk_status = new std::vector<uint8_t>(param->chunk_num, CHUNK_STATUS_VALID);
+	if (!lava_volume->chunk_status){
+		delete lava_volume->chunk_ids;
+		goto err_nomem;
 	}
 
 	ocf_adaptor_log(OCF_LOG_INFO, "VOL OPEN: (name: %s)\n", lava_volume->name);
 
 	return 0;
+
+err_nomem:
+	ocf_adaptor_log(OCF_LOG_ERROR, "Alloc mem failed for lava_volume_open\n");
+
+	return -1;
 }
 
 /*
@@ -177,6 +192,10 @@ static void lava_volume_submit_io(struct ocf_io *io)
 	while (io_length > 0) {
 		Segment s;
 		Request *req = new Request();
+		if (!req) {
+			lava_volume_io->ret = -OCF_ERR_NO_MEM;
+			break;
+		}
 		uint32_t chunk_remain = LAVA_CHUNK_SIZE - ((addr + submitted_len) % LAVA_CHUNK_SIZE);
 		s.offset = (addr + submitted_len) % LAVA_CHUNK_SIZE;
 		if (chunk_remain > io_length) {
@@ -370,6 +389,10 @@ static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
 	for (i = total_io * time_hash_sidx / period; i != total_io * time_hash_eidx / period;) {
 		if (likely((*lava_volume->chunk_status)[i] == CHUNK_STATUS_VALID)) {
 			Request *req = new Request();
+			if (!req) {
+				is_submitting_io = false;
+				return;
+			}
 			Segment s = {
 				.offset = 0,
 				.length = 4 * KiB,
@@ -448,11 +471,6 @@ static void lava_volume_submit_req(uint64_t cacheline_size,
 	req->backend_start_timestamp = env_get_tick_count();
 
 	for (uint32_t i = 0; i<indices.size(); i++) {
-		if (i == 0) {
-			/* calc io handle latency */
-			_ocf_engine_update_latency_stats_int_adaptor(req, STATS_CLASS_OCF);
-			req->backend_start_timestamp = env_get_tick_count();
-		}
 		cur = indices[i];
 		/* get address */
 		addr = req->map[cur].coll_idx;
@@ -490,6 +508,10 @@ static void lava_volume_submit_req(uint64_t cacheline_size,
 		/* create a new chunk request when loop begin or previous request was sended */
 		if (chunk_req == NULL) {
 			chunk_req = new Request();
+			if (!chunk_req) {
+				callback(req, -OCF_ERR_NO_MEM);
+				return;
+			}
 			chunk_req->chunk_id = chunk_id;
 			chunk_req->user_ctx = req;
 			chunk_req->cb = lava_volume_submit_req_cb;
