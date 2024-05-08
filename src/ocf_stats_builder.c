@@ -800,6 +800,12 @@ static void _stats_dump_cache_cb(ocf_cache_t cache, void *priv, int error)
 {
 	struct stats_dump_ctx *dump_ctx = priv;
 	struct strbuf *buf = dump_ctx->buf;
+
+	if (error) {
+		env_completion_complete(dump_ctx->cmpl);
+		return;
+	}
+
 	struct ocf_stats_usage *usage = env_malloc(sizeof(*usage), ENV_MEM_NORMAL);
 	if (!usage)
 		goto err_usage;
@@ -855,6 +861,7 @@ err_req:
 err_usage:
 	/* tell the caller that we have done */
 	env_completion_complete(dump_ctx->cmpl);
+	ocf_mngt_cache_put(cache);
 }
 
 struct strbuf* ocf_stats_dump_cache(ocf_ctx_t ctx, const char *cache_name)
@@ -887,8 +894,6 @@ struct strbuf* ocf_stats_dump_cache(ocf_ctx_t ctx, const char *cache_name)
 	ocf_mngt_cache_read_lock(cache, _stats_dump_cache_cb, &dump_ctx);
 	env_completion_wait(&cmpl);
 	env_completion_destroy(&cmpl);
-
-	ocf_mngt_cache_put(cache);
 
 end:
 	strbuf_write_end(b);
