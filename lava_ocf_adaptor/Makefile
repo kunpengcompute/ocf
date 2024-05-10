@@ -18,7 +18,7 @@ LIB=liblava_cache.so
 
 CC = gcc
 CPPFLAGS = -fPIC -g -Wall -I${INCDIR} -I${SRCDIR}/ocf/env/ -I${SRCDIR}/ocf/utils/ -I${SRCDIR}/ocf/
-LDFLAGS = -lm -lz -pthread
+LDFLAGS = -lm -lz -pthread -laio
 
 all: sync
 	$(MAKE) $(LIB)

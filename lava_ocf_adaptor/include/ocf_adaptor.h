@@ -203,6 +203,7 @@ struct ocf_dump_info *ocf_dump_status();
  */
 void ocf_show_alock();
 
+int InitChunkPool(const char *disk_path);
 #ifdef __cplusplus
 }
 #endif

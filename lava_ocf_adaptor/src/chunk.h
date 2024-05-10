@@ -1,14 +1,15 @@
-#ifndef _DEVICE_H_
-#define _DEVICE_H_
+/*
+ * Copyright(c) 2019-2021 Intel Corporation
+ * Copyright(c) 2024 Huawei Technologies
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+#ifndef __CHUNK_H_
+#define __CHUNK_H_
 
 #include <cstdint>
 #include <cstdlib>
+#include <functional>
 #include <vector>
-
-enum {
-    DEVICE_READ,
-    DEVICE_WRITE,
-};
 
 typedef struct Segment {
 	uint32_t offset;
@@ -25,19 +26,9 @@ typedef struct Request {
 } Request;
 typedef Request *Request_t;
 
-typedef struct {
-    Request_t req;
-    uint8_t opc;
-    uint8_t status;
-} AioRequest;
-
 /* 申请释放chunk */
 int AllocChunks(std::size_t num, std::vector<uint64_t> *chunk_ids);
 int FreeChunks(std::vector<uint64_t> *chunk_ids);
-
-/* 同步读写操作 */
-int Write(uint64_t chunk_id, Segment_t segment);
-int Read(uint64_t chunk_id, Segment_t segment);
 
 /* 异步读写操作 */
 int AioWrite(Request_t req);
