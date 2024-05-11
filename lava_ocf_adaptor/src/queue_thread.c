@@ -13,6 +13,8 @@
 #include <sched.h>
 #include <pthread.h>
 
+int PollCompletion(uint32_t max);
+
 /* queue thread main function */
 static void* run(void *);
 

@@ -15,7 +15,7 @@
 #include <vector>
 #include <functional>
 #include <numeric>
-#include "device.h"
+#include "chunk.h"
 #include "volume.h"
 #include "ctx.h"
 #include "log.h"
