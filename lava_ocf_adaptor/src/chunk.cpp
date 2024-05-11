@@ -12,19 +12,21 @@
 #include "chunk.h"
 #include "log.h"
 #include "ocf_env.h"
+#include "ocf_adaptor_err.h"
 
 #define AIO_REQUEST_ERR 1
 #define CHUNK_SIZE (1 << 27)	// 128MiB
 #define NETWORK_DELAY_US 10
 #define SEC2USEC 1000000
+#define IO_SUBMIT_POLL 5
 
 #define AIO_DEPTH 0x80000
 
 typedef struct {
-    uint64_t chunk_id;
-    uint64_t offset;		/* chunk在磁盘上的起始位置 */
-    uint32_t size;
-    bool allocated;			/* chunk是否已分配 */
+	uint64_t chunk_id;
+	uint64_t offset;		/* chunk在磁盘上的起始位置 */
+	uint32_t size;
+	bool allocated;			/* chunk是否已分配 */
 } Chunk;					/* chunk对接磁盘 */
 
 typedef Chunk *Chunk_t;
@@ -38,59 +40,59 @@ static io_context_t g_ctx;
 /* 系统调度可能导致普通sleep类函数睡眠时间不准确 */
 static inline void SpinSleepUS(uint64_t sleepTime)
 {
-    struct timeval startTime, stopTime;
-    uint64_t start, end;
+	struct timeval startTime, stopTime;
+	uint64_t start, end;
 
-    gettimeofday(&startTime, nullptr);
-    start = startTime.tv_sec * SEC2USEC + startTime.tv_usec;
-    do {
-        gettimeofday(&stopTime, nullptr);
-        end = stopTime.tv_sec * SEC2USEC + stopTime.tv_usec;
-    } while (end - start < sleepTime);
+	gettimeofday(&startTime, nullptr);
+	start = startTime.tv_sec * SEC2USEC + startTime.tv_usec;
+	do {
+		gettimeofday(&stopTime, nullptr);
+		end = stopTime.tv_sec * SEC2USEC + stopTime.tv_usec;
+	} while (end - start < sleepTime);
 }
 
 class RequestCounter {
 public:
-    RequestCounter(Request *req, int max) : req_(req), max_(max), error_(0)
-    {
-        env_atomic_set(&curr_, 0);
-    }
+	RequestCounter(Request *req, int max) : req_(req), max_(max), error_(0)
+	{
+		env_atomic_set(&curr_, 0);
+	}
 
-    bool AddAndComplete()
-    {
-        return env_atomic_add_return(1, &curr_) == max_;
-    }
+	bool AddAndComplete()
+	{
+		return env_atomic_add_return(1, &curr_) == max_;
+	}
 
-    void Callback()
-    {
-        req_->cb(error_, req_);
-    }
+	void Callback()
+	{
+		req_->cb(error_, req_);
+	}
 
 public:
-    Request *req_; /* 原始的Request */
-    int max_;      /* 一个Request拆分出的异步AioRequest的数量 */
-    env_atomic curr_;
-    int error_;
+	Request *req_; /* 原始的Request */
+	int max_;      /* 一个Request拆分出的异步AioRequest的数量 */
+	env_atomic curr_;
+	int error_;
 };
 
 class AioRequest {
 public:
-    AioRequest(Segment *segment, std::shared_ptr<RequestCounter> counter)
-        : segment_(segment), counter_(counter)
-    {}
+	AioRequest(Segment *segment, std::shared_ptr<RequestCounter> counter)
+		: segment_(segment), counter_(counter)
+	{}
 
-    virtual bool Complete(int64_t res)
+	virtual bool Complete(int64_t res)
 	{
 		if (res != segment_->length) {
-            counter_->error_ = AIO_REQUEST_ERR;
-        }
-        return counter_->AddAndComplete();
+			counter_->error_ = AIO_REQUEST_ERR;
 	}
-    virtual ~AioRequest() {}
+		return counter_->AddAndComplete();
+	}
+	virtual ~AioRequest() {}
 
 public:
-    Segment *segment_;
-    std::shared_ptr<RequestCounter> counter_;
+	Segment *segment_;
+	std::shared_ptr<RequestCounter> counter_;
 };
 
 extern "C" int InitChunkPool(const char *disk_path)
@@ -106,14 +108,17 @@ extern "C" int InitChunkPool(const char *disk_path)
 	int ret = ioctl(g_disk_fd, BLKGETSIZE64, &pool_size);
 	if (ret) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "get pool size fail, errno %d\n", errno);
+		close(fd);
 		return -1;
 	}
 	g_chunk_num = pool_size / CHUNK_SIZE;
+	ocf_adaptor_log(OCF_LOG_INFO, "chunk max num %lu\n", g_chunk_num);
 
 	memset(&g_ctx, 0, sizeof(g_ctx));
 	ret = io_setup(AIO_DEPTH, &g_ctx);
 	if (ret) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "io_setup fail, errno %d\n", errno);
+		close(fd);
 		return -1;
 	}
 
@@ -121,6 +126,7 @@ extern "C" int InitChunkPool(const char *disk_path)
 	if (unlikely(!g_chunks)) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "chunk create fail\n");
 		io_destroy(g_ctx);
+		close(fd);
 		return -1;
 	}
 
@@ -132,6 +138,17 @@ extern "C" int InitChunkPool(const char *disk_path)
 	}
 	pthread_mutex_init(&g_chunk_mutex, nullptr);
 	return 0;
+}
+
+extern "C" void DeInitChunkPool()
+{
+	if (g_chunks) {
+		delete[] g_chunks;
+		g_chunks = nullptr;
+		pthread_mutex_destroy(&g_chunk_mutex);
+		io_destroy(g_ctx);
+		close(g_disk_fd);
+	}
 }
 
 int AllocChunks(std::size_t num, std::vector<uint64_t> *chunk_ids)
@@ -180,7 +197,7 @@ int SubmitWrite(uint64_t chunk_id, Segment *seg, std::shared_ptr<RequestCounter>
 	do {
 		ret = io_submit(g_ctx, 1, &p);
 		if (ret == -EAGAIN) {
-			PollCompletion(128);
+			PollCompletion(IO_SUBMIT_POLL);
 		}
 	} while (ret == -EAGAIN);
 
@@ -199,7 +216,7 @@ int SubmitRead(uint64_t chunk_id, Segment *seg, std::shared_ptr<RequestCounter> 
 	do {
 		ret = io_submit(g_ctx, 1, &p);
 		if (ret == -EAGAIN) {
-			PollCompletion(128);
+			PollCompletion(IO_SUBMIT_POLL);
 		}
 	} while (ret == -EAGAIN);
 
@@ -208,6 +225,10 @@ int SubmitRead(uint64_t chunk_id, Segment *seg, std::shared_ptr<RequestCounter> 
 
 int AioWrite(Request_t req)
 {
+	if (unlikely(!g_chunks[req->chunk_id].allocated)) {
+		return STATE_CHUNK_UNAVAILABLE;
+	}
+
 	SpinSleepUS(NETWORK_DELAY_US);		/* sleep for network delay mock */
 
 	int size = req->segments.size();
@@ -220,6 +241,10 @@ int AioWrite(Request_t req)
 
 int AioRead(Request_t req)
 {
+	if (unlikely(!g_chunks[req->chunk_id].allocated)) {
+		return STATE_CHUNK_UNAVAILABLE;
+	}
+
 	SpinSleepUS(NETWORK_DELAY_US);		/* sleep for network delay mock */
 
 	int size = req->segments.size();
