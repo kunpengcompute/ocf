@@ -14,17 +14,28 @@ OBJS = $(patsubst %.c, %.o, $(SRC))
 SRC_CPP=$(shell find ${SRCDIR} -name \*.cpp)
 OBJS_CPP = $(patsubst %.cpp, %.o, $(SRC_CPP))
 
+ifeq ($(STATIC), ON)
+LIB=liblava_cache.a
+CPPFLAGS = -g -Wall -I${INCDIR} -I${SRCDIR}/ocf/env/ -I${SRCDIR}/ocf/utils/ -I${SRCDIR}/ocf/
+
+else
 LIB=liblava_cache.so
+CPPFLAGS = -fPIC -g -Wall -I${INCDIR} -I${SRCDIR}/ocf/env/ -I${SRCDIR}/ocf/utils/ -I${SRCDIR}/ocf/
+
+endif
 
 CC = gcc
-CPPFLAGS = -fPIC -g -Wall -I${INCDIR} -I${SRCDIR}/ocf/env/ -I${SRCDIR}/ocf/utils/ -I${SRCDIR}/ocf/
 LDFLAGS = -lm -lz -pthread -laio
 
 all: sync
 	$(MAKE) $(LIB)
 
 $(LIB): $(OBJS) $(OBJS_CPP)
+ifeq ($(STATIC), ON)
+	ar -rc $@ $^
+else
 	$(CC) -shared -fpic -o $@ $^ $(LDFLAGS)
+endif
 
 sync:
 	@$(MAKE) -C ${OCFDIR} inc O=$(PWD)
