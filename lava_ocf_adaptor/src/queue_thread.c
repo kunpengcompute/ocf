@@ -13,7 +13,7 @@
 #include <sched.h>
 #include <pthread.h>
 
-int PollCompletion(uint32_t max);
+int PollChunkCompletion(uint32_t max);
 
 /* queue thread main function */
 static void* run(void *);
@@ -121,7 +121,7 @@ static void* run(void *arg)
 			i = (i + 1) % queue_num;
 		}
 
-		PollCompletion(1024);
+		PollChunkCompletion(1024);
 	}
 
 	pthread_exit(0);
