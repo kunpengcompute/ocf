@@ -122,7 +122,7 @@ int AioRead(Request_t req)
 	return 0;
 }
 
-int PollCompletion(uint32_t max)
+int PollChunkCompletion(uint32_t max)
 {
 	uint32_t cnt = 0;
 	while (cnt < max) {

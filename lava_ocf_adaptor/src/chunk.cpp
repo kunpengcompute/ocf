@@ -197,7 +197,7 @@ int SubmitWrite(uint64_t chunk_id, Segment *seg, std::shared_ptr<RequestCounter>
 	do {
 		ret = io_submit(g_ctx, 1, &p);
 		if (ret == -EAGAIN) {
-			PollCompletion(IO_SUBMIT_POLL);
+			PollChunkCompletion(IO_SUBMIT_POLL);
 		}
 	} while (ret == -EAGAIN);
 
@@ -216,7 +216,7 @@ int SubmitRead(uint64_t chunk_id, Segment *seg, std::shared_ptr<RequestCounter> 
 	do {
 		ret = io_submit(g_ctx, 1, &p);
 		if (ret == -EAGAIN) {
-			PollCompletion(IO_SUBMIT_POLL);
+			PollChunkCompletion(IO_SUBMIT_POLL);
 		}
 	} while (ret == -EAGAIN);
 
@@ -255,7 +255,7 @@ int AioRead(Request_t req)
 	return 0;
 }
 
-int PollCompletion(uint32_t max)
+int PollChunkCompletion(uint32_t max)
 {
 	int request_complete_cnt = 0; /* 记录上层下发的Request完成数量，Request里的所有segment都处理完毕 */
 	struct io_event *events = new io_event[max];

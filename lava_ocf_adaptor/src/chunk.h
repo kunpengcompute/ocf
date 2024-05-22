@@ -34,6 +34,6 @@ int FreeChunks(std::vector<uint64_t> *chunk_ids);
 int AioWrite(Request_t req);
 int AioRead(Request_t req);
 
-extern "C" int PollCompletion(uint32_t max);
+extern "C" int PollChunkCompletion(uint32_t max);
 
 #endif
