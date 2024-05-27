@@ -664,15 +664,22 @@ static void ocf_mngt_cache_remove_corelines_mapping(ocf_pipeline_t pipeline,
 	struct ocf_mngt_cache_remove_corelines_context *context = priv;
 	ocf_cache_t cache = context->cache;
 	ocf_core_t core = context->core;
+	int ret;
 
 	if (!ocf_cache_is_device_attached(cache))
 		OCF_PL_NEXT_RET(pipeline);
 	
-	gettimeofday(&context->time_start, NULL);
+	ret = gettimeofday(&context->time_start, NULL);
 	context->corelines_removed = _ocf_mngt_cache_remove_corelines_mapping(
 			core, context->addr, context->bytes);
-	gettimeofday(&context->time_end, NULL);
+	ret |= gettimeofday(&context->time_end, NULL);
 	
+	if (ret != 0) {
+		ocf_cache_log(cache, log_warn, 
+			"cache_remove_corelines_mapping "
+			"process gettimeofday failed with %d", ret);
+	}
+
 	context->cmpl(cache, context->priv, 0);
 
 	ocf_pipeline_next(pipeline);
@@ -761,15 +768,22 @@ static void ocf_mngt_cache_remove_cachelines_mapping(ocf_pipeline_t pipeline,
 {
 	struct ocf_mngt_cache_remove_cachelines_context *context = priv;
 	ocf_cache_t cache = context->cache;
+	int ret;
 
 	if (!ocf_cache_is_device_attached(cache))
 		OCF_PL_NEXT_RET(pipeline);
 	
 	struct timeval time_start, time_end;
-	gettimeofday(&time_start, NULL);
+	ret = gettimeofday(&time_start, NULL);
 	context->cachelines_removed = _ocf_mngt_cache_remove_cachelines_mapping(
 			cache, context->addr, context->bytes);
-	gettimeofday(&time_end, NULL);
+	ret |= gettimeofday(&time_end, NULL);
+
+	if (ret != 0) {
+		ocf_cache_log(cache, log_warn, 
+			"cache_remove_cachelines_mapping "
+			"process gettimeofday failed with %d", ret);
+	}
 
 	context->time_cost_us += get_us_time_cost(&time_start, &time_end);
 	
@@ -877,15 +891,22 @@ static void _ocf_mngt_cache_remove_core_mapping(ocf_pipeline_t pipeline,
 	struct ocf_mngt_cache_remove_core_context *context = priv;
 	ocf_cache_t cache = context->cache;
 	ocf_core_t core = context->core;
+	int ret;
 	
 	if (!ocf_cache_is_device_attached(cache))
 		OCF_PL_NEXT_RET(pipeline);
 
-	gettimeofday(&context->time_start, NULL);
+	ret = gettimeofday(&context->time_start, NULL);
 
 	cache_mngt_core_deinit_attached_meta(core);
 
-	gettimeofday(&context->time_end, NULL);
+	ret |= gettimeofday(&context->time_end, NULL);
+
+	if (ret != 0) {
+		ocf_cache_log(cache, log_warn, 
+			"cache_remove_core_mapping "
+			"process gettimeofday failed with %d", ret);
+	}
 
 	if (env_atomic_cl_read(&core->runtime_meta->dirty_clines) == 0)
 		OCF_PL_NEXT_RET(pipeline);
