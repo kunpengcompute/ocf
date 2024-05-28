@@ -950,22 +950,19 @@ int ocf_poll(uint32_t io_worker_id, int max_num)
 		return STATE_PARAM_INVALID;
 	}
 
-	int limit;
-	if (!max_num) {
-		limit = MAX_CQ_ENTRYS;
-	} else {
-		limit = (max_num > MAX_CQ_ENTRYS) ? MAX_CQ_ENTRYS : max_num;
-	}
-
 	completion_queue_t q = priv->completion_queues[io_worker_id];
 	cq_entry_t entrys[MAX_CQ_ENTRYS];
 	cq_entry_t entry;
-	int num = completion_queue_pop(q, entrys, limit);
-	struct req_context *ctx;
-	for (int i = 0; i < num; ++i) {
-		entry = entrys[i];
-		ctx = (struct req_context *)get_req_context(entry);
-		ctx->cb(entry->ret, ctx);
+	int pending_io = env_atomic_read(&q->io_no);
+	max_num = (max_num > pending_io) ? pending_io : max_num;
+	for (int pending = 0; pending < max_num; pending += MAX_CQ_ENTRYS) {
+		int num = completion_queue_pop(q, entrys, MAX_CQ_ENTRYS);
+		struct req_context *ctx;
+		for (int i = 0; i < num; ++i) {
+			entry = entrys[i];
+			ctx = (struct req_context *)get_req_context(entry);
+			ctx->cb(entry->ret, ctx);
+		}
 	}
 	return STATE_SUCCESS;
 }
