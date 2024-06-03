@@ -60,7 +60,7 @@ typedef uint64_t sector_t;
 #define unlikely(cond)     __builtin_expect(!!(cond), 0)
 
 /* SETTINGS */
-static uint32_t PAGE_SIZE = 4096;
+extern uint32_t PAGE_SIZE;
 static uint32_t CACHELINE_SIZE = 8192;
 
 static inline void ocf_update_metadata_cfg(uint32_t cacheline_size)
