@@ -15,12 +15,15 @@
 
 /* queue thread main function */
 static void* run(void *);
+static void* poll_run(void *);
 
 /* helper class to store all synchronization related objects */
 struct queue_thread
 {
 	/* thread running the queue */
 	pthread_t thread;
+	pthread_t poll_thread;
+
 	/* request thread to exit */
 	bool stop;
 	/* associated OCF queue num */
@@ -59,6 +62,13 @@ int queue_thread_run(struct queue_thread *qt, int cpu)
 
 	int ret = pthread_create(&qt->thread, NULL, run, qt);
 	pthread_setaffinity_np(qt->thread, sizeof(cpu_set_t), &mask);
+
+	if (ret) {
+		return ret;
+	}
+
+	ret = pthread_create(&qt->poll_thread, NULL, run, qt);
+	pthread_setaffinity_np(qt->poll_thread, sizeof(cpu_set_t), &mask);
 
 	return ret;
 }
@@ -102,12 +112,14 @@ static void* run(void *arg)
 	struct ocf_queue **io_queues = qt->io_queues;
 	uint16_t queue_num = qt->queue_num;
 	uint32_t pending_io = 0;
+	uint32_t now;
 	qt->stop = false;
 
 	while (likely(!qt->stop)) {
 		for (i = 0; i < queue_num; ++i) {
 			pending_io += ocf_queue_pending_io(io_queues[i]);
 		}
+		now = pending_io;
 
 		/* execute items on the queue */
 		i = 0;
@@ -119,7 +131,26 @@ static void* run(void *arg)
 			i = (i + 1) % queue_num;
 		}
 
-		PollCompletion(1024);
+		if (now == 0) {
+			usleep(10);
+		}
+	}
+
+	pthread_exit(0);
+}
+
+static void* poll_run(void *arg)
+{
+	int i;
+	struct queue_thread *qt = arg;
+	uint32_t poll_num = 0;
+	qt->stop = false;
+
+	while (likely(!qt->stop)) {
+		poll_num = PollCompletion(1024);
+		if (poll_num == 0) {
+			usleep(10);
+		}
 	}
 
 	pthread_exit(0);
