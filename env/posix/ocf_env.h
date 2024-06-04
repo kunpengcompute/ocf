@@ -37,9 +37,10 @@
 #include "utils_mpool.h"
 
 /* set sector from 512-bytes to 4096-bytes*/
-#define ENV_SECTOR_SHIFT	__builtin_ctz(4096)
-
+#define SECTOR_SIZE 4096
+#define ENV_SECTOR_SHIFT	__builtin_ctz(SECTOR_SIZE)
 #define OCF_ALLOCATOR_NAME_MAX 128
+#define DISK_ALIGN_SIZE 4096
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 #define ocf_min(a,b) MIN(a,b)
