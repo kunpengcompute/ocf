@@ -485,7 +485,7 @@ int ocf_init(struct ocf_config *cfg)
 	}
 
 	ocf_update_metadata_cfg(cfg->cache_line_size);
-	
+
 	if (get_ocf_global_status() != OCF_STATUS_NONE) {
 		ocf_adaptor_log(OCF_LOG_WARN, "ocf has been initialized\n");
 		return STATE_FAIL;
@@ -867,7 +867,7 @@ int ocf_get(struct req_context *ctx)
 
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
-	char *buffer = (char *)aligned_alloc(PAGE_SIZE, ctx->len);
+	char *buffer = (char *)aligned_alloc(DISK_ALIGN_SIZE, ctx->len);
 	if (!buffer) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "buffer malloc fail\n");
 		return STATE_MEM_ALLOC_ERR;
@@ -930,7 +930,7 @@ int ocf_put(struct req_context *ctx)
 
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
-	char *buffer = (char *)aligned_alloc(PAGE_SIZE, ctx->len);
+	char *buffer = (char *)aligned_alloc(DISK_ALIGN_SIZE, ctx->len);
 	if (!buffer) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "buffer malloc fail\n");
 		return STATE_MEM_ALLOC_ERR;
@@ -941,7 +941,7 @@ int ocf_put(struct req_context *ctx)
 
 int ocf_poll(uint32_t io_worker_id, int max_num)
 {
-	if (unlikely((get_ocf_global_status() != OCF_STATUS_INITIALIZED) && 
+	if (unlikely((get_ocf_global_status() != OCF_STATUS_INITIALIZED) &&
 			(get_ocf_global_status() != OCF_STATUS_ERROR))) {
 		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf is not working, can not poll\n");
 		return STATE_OCF_UNAVAILABLE;
