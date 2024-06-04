@@ -67,7 +67,7 @@ int queue_thread_run(struct queue_thread *qt, int cpu)
 		return ret;
 	}
 
-	ret = pthread_create(&qt->poll_thread, NULL, run, qt);
+	ret = pthread_create(&qt->poll_thread, NULL, poll_run, qt);
 	pthread_setaffinity_np(qt->poll_thread, sizeof(cpu_set_t), &mask);
 
 	return ret;
@@ -141,7 +141,6 @@ static void* run(void *arg)
 
 static void* poll_run(void *arg)
 {
-	int i;
 	struct queue_thread *qt = arg;
 	uint32_t poll_num = 0;
 	qt->stop = false;
