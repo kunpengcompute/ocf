@@ -20,7 +20,7 @@ ctx_data_t *lava_ctx_data_alloc(uint32_t pages)
 	struct volume_data *data;
 
 	data = malloc(sizeof(*data));
-	data->ptr = aligned_alloc(DISK_ALIGN_SIZE, pages * DISK_ALIGN_SIZE);
+	data->ptr = aligned_alloc(PAGE_SIZE, pages * PAGE_SIZE);
 	data->offset = 0;
 
 	return data;
