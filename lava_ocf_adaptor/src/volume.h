@@ -11,7 +11,6 @@
 #include "ctx.h"
 
 #define ALLOC_CHUNK_RETRY 3
-#define ALIGN_SIZE 4096
 
 #define LAVA_CHUNK_SIZE (128 * MiB)
 #define REGION_SIZE (32 * GiB)
