@@ -228,57 +228,57 @@ int FreeChunks(std::vector<uint64_t> *chunk_ids)
 
 static int Push(int op, Request_t req)
 {
-    pthread_spin_lock(&sq_lock);
-    if (sq.size() >= QUEUE_NUM_LIMIT) {
-        pthread_spin_unlock(&sq_lock);
-        return -1;
-    }
-    sq.push({op, req});
-    pthread_spin_unlock(&sq_lock);
-    return 0;
+	pthread_spin_lock(&sq_lock);
+	if (sq.size() >= QUEUE_NUM_LIMIT) {
+		pthread_spin_unlock(&sq_lock);
+		return -1;
+	}
+	sq.push({op, req});
+	pthread_spin_unlock(&sq_lock);
+	return 0;
 }
 
 static int Submit(int op, Request_t req)
 {
-    int ret;
-    struct iocb **ic_now;
+	int ret;
+	struct iocb **ic_now;
 
-    int size = req->segments.size();
-    uint64_t chunk_id = req->chunk_id;
-    RequestCounter_t counter = new RequestCounter(req, size);
+	int size = req->segments.size();
+	uint64_t chunk_id = req->chunk_id;
+	RequestCounter_t counter = new RequestCounter(req, size);
 
-    if (op == 0) {
-        for (int i = 0; i < size; ++i) {
-            Segment *seg = &req->segments[i];
-            AioRequest_t a = new AioRequest(seg, counter);
-            uint64_t offset = chunk_id * CHUNK_SIZE + seg->offset;
-            io_prep_pread(ic[i], g_disk_fd, seg->data, seg->length, offset);
-            ic[i]->data = a;
-        }
-    } else {
-        for (int i = 0; i < size; ++i) {
-            Segment *seg = &req->segments[i];
-            AioRequest_t a = new AioRequest(seg, counter);
-            uint64_t offset = chunk_id * CHUNK_SIZE + seg->offset;
-            io_prep_pwrite(ic[i], g_disk_fd, seg->data, seg->length, offset);
-            ic[i]->data = a;
-        }
-    }
+	if (op == 0) {
+		for (int i = 0; i < size; ++i) {
+			Segment *seg = &req->segments[i];
+			AioRequest_t a = new AioRequest(seg, counter);
+			uint64_t offset = chunk_id * CHUNK_SIZE + seg->offset;
+			io_prep_pread(ic[i], g_disk_fd, seg->data, seg->length, offset);
+			ic[i]->data = a;
+		}
+	} else {
+		for (int i = 0; i < size; ++i) {
+			Segment *seg = &req->segments[i];
+			AioRequest_t a = new AioRequest(seg, counter);
+			uint64_t offset = chunk_id * CHUNK_SIZE + seg->offset;
+			io_prep_pwrite(ic[i], g_disk_fd, seg->data, seg->length, offset);
+			ic[i]->data = a;
+		}
+	}
 
-    ic_now = ic;
-    while (size > 0) {
-        ret = io_submit(g_ctx, size, ic_now);
-        if (ret >= 0) {
-            size -= ret;
-            ic_now += ret;
-        } else if (ret == -EAGAIN) {
-            ocf_adaptor_log(OCF_LOG_ERROR, "io_submit again\n");
-        } else {
-            ocf_adaptor_log(OCF_LOG_ERROR, "io_submit fail, ret %d\n", ret);
-        }
-    }
+	ic_now = ic;
+	while (size > 0) {
+		ret = io_submit(g_ctx, size, ic_now);
+		if (ret >= 0) {
+			size -= ret;
+			ic_now += ret;
+		} else if (ret == -EAGAIN) {
+			ocf_adaptor_log(OCF_LOG_ERROR, "io_submit again\n");
+		} else {
+			ocf_adaptor_log(OCF_LOG_ERROR, "io_submit fail, ret %d\n", ret);
+		}
+	}
 
-    return 0;
+	return 0;
 }
 
 int AioWrite(Request_t req)
@@ -304,24 +304,24 @@ int AioRead(Request_t req)
 int PollChunkCompletion(uint32_t max_nr)
 {
 	int n;
-    RequestCounter_t *cv = new RequestCounter_t[max_nr];
+	RequestCounter_t *cv = new RequestCounter_t[max_nr];
 	if (unlikely(cv == nullptr)) {
 		return 0;
 	}
-    pthread_spin_lock(&cq_lock);
-    n = (max_nr < cq.size() ? max_nr : cq.size());
-    for (int i = 0; i < n; ++i) {
-        cv[i] = cq.front();
-        cq.pop();
-    }
-    pthread_spin_unlock(&cq_lock);
+	pthread_spin_lock(&cq_lock);
+	n = (max_nr < cq.size() ? max_nr : cq.size());
+	for (int i = 0; i < n; ++i) {
+		cv[i] = cq.front();
+		cq.pop();
+	}
+	pthread_spin_unlock(&cq_lock);
 
-    for (int i = 0; i < n; ++i) {
-        RequestCounter_t counter = cv[i];
-        counter->Callback();
-        delete counter;
-    }
-    delete []cv;
+	for (int i = 0; i < n; ++i) {
+		RequestCounter_t counter = cv[i];
+		counter->Callback();
+		delete counter;
+	}
+	delete []cv;
 	return n;
 }
 
@@ -359,8 +359,8 @@ static void* aio_poll(void *arg)
 			AioRequest_t req = static_cast<AioRequest_t>(event->data);
 			if (req->Complete(event->res)) {
 				pthread_spin_lock(&cq_lock);
-	            cq.push(req->counter_);
-	            pthread_spin_unlock(&cq_lock);
+				cq.push(req->counter_);
+				pthread_spin_unlock(&cq_lock);
 			}
 			delete req;
 		}
