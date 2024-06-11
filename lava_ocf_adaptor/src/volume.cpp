@@ -396,7 +396,7 @@ static void lava_volume_submit_dummy_io(ocf_volume_t volume, uint32_t period)
 			Segment s = {
 				.offset = 0,
 				.length = 4 * KiB,
-				.data = (char*)aligned_alloc(ALIGN_SIZE, 4 * KiB)
+				.data = (char*)aligned_alloc(PAGE_SIZE, PAGE_SIZE)
 			};
 			if (!s.data) {
 				delete req;
