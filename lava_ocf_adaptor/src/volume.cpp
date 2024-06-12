@@ -136,14 +136,13 @@ static void lava_volume_recovery_one_chunk_cb(ocf_cache_t cache, void *context, 
 static void lava_volume_recovery_one_chunk(ocf_cache_t cache, struct lava_volume *lava_volume, uint32_t bad_chunk_idx)
 {
 	int ret;
-
-	if ((*lava_volume->chunk_status)[bad_chunk_idx] & CHUNK_STATUS_DELETING) {
+	uint8_t is_deleting = CHUNK_STATUS_DELETING | CHUNK_STATUS_INVALID;
+	if (env_atomic8_cmpxchg((env_atomic8*)&(*lava_volume->chunk_status)[bad_chunk_idx], CHUNK_STATUS_INVALID, is_deleting) ==
+		is_deleting) {
 		return;
 	}
-
 	ocf_adaptor_log(OCF_LOG_ERROR, "Start recovery chunk %d", (*lava_volume->chunk_ids)[bad_chunk_idx]);
 
-	(*lava_volume->chunk_status)[bad_chunk_idx] |= CHUNK_STATUS_DELETING;
 	ret = ocf_mngt_cache_remove_cachelines(cache, bad_chunk_idx * LAVA_CHUNK_SIZE, LAVA_CHUNK_SIZE,
 		lava_volume_recovery_one_chunk_cb, lava_volume, bad_chunk_idx);
 
