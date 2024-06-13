@@ -764,8 +764,8 @@ int ocf_invalid(struct req_context *ctx)
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
 	/* align left and right, calculate the actual offset on the core */
-	uint64_t left_pad = ctx->offset % ALIGN_SIZE;
-	uint64_t right_pad = (ALIGN_SIZE - ((ctx->offset + ctx->len) % ALIGN_SIZE)) % ALIGN_SIZE;
+	uint64_t left_pad = ctx->offset % SECTOR_SIZE;
+	uint64_t right_pad = (SECTOR_SIZE - ((ctx->offset + ctx->len) % SECTOR_SIZE)) % SECTOR_SIZE;
 	uint64_t offset = ctx->offset - left_pad;
 	uint64_t len = ctx->len + (left_pad + right_pad);
 	uint64_t core_offset = remap_id * REGION_SIZE + offset;
@@ -784,7 +784,7 @@ int ocf_lookup(struct req_context *ctx)
 		return STATE_PARAM_INVALID;
 	}
 
-	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
+	if ((ctx->offset % SECTOR_SIZE) || (ctx->len % SECTOR_SIZE)) {
 		ocf_adaptor_log(OCF_LOG_DEBUG, "ock_lookup is not 4k aligned\n");
 		if (ctx->cb) {
 			ctx->cb(STATE_MISS, ctx);
@@ -815,8 +815,8 @@ int ocf_lookup(struct req_context *ctx)
 	env_rwlock_read_unlock(&g_adaptor.table_lock);
 
 	/* align left and right, calculate the actual offset on the core */
-	uint64_t left_pad = ctx->offset % ALIGN_SIZE;
-	uint64_t right_pad = (ALIGN_SIZE - ((ctx->offset + ctx->len) % ALIGN_SIZE)) % ALIGN_SIZE;
+	uint64_t left_pad = ctx->offset % SECTOR_SIZE;
+	uint64_t right_pad = (SECTOR_SIZE - ((ctx->offset + ctx->len) % SECTOR_SIZE)) % SECTOR_SIZE;
 	uint64_t offset = ctx->offset - left_pad;
 	uint64_t len = ctx->len + (left_pad + right_pad);
 	uint64_t core_offset = remap_id * REGION_SIZE + offset;
@@ -835,7 +835,7 @@ int ocf_get(struct req_context *ctx)
 		return STATE_PARAM_INVALID;
 	}
 
-	if ((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE)) {
+	if ((ctx->offset % SECTOR_SIZE) || (ctx->len % SECTOR_SIZE)) {
 		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf_get is not 4k aligned\n");
 		if (ctx->cb) {
 			ctx->cb(STATE_MISS, ctx);
@@ -867,7 +867,8 @@ int ocf_get(struct req_context *ctx)
 
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
-	char *buffer = (char *)aligned_alloc(PAGE_SIZE, ctx->len);
+	/* alignment based on the chunk layer requirements */
+	char *buffer = (char *)aligned_alloc(PAGE_SIZE, DIV_ROUND_UP(ctx->len, PAGE_SIZE) * PAGE_SIZE);
 	if (!buffer) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "buffer malloc fail\n");
 		return STATE_MEM_ALLOC_ERR;
@@ -887,7 +888,7 @@ int ocf_put(struct req_context *ctx)
 		return STATE_PARAM_INVALID;
 	}
 
-	if (unlikely((ctx->offset % ALIGN_SIZE) || (ctx->len % ALIGN_SIZE))) {
+	if (unlikely((ctx->offset % SECTOR_SIZE) || (ctx->len % SECTOR_SIZE))) {
 		ocf_adaptor_log(OCF_LOG_DEBUG, "ocf_put is not 4k aligned\n");
 		if (ctx->cb) {
 			ctx->cb(STATE_SUCCESS, ctx);
@@ -898,9 +899,9 @@ int ocf_put(struct req_context *ctx)
 	/* find the remap id for the region */
 	auto &slot_info_table = g_adaptor.slot_info_table;
 	auto &region_remap_table = g_adaptor.region_remap_table;
-	env_rwlock_write_lock(&g_adaptor.table_lock);
+	env_rwlock_read_lock(&g_adaptor.table_lock);
 	if (unlikely(region_remap_table.find(ctx->slot_id) == region_remap_table.end())) {
-		env_rwlock_write_unlock(&g_adaptor.table_lock);
+		env_rwlock_read_unlock(&g_adaptor.table_lock);
 		return STATE_CORE_NOT_EXIST;
 	}
 
@@ -910,7 +911,10 @@ int ocf_put(struct req_context *ctx)
 	int remap_id;
 	if (region_map.find(ctx->region_id) != region_map.end()) {
 		remap_id = region_map[ctx->region_id];
+		env_rwlock_read_unlock(&g_adaptor.table_lock);
 	} else {
+		env_rwlock_read_unlock(&g_adaptor.table_lock);
+		env_rwlock_write_lock(&g_adaptor.table_lock);
 		remap_id = get_remap_id(info);
 		if (remap_id < 0) {
 			env_rwlock_write_unlock(&g_adaptor.table_lock);
@@ -920,14 +924,15 @@ int ocf_put(struct req_context *ctx)
 			return STATE_SUCCESS;
 		}
 		region_map[ctx->region_id] = remap_id;
+		env_rwlock_write_unlock(&g_adaptor.table_lock);
 		ocf_adaptor_log(OCF_LOG_INFO, "slot(%u) add region_id(%u)-remap_id(%d)\n",
 			ctx->slot_id, ctx->region_id, remap_id);
 	}
-	env_rwlock_write_unlock(&g_adaptor.table_lock);
 
 	/* calculate the actual offset on the core */
 	uint64_t core_offset = remap_id * REGION_SIZE + ctx->offset;
-	char *buffer = (char *)aligned_alloc(PAGE_SIZE, ctx->len);
+	/* alignment based on the chunk layer requirements */
+	char *buffer = (char *)aligned_alloc(PAGE_SIZE, DIV_ROUND_UP(ctx->len, PAGE_SIZE) * PAGE_SIZE);
 	if (!buffer) {
 		ocf_adaptor_log(OCF_LOG_ERROR, "buffer malloc fail\n");
 		return STATE_MEM_ALLOC_ERR;

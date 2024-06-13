@@ -7,6 +7,8 @@
 #include <sched.h>
 #include <execinfo.h>
 
+uint32_t PAGE_SIZE = 4096;
+
 /* ALLOCATOR */
 struct _env_allocator {
 	/*!< Memory pool ID unique name */

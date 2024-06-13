@@ -448,7 +448,7 @@ static inline int ocf_req_ref_count(struct ocf_request *req)
 
 static inline bool ocf_req_is_4k(uint64_t addr, uint32_t bytes)
 {
-	return !((addr % PAGE_SIZE) || (bytes % PAGE_SIZE));
+	return !((addr % 4096) || (bytes % 4096));
 }
 
 #ifdef __cplusplus
