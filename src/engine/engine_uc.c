@@ -1,7 +1,6 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
- * Description: new cache mode engine: UCache interface
- * Create: 2024-01-27
+ * Copyright(c) 2012-2021 Intel Corporation
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
 #include "engine_common.h"
