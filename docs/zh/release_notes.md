@@ -15,7 +15,7 @@
 </tr>
 <tr>
     <th>软件名称</th>
-    <td>ocf</td>
+    <td>Ucache智能读缓存</td>
 </tr>
 </tbody></table>
 

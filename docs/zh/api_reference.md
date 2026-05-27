@@ -1,11 +1,11 @@
-# 开发指南<a name="ZH-CN_TOPIC_0000002552475173"></a>
+# API指南<a name="ZH-CN_TOPIC_0000002552475173"></a>
 
 ## 规格约束<a name="ZH-CN_TOPIC_0000002521149976"></a>
 
 - cache初始化传入容量大小，当前最大256TiB，不支持动态修改。
 - `cache_line_size`支持`8k`/`16k`/`32k`/`64k`，推荐使用`8k`。
 - ocf会创建io\_worker\_num个队列，一个io\_worker对应一个ocf队列对submission\_queue/completion\_queue。
-- region\_id全局唯一，**一**个slot对应一个core，最多支持511个core，一个core逻辑空间最大4096TiB，最多承载128K个32GiB region。Slot下所有region放在slot对应core。设备空间下，region\_id重映射一个remap\_id，region在core上对应的区间为`remap_id*32GiB`~`(remap_id+1)*32GiB`。
+- region\_id全局唯一，一个slot对应一个core，最多支持511个core，一个core逻辑空间最大4096TiB，最多承载128K个32GiB region。Slot下所有region放在slot对应core。设备空间下，region\_id重映射一个remap\_id，region在core上对应的区间为`remap_id*32GiB`~`(remap_id+1)*32GiB`。
 - 同一个slot调用的`ocf_get`/`ocf_put`/`ocf_invalid`/`ocf_lookup`要求在一个线程中。
 
 ## 对外接口<a name="ZH-CN_TOPIC_0000002552349957"></a>

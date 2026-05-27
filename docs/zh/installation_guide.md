@@ -1,4 +1,4 @@
-# 特性指南<a name="ZH-CN_TOPIC_0000002552472695"></a>
+# 安装指南<a name="ZH-CN_TOPIC_0000002552472695"></a>
 
 ## 特新描述<a name="ZH-CN_TOPIC_0000002551640122"></a>
 
@@ -18,18 +18,17 @@ Ucache智能读缓存通过I/O智能预取精准识别热点请求，并针对�
 
 | 项目     | 描述                      |
 |--------|-------------------------|
-| 操作系统   | openEuler 20.03 LTS SP1 |
-| 操作系统   | openEuler 22.03 LTS SP1 |
+| 操作系统   | <ul><li>openEuler 20.03 LTS SP1</li><li>openEuler 22.03 LTS SP1</li></ul> |
 | Ucache | 1.0.0                   |
 
 >![](public_sys-resources/icon-note.gif) **说明：** 
->Ucache基于开源ocf进行开发，可以在[这里](https://gitcode.com/boostkit/ocf/tree/UCache)获取源码。
+>Ucache基于开源ocf进行开发，可以在[这里](https://gitcode.com/boostkit/ocf/tree/dev-UCache)获取源码。
 
-本文基于鲲鹏服务器和openEuler操作系统提供指导，在正式操作前请确保软硬件均满足要求。
+
 
 ## 编译安装读缓存库<a name="ZH-CN_TOPIC_0000002520640142"></a>
 
-**操作步骤<a name="section16195192562111"></a>**
+
 
 1. 下载ocf仓库代码，使用UCache补丁，并打包。
 
@@ -46,15 +45,12 @@ Ucache智能读缓存通过I/O智能预取精准识别热点请求，并针对�
 
 2. 进入`/home`目录，重新生成RPMbuild目录。
 
-    >![](public_sys-resources/icon-note.gif) **说明：**
-    >
-    >环境需要先安装rpmbuild工具
-    >
-    >```sh
-    >yum install rpm-build
-    >```
+   1. 环境需要先安装rpmbuild工具
+    	```sh
+    	yum install rpm-build
+    	```
 
-    1. 修改`.rpmmacros`文件。
+    2. 修改`.rpmmacros`文件。
 
         ```sh
         vi /root/.rpmmacros
