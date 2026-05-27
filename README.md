@@ -35,13 +35,13 @@ Lava场景要在服务侧集成一个读缓存，基于ocf实现读缓存模块�
 
 ```txt
 ├── docs                            # 项目文档目录
-│   ├── LICENSE-DOCS                # 文档许可协议
+│   ├── LICENSE                     # 文档许可协议
 │   └── zh                          # 中文文档目录
 │       ├── figures                 # 中文文档图片资料目录
 │       ├── public_sys-resources    # 中文公共资源目录
 │       ├── api_reference.md        # API指南
-│       ├── feature_guide.md        # 特性指南
-│       └── release_notes.md        # 版本说明
+│       ├── installation_guide.md   # 安装指南
+│       └── release_notes.md        # 版本说明书
 ├── ucache.patch                    # UCache补丁文件
 ├── LICENSE                         # 软件许可协议
 └── README.md                       # 介绍文档
@@ -49,15 +49,15 @@ Lava场景要在服务侧集成一个读缓存，基于ocf实现读缓存模块�
 
 ## 版本说明<a name="ZH-CN_TOPIC_0000002551510455"></a>
 
-版本信息详见[版本说明](docs/zh/release_notes.md)。
+版本信息详见《[版本说明书](docs/zh/release_notes.md)》。
 
 ## 环境部署<a name="ZH-CN_TOPIC_0000002552229815"></a>
 
-环境要求、编译特性指南详见[特性指南](docs/zh/feature_guide)。
+环境要求、编译特性指南详见《[安装指南](docs/zh/installation_guide.md)》。
 
 ## 开发指南<a name="ZH-CN_TOPIC_0000002551632355"></a>
 
-接口、结构体、错误码等定义详见[开发指南](docs/zh/api_reference.md)。
+接口、结构体、错误码等定义详见《[API指南](docs/zh/api_reference.md)》。
 
 ## 免责声明<a name="ZH-CN_TOPIC_0000002520632364"></a>
 
