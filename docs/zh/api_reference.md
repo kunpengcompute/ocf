@@ -5,7 +5,7 @@
 - cache初始化传入容量大小，当前最大256TiB，不支持动态修改。
 - `cache_line_size`支持`8k`/`16k`/`32k`/`64k`，推荐使用`8k`。
 - ocf会创建io\_worker\_num个队列，一个io\_worker对应一个ocf队列对submission\_queue/completion\_queue。
-- region\_id全局唯一，一个slot对应一个core，最多支持511个core，一个core逻辑空间最大4096TiB，最多承载128K个32GiB region。Slot下所有region放在slot对应core。设备空间下，region\_id重映射一个remap\_id，region在core上对应的区间为`remap_id*32GiB`~`(remap_id+1)*32GiB`。
+- region\_id全局唯一，一个slot对应一个core，最多支持511个core，一个core逻辑空间最大4096TiB，最多承载128K个32GiB region。Slot下所有region放在slot对应core。设备空间下，region\_id重映射一个remap\_id，region在core上对应的区间为`remap_id*32GiB` ~ `(remap_id+1)*32GiB`。
 - 同一个slot调用的`ocf_get`/`ocf_put`/`ocf_invalid`/`ocf_lookup`要求在一个线程中。
 
 ## 对外接口<a name="ZH-CN_TOPIC_0000002552349957"></a>
@@ -386,3 +386,8 @@ void ocf_release_dump_info(struct ocf_dump_info *info)；
 | 枚举体描述 | 定义                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 |-------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 错误码   | <pre><code>#define STATE_SUCCESS 0<br>/***error code for ocf processing result after request submission***/<br>#define STATE_FAIL -1<br>#define STATE_MISS -2<br>#define STATE_CHUNK_TIMEOUT -3<br>#define STATE_CHUNK_UNAVAILABLE -4<br>/***error code when submitting request***/<br>#define STATE_CORE_EXIST -1000<br>#define STATE_CORE_NOT_EXIST -1001<br>#define STATE_CORE_CREATING -1002<br>#define STATE_PARAM_INVALID -1003<br>#define STATE_MEM_ALLOC_ERR -1004<br>#define STATE_TOO_MANY_REGION -1005<br>#define STATE_OCF_UNAVAILABLE -1006</code></pre> |
+
+## 修订记录
+| 发布日期  | 修改说明       |
+|-------|----------|
+| 2024-06-30 | 第一次正式发布。 |
