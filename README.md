@@ -77,9 +77,9 @@ Lava场景要在服务侧集成一个读缓存，基于ocf实现读缓存模块�
 
 ## License<a name="ZH-CN_TOPIC_0000002520472368"></a>
 
-本项目的代码适用于BSD-3-Clause许可证，具体请参见[LICENSE文件](docs/LICENSE-DOCS)。
+本项目的代码适用于BSD-3-Clause许可证，具体请参见[LICENSE文件](LICENSE)。
 
-本项目的文档适用于CC-BY 4.0许可证，具体请参见[LICENSE文件](LICENSE)。
+本项目的文档适用于CC-BY 4.0许可证，具体请参见[LICENSE文件](docs/LICENSE)。
 
 ## 贡献声明<a name="ZH-CN_TOPIC_0000002551512355"></a>
 
