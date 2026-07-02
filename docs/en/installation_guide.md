@@ -60,7 +60,7 @@ This document provides guidance based on the Kunpeng server and openEuler OS. Be
 
    3. Change the value of `%_topdir` to `/home/rpmbuild`. If the file does not contain this line, add it, save the file, and exit.
 
-        ![](figures/zh-cn_image_0000002520640162.png)
+        ![](figures/en-us_image_0000002520640162.png)
 
    4. Run the `rpmbuild` installation command again.
 
@@ -74,7 +74,7 @@ This document provides guidance based on the Kunpeng server and openEuler OS. Be
     vi /root/.rpmmacros
     ```
 
-    ![](figures/zh-cn_image_0000002520480174.png)
+    ![](figures/en-us_image_0000002520480174.png)
 
 4. Copy the source code package and spec file to the `/home/rpmbuild` subdirectory.
 
@@ -93,7 +93,7 @@ This document provides guidance based on the Kunpeng server and openEuler OS. Be
 
     After the compilation is complete, the following RPM package is generated:
 
-    ![](figures/zh-cn_image_0000002520640158.png)
+    ![](figures/en-us_image_0000002520640158.png)
 
 6. Install the RPM package.
 
@@ -104,7 +104,7 @@ This document provides guidance based on the Kunpeng server and openEuler OS. Be
 
     After the installation, the **lava-ocf-adaptor-1.0.0-1.aarch64.rpm** file is as follows:
 
-    ![](figures/zh-cn_image_0000002551520153.png)
+    ![](figures/en-us_image_0000002551520153.png)
 
     >![](public_sys-resources/icon-note.gif) **NOTE**
     >
