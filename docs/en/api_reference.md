@@ -181,7 +181,7 @@ int ocf_put(struct req_context *cxt);
 **Return Value<a name="section12583712162411"></a>**
 
 - `STATE_SUCCESS`: The requests are successfully submitted to the OCF queue.
-- <idp:inline displayname="code" id="code205144912391">STATE_OCF_UNAVAILABLE</idp:inline>: OCF is unavailable.
+- `STATE_OCF_UNAVAILABLE`: OCF is unavailable.
 - `STATE_PARAM_INVALID`: The ctx pointer is null, or its internal parameters are invalid.
 - `STATE_CORE_NOT_EXIST`: The request fails to be submitted because the core corresponding to the slot does not exist.
 - `STATE_MEM_ALLOC_ERR`: Memory allocation fails.
@@ -208,11 +208,11 @@ int ocf_invalid(struct req_context *ctx);
 
 **Return Value<a name="section12583712162411"></a>**
 
-- <idp:inline displayname="code" id="code9224937124116">STATE_SUCCESS</idp:inline>: The requests are successfully submitted to the OCF queue.
-- <idp:inline displayname="code" id="code16134918398">STATE_OCF_UNAVAILABLE</idp:inline>: OCF is unavailable.
-- <idp:inline displayname="code" id="code420724514412">STATE_PARAM_INVALID</idp:inline>: The ctx pointer is null, or its internal parameters are invalid.
-- <idp:inline displayname="code" id="code10022184218">STATE_CORE_NOT_EXIST</idp:inline>: The request fails to be submitted because the core corresponding to the slot does not exist.
-- <idp:inline displayname="code" id="code1973913711429">STATE_MEM_ALLOC_ERR</idp:inline>: Memory allocation fails.
+- `STATE_SUCCESS`: The requests are successfully submitted to the OCF queue.
+- `STATE_OCF_UNAVAILABLE`: OCF is unavailable.
+- `STATE_PARAM_INVALID`: The ctx pointer is null, or its internal parameters are invalid.
+- `STATE_CORE_NOT_EXIST`: The request fails to be submitted because the core corresponding to the slot does not exist.
+- `STATE_MEM_ALLOC_ERR`: Memory allocation fails.
 
 ### Submitting a Query Request<a name="EN-US_TOPIC_0000002552349967"></a>
 
@@ -236,11 +236,11 @@ int ocf_lookup(struct req_context *cxt);
 
 **Return Value<a name="section12583712162411"></a>**
 
-- <idp:inline displayname="code" id="code11224163744111">STATE_SUCCESS</idp:inline>: The requests are successfully submitted to the OCF queue.
-- <idp:inline displayname="code" id="code13720494393">STATE_OCF_UNAVAILABLE</idp:inline>: OCF is unavailable.
-- <idp:inline displayname="code" id="code162081545134118">STATE_PARAM_INVALID</idp:inline>: The ctx pointer is null, or its internal parameters are invalid.
-- <idp:inline displayname="code" id="code8015214212">STATE_CORE_NOT_EXIST</idp:inline>: The request fails to be submitted because the core corresponding to the slot does not exist.
-- <idp:inline displayname="code" id="code197404784211">STATE_MEM_ALLOC_ERR</idp:inline>: Memory allocation fails.
+- `STATE_SUCCESS`: The requests are successfully submitted to the OCF queue.
+- `STATE_OCF_UNAVAILABLE`: OCF is unavailable.
+- `STATE_PARAM_INVALID`: The ctx pointer is null, or its internal parameters are invalid.
+- `STATE_CORE_NOT_EXIST`: The request fails to be submitted because the core corresponding to the slot does not exist.
+- `STATE_MEM_ALLOC_ERR`: Memory allocation fails.
 
 ### Polling<a name="EN-US_TOPIC_0000002521309970"></a>
 
@@ -263,8 +263,8 @@ int ocf_poll(uint32_t io_worker_id, uint32_t max_num);
 
 **Return Value<a name="section12583712162411"></a>**
 
-- <idp:inline displayname="code" id="code1022593764116">STATE_SUCCESS</idp:inline>: The requests are successfully submitted to the OCF queue.
-- <idp:inline displayname="code" id="code071349183916">STATE_OCF_UNAVAILABLE</idp:inline>: OCF is unavailable.
+- `STATE_SUCCESS`: The requests are successfully submitted to the OCF queue.
+- `STATE_OCF_UNAVAILABLE`: OCF is unavailable.
 - `STATE_PARAM_INVALID`: The value of io\_worker\_id is invalid.
 
 ### Obtaining the OCF Cache/Core Mapping<a name="EN-US_TOPIC_0000002521149974"></a>
@@ -386,3 +386,9 @@ None
 | Enumeration| Definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 |-------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Error Code  | <pre><code>#define STATE_SUCCESS 0<br>/***error code for ocf processing result after request submission***/<br>#define STATE_FAIL -1<br>#define STATE_MISS -2<br>#define STATE_CHUNK_TIMEOUT -3<br>#define STATE_CHUNK_UNAVAILABLE -4<br>/***error code when submitting request***/<br>#define STATE_CORE_EXIST -1000<br>#define STATE_CORE_NOT_EXIST -1001<br>#define STATE_CORE_CREATING -1002<br>#define STATE_PARAM_INVALID -1003<br>#define STATE_MEM_ALLOC_ERR -1004<br>#define STATE_TOO_MANY_REGION -1005<br>#define STATE_OCF_UNAVAILABLE -1006</code></pre> |
+
+## Change History
+
+| Date  | Description       |
+|-------|----------|
+| 2024-06-30 | This is the first official release. |
