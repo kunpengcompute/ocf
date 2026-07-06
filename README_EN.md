@@ -15,7 +15,7 @@ The following figure shows the working principle of the Ucache smart read cache.
 
     ![](docs/en/figures/introduction.png)
 
->![](docs/en/public_sys-resources/icon-note.gif) **Note:**
+>![](docs/en/public_sys-resources/icon-note.gif) **NOTE**
 > 
 >The DAS intelligent data analysis engine is implemented in the KSAL dynamic library. For details about interfaces integrated for DAS, see [DAS Interfaces](https://www.hikunpeng.com/document/detail/en/kunpengsdss/basicAccelFeatures/ksal/kunpengksal_16_0027.html) in *Kunpeng BoostKit 24.0.RC2 KSAL Developer Guide*. This document describes the implementation and installation of the read cache library.
 
@@ -34,17 +34,17 @@ In the Lava scenario, to integrate read cache on servers, refer to the following
 ## Directory structure<a name="EN-US_TOPIC_0000002551630439"></a>
 
 ```txt
-├── docs                             # Project document directory
-│   ├── LICENSE-DOCS               # Document license agreement
-│   └── en                       # Document directory
-│       ├── figures              # Directory of figures in documents
-│       ├── public_sys-resources     # Public resource directory
-│       ├── api_reference.md       # API reference
-│       ├── feature_guide.md        # Feature guide
-│       └── release_notes.md         # Release notes
-├── ucache.patch                   # UCache patch file
-├── LICENSE                      # Software license agreement
-└── README.md                 # Introduction
+├── docs                            # Project documentation
+│   ├── LICENSE                     # Document license
+│   └── en                          # Document directory
+│       ├── figures                 # Figure resources
+│       ├── public_sys-resources    # Public system resources
+│       ├── api_reference.md        # API reference
+│       ├── installation_guide.md   # Installation guide
+│       └── release_notes.md        # Release notes
+├── ucache.patch                    # UCache patch file
+├── LICENSE                         # Software license
+└── README.md                       # Project introduction
 ```
 
 ## Version Description<a name="EN-US_TOPIC_0000002551510455"></a>
@@ -53,7 +53,7 @@ For details about the version information, see [Release Notes](docs/en/release_n
 
 ## Environment Deployment<a name="EN-US_TOPIC_0000002552229815"></a>
 
-For details about the environment requirements and compilation feature guide, see [Feature Guide](docs/en/feature_guide.md).
+For details about the environment requirements and feature compilation, see [Installation Guide](docs/en/installation_guide.md).
 
 ## Developer Guide<a name="EN-US_TOPIC_0000002551632355"></a>
 
@@ -77,9 +77,9 @@ If you do not want your model or dataset to be mentioned in this project, or if 
 
 ## License<a name="EN-US_TOPIC_0000002520472368"></a>
 
-The code of this project is applicable to the BSD-3-Clause license. For details, see [LICENSE](https://gitcode.com/boostkit/ocf/blob/master/LICENSE).
+The code of this project is licensed under BSD-3-Clause. For details, see [LICENSE](LICENSE).
 
-The documents of this project are licensed under CC-BY 4.0. For details, see [LICENSE](docs/LICENSE-DOCS).
+The documents of this project are licensed under CC-BY 4.0. For details, see [LICENSE](docs/LICENSE).
 
 ## Contribution Statement<a name="EN-US_TOPIC_0000002551512355"></a>
 

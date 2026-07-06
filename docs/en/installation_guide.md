@@ -10,20 +10,20 @@ This document provides guidance based on the Kunpeng server and openEuler OS. Be
 
 **Hardware Requirements<a name="en-us_topic_0000001217080138_section10273165810425"></a>**
 
-| Project   | Description        |
+| Item | Description |
 |-------|------------|
-| CPU model| Kunpeng 920|
+| CPU | Kunpeng 920|
 
 **Software Requirements<a name="section1240364411598"></a>**
 
-| Project    | Description                     |
-|--------|-------------------------|
-| OS  | openEuler 20.03 LTS SP1 |
-| OS  | openEuler 22.03 LTS SP1 |
-| Ucache | 1.0.0                   |
+| Item | Description            |
+|------|------------------------|
+| OS  | <ul><li>openEuler 20.03 LTS SP1</li><li>openEuler 22.03 LTS SP1</li></ul>  |
+| Ucache | 1.0.0                |
 
->![](public_sys-resources/icon-note.gif) **Note:**
->Ucache is based on open-source OCF. You can obtain the source code from [here](https://gitcode.com/boostkit/ocf/blob/master/ucache.patch).
+>![](public_sys-resources/icon-note.gif) **NOTE**
+>
+>Ucache is based on open-source OCF. You can obtain the source code from [here](https://gitcode.com/boostkit/ocf/tree/dev-UCache).
 
 This document provides guidance based on the Kunpeng server and openEuler OS. Before performing operations, ensure that your hardware and software meet the requirements.
 
@@ -31,7 +31,7 @@ This document provides guidance based on the Kunpeng server and openEuler OS. Be
 
 **Procedure<a name="section16195192562111"></a>**
 
-1. Download the OCF repository code, use the UCache patch, and package the code.
+1. Download the OCF repository code, apply the UCache patch, and package the code.
 
     ```sh
     cd /home
@@ -46,25 +46,23 @@ This document provides guidance based on the Kunpeng server and openEuler OS. Be
 
 2. Go to the `/home` directory and create an RPM build directory.
 
-    >![](public_sys-resources/icon-note.gif) **Note:**
-    >
-    >The rpmbuild tool must be installed in the environment.
-    >
-    >```sh
-    >yum install rpm-build
-    >```
+   1. Install the rpmbuild tool in the environment.
 
-    1. Modify the `.rpmmacros` file.
+        ```sh
+        yum install rpm-build
+        ```
+
+   2. Modify the `.rpmmacros` file.
 
         ```sh
         vi /root/.rpmmacros
         ```
 
-    2. Change the value of `%_topdir` to `/home/rpmbuild`. If the file does not contain this line, add it, save the file, and exit.
+   3. Change the value of `%_topdir` to `/home/rpmbuild`. If the file does not contain this line, add it, save the file, and exit.
 
         ![](figures/en-us_image_0000002520640162.png)
 
-    3. Run the `rpmbuild` installation command again.
+   4. Run the `rpmbuild` installation command again.
 
         ```sh
         rpmdev-setuptree
@@ -108,6 +106,13 @@ This document provides guidance based on the Kunpeng server and openEuler OS. Be
 
     ![](figures/en-us_image_0000002551520153.png)
 
-    >![](public_sys-resources/icon-note.gif) **Note:**
+    >![](public_sys-resources/icon-note.gif) **NOTE**
+    >
     >`ocf_adaptor.h` describes all external interfaces. Other header files define structures and error codes.
     >To integrate the read cache into an application, add the link option `-llava_cache` during compilation.
+
+## Change History
+
+| Date  | Description       |
+|-------|----------|
+| 2024-06-30 | This is the first official release. |

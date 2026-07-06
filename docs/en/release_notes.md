@@ -15,7 +15,7 @@
 </tr>
 <tr>
     <th>Software Name</th>
-    <td>ocf</td>
+    <td>Ucache smart read cache</td>
 </tr>
 </tbody></table>
 
@@ -23,18 +23,18 @@
 
 | Software Type  | Version                                                |
 |--------|----------------------------------------------------|
-| OS     | openEuler 20.03 LTS SP1<br>openEuler 22.03 LTS SP1 |
+| OS     | openEuler 20.03 LTS SP1 <br>openEuler 22.03 LTS SP1 |
 | Ucache | 1.0.0                                              |
 
 ### Hardware Version Mapping<a name="EN-US_TOPIC_0000002515966654"></a>
 
-| Project | Requirement      |
+| Item | Requirement      |
 |-----|----------|
 | Processor| Kunpeng 920|
 
 ### Virus Scan Results<a name="EN-US_TOPIC_0000002515966650"></a>
 
-Virus scanning is not involved because no software package is released.
+Virus scan is not involved because no software package is released.
 
 ### Version Description<a name="EN-US_TOPIC_0000002516126576"></a>
 
@@ -44,11 +44,11 @@ The Ucache smart read cache uses smart I/O prefetch to accurately identify hotsp
 
 #### Resolved Issues<a name="EN-US_TOPIC_0000002547606475"></a>
 
-None.
+None
 
 #### Known Issues<a name="EN-US_TOPIC_0000002547526487"></a>
 
-None.
+None
 
 ## Related Documentation<a name="EN-US_TOPIC_0000002515966652"></a>
 
@@ -61,3 +61,9 @@ None.
 ### Obtaining Documentation<a name="EN-US_TOPIC_0000002547526489"></a>
 
 Visit the [open-source repository](https://gitcode.com/boostkit/ocf) to view or download related documents.
+
+## Change History
+
+| Date  | Description       |
+|-------|----------|
+| 2024-06-30 | This is the first official release. |
