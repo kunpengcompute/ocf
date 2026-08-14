@@ -23,12 +23,8 @@ Ucache智能读缓存通过I/O智能预取精准识别热点请求，并针对�
 
 >![](public_sys-resources/icon-note.gif) **说明：** 
 >Ucache基于开源ocf进行开发，可以在[这里](https://gitcode.com/boostkit/ocf/tree/dev-UCache)获取源码。
-
-
-
+>
 ## 编译安装读缓存库<a name="ZH-CN_TOPIC_0000002520640142"></a>
-
-
 
 1. 下载ocf仓库代码，使用UCache补丁，并打包。
 
@@ -46,21 +42,22 @@ Ucache智能读缓存通过I/O智能预取精准识别热点请求，并针对�
 2. 进入`/home`目录，重新生成RPMbuild目录。
 
    1. 环境需要先安装rpmbuild工具
-    	```sh
-    	yum install rpm-build
-    	```
 
-    2. 修改`.rpmmacros`文件。
+     ```sh
+     yum install rpm-build
+     ```
+
+   1. 修改`.rpmmacros`文件。
 
         ```sh
         vi /root/.rpmmacros
         ```
 
-    2. 修改`%_topdir`的路径为`/home/rpmbuild`。若文件不存在，则新增一行保存退出。
+   2. 修改`%_topdir`的路径为`/home/rpmbuild`。若文件不存在，则新增一行保存退出。
 
         ![](figures/zh-cn_image_0000002520640162.png)
 
-    3. 再次执行rpmbuild安装命令。
+   3. 再次执行rpmbuild安装命令。
 
         ```sh
         rpmdev-setuptree
@@ -109,6 +106,7 @@ Ucache智能读缓存通过I/O智能预取精准识别热点请求，并针对�
     >应用程序集成读缓存，编译时，增加链接选项`-llava_cache`即可。
 
 ## 修订记录
+
 | 发布日期  | 修改说明       |
 |-------|----------|
 | 2024-06-30 | 第一次正式发布。 |
