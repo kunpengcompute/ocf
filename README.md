@@ -17,7 +17,7 @@ Ucache智能读缓存的工作原理如下图所示。
 
 >![](docs/zh/public_sys-resources/icon-note.gif) **说明：**
 > 
->DAS数据智能分析引擎功能在KSAL动态库里实现，关于DAS集成的相关接口说明请参考《Kunpeng BoostKit 24.0.RC2 分布式存储加速算法库 开发指南》中[DAS接口](https://www.hikunpeng.com/document/detail/zh/kunpengsdss/basicAccelFeatures/ksal/kunpengksal_16_0027.html)，本文主要对读缓存库的实现和安装进行说明。
+>DAS数据智能分析引擎功能在KSAL动态库里实现，关于DAS集成的相关接口说明请参考《Kunpeng BoostKit 24.0.RC2 分布式存储加速算法库 开发指南》中[DAS接口](https://www.hikunpeng.com/document/detail/zh/kunpengaccel/storage/ksal/kunpengksal_16_0027.html)，本文主要对读缓存库的实现和安装进行说明。
 
 ### 其他信息<a name="ZH-CN_TOPIC_0000002521310452"></a>
 

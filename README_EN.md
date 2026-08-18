@@ -17,7 +17,7 @@ The following figure shows the working principle of the Ucache smart read cache.
 
 >![](docs/en/public_sys-resources/icon-note.gif) **NOTE**
 > 
->The DAS intelligent data analysis engine is implemented in the KSAL dynamic library. For details about interfaces integrated for DAS, see [DAS Interfaces](https://www.hikunpeng.com/document/detail/en/kunpengsdss/basicAccelFeatures/ksal/kunpengksal_16_0027.html) in *Kunpeng BoostKit 24.0.RC2 KSAL Developer Guide*. This document describes the implementation and installation of the read cache library.
+>The DAS intelligent data analysis engine is implemented in the KSAL dynamic library. For details about interfaces integrated for DAS, see [DAS Interfaces](https://www.hikunpeng.com/document/detail/en/kunpengaccel/storage/ksal/kunpengksal_16_0027.html) in *Kunpeng BoostKit 24.0.RC2 KSAL Developer Guide*. This document describes the implementation and installation of the read cache library.
 
 ### Other Information<a name="EN-US_TOPIC_0000002521310452"></a>
 

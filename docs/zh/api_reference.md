@@ -388,6 +388,7 @@ void ocf_release_dump_info(struct ocf_dump_info *info)；
 | 错误码   | <pre><code>#define STATE_SUCCESS 0<br>/***error code for ocf processing result after request submission***/<br>#define STATE_FAIL -1<br>#define STATE_MISS -2<br>#define STATE_CHUNK_TIMEOUT -3<br>#define STATE_CHUNK_UNAVAILABLE -4<br>/***error code when submitting request***/<br>#define STATE_CORE_EXIST -1000<br>#define STATE_CORE_NOT_EXIST -1001<br>#define STATE_CORE_CREATING -1002<br>#define STATE_PARAM_INVALID -1003<br>#define STATE_MEM_ALLOC_ERR -1004<br>#define STATE_TOO_MANY_REGION -1005<br>#define STATE_OCF_UNAVAILABLE -1006</code></pre> |
 
 ## 修订记录
+
 | 发布日期  | 修改说明       |
 |-------|----------|
 | 2024-06-30 | 第一次正式发布。 |
